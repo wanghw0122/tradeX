@@ -1,0 +1,6 @@
+2025-01-12 11:42:24,738 - my_logger - ERROR - Request failed with status code: 500
+2025-01-12 11:42:24,738 - my_logger - ERROR - block_category_rank no result.
+2025-01-12 11:44:00,122 - my_logger - ERROR - Request failed with status code: 500
+2025-01-12 11:44:00,123 - my_logger - ERROR - block_category_rank no result.
+2025-01-12 11:55:36,260 - my_logger - ERROR - Request failed with status code: 500
+2025-01-12 11:55:36,261 - my_logger - ERROR - block_category_rank no result.

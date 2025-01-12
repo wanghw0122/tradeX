@@ -1,0 +1,4 @@
+pylint.args:{
+    erros-only: true,
+    unsafe-load-any-extension: true
+}

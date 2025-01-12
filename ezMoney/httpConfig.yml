@@ -1,0 +1,128 @@
+head:
+  Host: "p-xcapi.topxlc.com"
+  Connection: "keep-alive"
+  Accept: "application/json, text/plain, */*"
+  User-Agent: "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) ddcj-yqs-xc/0.4.36 Chrome/108.0.5359.215 Electron/22.3.11 Safari/537.36"
+  Accept-Language: "zh-Hans-CN;q=1, en-CN;q=0.9"
+  Accept-Encoding: "gzip, deflate, br"
+  Content-Type: "application/json;charset=UTF-8"
+  token: "748367722e953d9252461db6a67418de"
+Cookie:
+  tgw_l7_route: "f5cc5503e6f9962914600e613ba93f5f"
+Steps:
+  urls:
+    - path: "/user/check_user_alive"
+      name: "check_user_alive"
+      method: "post"
+      step: 1
+      data: ""
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/get_system_time"
+      name: "system_time"
+      method: "post"
+      step: 2
+      data: ""
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/xiao_cao_block_category_rank_v3"
+      name: "block_category_rank"
+      method: "post"
+      step: 3
+      data: '{"params":{"date":"2025-01-07","model":0}}'
+      # model=1 是板块方向大类 0 获取全部
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/xiao_cao_industry_block_rank"
+      name: "block_rank"
+      method: "post"
+      step: 4
+      data: '{"params":{"date":"2025-01-07","model":0}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/xiao_cao_dynamic_index"
+      name: "dynamic_index"
+      method: "post"
+      step: 5
+      data: '{"params":{"tradeDate":"2025-01-07","indexType":0}}'
+      # 小草环境重点
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/get_code_by_xiao_cao_block"
+      name: "get_code_by_xiao_cao_block"
+      method: "post"
+      step: 6
+      data: '{"params":{"blockCodeList":"","industryBlockCodeList":"","categoryCodeList":"","exponentCodeList":"","tradeDate":"2025-01-07"}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/stock_call_auction"
+      name: "stock_call_auction"
+      desc: "集合竞价详细数据"
+      method: "post"
+      step: 7
+      data: '{"params":{"code":"300108.XSHE","tradeDate":"20250107"}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/xiao_cao_environment_second_line_v2"
+      name: "xiao_cao_environment_second_line_v2"
+      desc: "环境数据"
+      method: "post"
+      step: 8
+      data: '{"params":{"code":"9A0001,9A0002,9A0003,9B0001,9B0002,9B0003,9C0001","date":"2025-01-07"}}, {"params":{"code":"9D0001,9D0002,9D0003,9E0001,9E0002,9E0003,9F0001,9F0002,9F0003,9F0004,9F0005,9F0006,9F0007,9F0008,9F0009,9A0001,9A0002,9A0003,9B0001,9B0002,9B0003,9C0001,9G0024,9G0026,9G0020,9G0002,9G0025,9G0027,9G0021,9G0001,9G0003,9G0004,9G0005,9G0006,9G0007,9G0008,9G0009,9G0010,9G0011,9G0012,9G0013,9G0014,9G0015,9G0016,9G0017,9G0018,9G0019,9G0028,9G0029,9G0030,9G0031,9G0032,9G0033,9G0034,9G0035,9G0036,9G0037,9G0038,9G0039,9G0040,9G0041,9G0042,9G0043,9G0044,9G0045","date":"2025-01-07"}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/sort_v2"
+      name: "sort_v2"
+      desc: "搜索结果"
+      method: "post"
+      step: 9
+      data: '{"params":{"queryType":1,"sortId":40,"sortType":1,"type":0,"date":"2025-01-07","hpqbState":0,"lpdxState":0}}'
+      # 37: 连板接力 39： 红盘起爆
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+    - path: "/stock/minute_line"
+      name: "minute_line"
+      desc: "分钟线"
+      method: "post"
+      step: 10
+      data: '{"params":{"adj":"bfq","freq":"1min","code":"300108.XSHE","tradeDate":"20250107","count":241}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+    - path: "/stock/xiao_cao_index_v2"
+      name: "xiao_cao_index_v2"
+      desc: "明细数据"
+      method: "post"
+      step: 11
+      data: '{"params":{"stockCodes":"001314.XSHE,300280.XSHE,300323.XSHE,603118.XSHG,002137.XSHE,002397.XSHE,002582.XSHE,002265.XSHE,300766.XSHE,600397.XSHG,002045.XSHE,603682.XSHG,301211.XSHE,002112.XSHE,603207.XSHG,001206.XSHE,603236.XSHG,600513.XSHG,603777.XSHG,000852.XSHE,003015.XSHE,002864.XSHE,002918.XSHE,600579.XSHG,300959.XSHE,300561.XSHE,300131.XSHE,301077.XSHE,301093.XSHE,301123.XSHE","date":"2025-01-07","hpqbState":0,"lpdxState":0}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+    - path: "/stock/date_kline"
+      name: "date_kline"
+      desc: "日k线"
+      method: "post"
+      step: 12
+      data: '{"params":{"count":300,"code":"301000.XSHE","freq":"D","adj":"qfq"}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false

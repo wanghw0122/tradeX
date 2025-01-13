@@ -1,8 +1,6 @@
 from turtle import mode
 from .category_rank_class import *
-import logging
-
-logger = logging.getLogger("my_logger")
+from logger import logger
 
 
 def build_industry_block_rank_dict(date = get_current_date(), model = 0):

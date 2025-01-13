@@ -2,13 +2,11 @@
 from shlex import join
 from turtle import st
 import requests
-import logging
 # 从 http_configs 模块中导入 requests_urls 变量
 from .http_configs import requests_urls
 from date_utils import *
 import json
-
-logger = logging.getLogger('my_logger')
+from logger import logger
 
 def get_request_confg_by_name(name):
     if name not in requests_urls:

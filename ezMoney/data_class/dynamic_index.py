@@ -3,9 +3,7 @@ from typing import List
 from attr import dataclass
 from date_utils.date import *
 from http_request import build_http_request
-import logging
-
-logger = logging.getLogger("my_logger")
+from logger import logger
 
 @dataclass
 class BlockDynamicIndex:

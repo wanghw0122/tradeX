@@ -6,9 +6,7 @@ import json
 from date_utils.date import *
 from matplotlib import category
 from http_request import build_http_request
-import logging
-
-logger = logging.getLogger("my_logger")
+from logger import logger
 
 @dataclass
 class BlockRank:

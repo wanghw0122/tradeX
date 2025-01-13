@@ -1,8 +1,7 @@
 from date_utils.date import *
 from http_request import build_http_request
 from attr import dataclass
-import logging
-logger = logging.getLogger("my_logger")
+from logger import logger
 
 from functools import partial
 

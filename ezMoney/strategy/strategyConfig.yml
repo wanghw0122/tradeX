@@ -1,0 +1,38 @@
+common:
+  Host: "p-xcapi.topxlc.com"
+Strategies:
+  - name: "xiao_cao_dwdx_a"
+    type: "a"
+    status: 1
+    params:
+      lpdxScore: -1
+      lpdxIndex: 2
+      hpqbScore: -1
+      hpqbIndex: -1
+      xcjwScore: 200
+      xcjwIndex: -1
+      lbjlScore: -1
+      lbjlIndex: -1
+      open_pct: -10
+      except_st: true
+      except_bottom: false
+      except_first_bottom: true
+      except_down: false
+  - name: "xiao_cao_dwdx_d"
+    type: "t"
+    status: 1
+    params:
+      lpdxScore: -1
+      lpdxIndex: 2
+      hpqbScore: -1
+      hpqbIndex: -1
+      xcjwScore: 200
+      xcjwIndex: -1
+      lbjlScore: -1
+      lbjlIndex: -1
+      open_pct: -10
+      except_st: true
+      except_bottom: false
+      except_first_bottom: true
+      except_down: false
+ 

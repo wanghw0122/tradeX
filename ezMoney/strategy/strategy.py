@@ -53,7 +53,7 @@ class StrategyManager:
             self.filter_list.extend(strategy.filter())
         return self.filter_list
     
-    def init_strategy(self, config_path):
+    def init_strategys(self, config_path):
         with open(config_path, 'r',  encoding='utf-8') as file:
             data = yaml.safe_load(file)
             if data is None:
@@ -77,7 +77,7 @@ class StrategyManager:
                     self.strategy_list.append(XiaoCaoDwdxD(config))
                 else:
                     logger.error(f"strategy config name error. {name}")
-        return
+            
 
 
     def get_position_ratio(self):
@@ -105,11 +105,10 @@ class XiaoCaoDwdxD(Strategy):
         self.filter_list = []
         pass
 
-
-def get_current_directory():
+def get_current_config(config_file = 'strategyConfig.yml'):
+    import os
     current_file_path = os.path.abspath(__file__)
     current_directory = os.path.dirname(current_file_path)
-    return current_directory
-
-current_dir = get_current_directory()
-print("当前脚本的目录路径是:", current_dir)
+    return os.path.join(current_directory, config_file)
+sm = StrategyManager()
+sm.init_strategys(get_current_config())

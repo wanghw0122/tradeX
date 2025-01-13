@@ -7,6 +7,19 @@ from .http_configs import requests_urls
 from date_utils import *
 import json
 from logger import logger
+import functools
+
+
+def log_error(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error occurred in {func.__name__}: {e}")
+            logger.error(f"Parameters: args={args}, kwargs={kwargs}")
+            raise
+    return wrapper
 
 def get_request_confg_by_name(name):
     if name not in requests_urls:
@@ -16,13 +29,14 @@ def get_request_confg_by_name(name):
 # 请求的 URL 前缀
 url_prefix = "https://p-xcapi.topxlc.com"
 
+@log_error
 def post_request(url, headers, cookies, data=None):
     response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=2)
     if response.status_code != 200:
         logger.error(f"Request failed with status code: {response.status_code}")
 
     return response.json()
-
+@log_error
 def get_request(url, headers, cookies, params=None):
 
     response = requests.get(url, headers=headers, cookies=cookies, params=params)
@@ -30,6 +44,8 @@ def get_request(url, headers, cookies, params=None):
         logger.error(f"Request failed with status code: {response.status_code}")
     return response.json()
 
+
+@log_error
 def check_user_alive():
     """
     检查用户是否存活。
@@ -48,7 +64,8 @@ def check_user_alive():
     if post:
         return post_request(url, head, cookie, data)
 
-def system_time():
+@log_error
+def system_time(formatter = ""):
     """
     获取系统时间。
 
@@ -63,9 +80,20 @@ def system_time():
     post = urlConfig['method'] == 'post'
     data = {}
     if post:
-        return post_request(url, head, cookie, data)
-
-
+        sys_time_json = post_request(url, head, cookie, data)
+        if sys_time_json == None:
+            raise ValueError(f"Request failed with res: {sys_time_json}")
+        if 'errorCode' in sys_time_json and sys_time_json['errorCode']:
+            raise ValueError(f"Request failed with errorcode: {sys_time_json['errorCode']}, 
+                             errormsg: {sys_time_json['errorMsg']}")
+        if 'result' not in sys_time_json:
+            raise ValueError(f"Request failed with res: {sys_time_json}")
+        timestamp = sys_time_json['result']
+        date_obj = datetime.fromtimestamp(timestamp)
+        return date_obj.strftime(formatter)
+    else:
+        raise
+@log_error
 def block_category_rank(date = get_current_date(), model = 0):
     """
     获取板块分类排行。
@@ -85,7 +113,7 @@ def block_category_rank(date = get_current_date(), model = 0):
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
-
+@log_error
 def industry_block_rank(date = get_current_date(), model = 0):
     """
     获取行业板块排行。
@@ -105,7 +133,7 @@ def industry_block_rank(date = get_current_date(), model = 0):
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
-
+@log_error
 def dynamic_index(date = get_current_date(), indexType = 0):
     """
     获取小草环境重点
@@ -125,7 +153,7 @@ def dynamic_index(date = get_current_date(), indexType = 0):
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
-
+@log_error
 def get_code_by_xiao_cao_block(blockCodeList=[], industryBlockCodeList=[],categoryCodeList=[], exponentCodeList=[], tradeDate = get_current_date(), join_separate = ","):
     """
     获取行业的股票数据
@@ -150,7 +178,7 @@ def get_code_by_xiao_cao_block(blockCodeList=[], industryBlockCodeList=[],catego
     print(json.dumps(data))
     return post_request(url, head, cookie, data = json.dumps(data))
 
-
+@log_error
 def stock_call_auction(code = "", tradeDate = get_current_date_no_line()):
     """
     获取股票的集合竞价详细数据
@@ -180,7 +208,7 @@ def stock_call_auction(code = "", tradeDate = get_current_date_no_line()):
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
-
+@log_error
 def xiao_cao_environment_second_line_v2(codes = [], date = get_current_date(), join_separate = ","):
     """
     获取大盘环境数据
@@ -202,7 +230,7 @@ def xiao_cao_environment_second_line_v2(codes = [], date = get_current_date(), j
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
-
+@log_error
 def sort_v2(sortId, sortType = 1, queryType = 1, type=0, date = get_current_date(), hpqbState = 0, lpdxState = 0):
     """
     获取排序数据
@@ -235,6 +263,7 @@ def sort_v2(sortId, sortType = 1, queryType = 1, type=0, date = get_current_date
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
+@log_error
 def minute_line(code = "", adj = "bfq", freq = "1min", tradeDate = get_current_date_no_line(), count = 241):
     """
     获取分钟线数据
@@ -266,6 +295,7 @@ def minute_line(code = "", adj = "bfq", freq = "1min", tradeDate = get_current_d
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
+@log_error
 def xiao_cao_index_v2(stockCodes = [], date = get_current_date(), join_separate = ",", hpqbState = 0, lpdxState = 0):
     """
     获取小草指数数据
@@ -290,6 +320,7 @@ def xiao_cao_index_v2(stockCodes = [], date = get_current_date(), join_separate 
     return post_request(url, head, cookie, data = json.dumps(data))
 
 
+@log_error
 def date_kline(code = "", count = 300, freq = "D", adj = "bfq"):
     """
     获取K线数据
@@ -313,7 +344,6 @@ def date_kline(code = "", count = 300, freq = "D", adj = "bfq"):
     }
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
-
 
 
 # 如果脚本作为主程序运行

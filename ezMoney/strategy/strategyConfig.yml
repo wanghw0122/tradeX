@@ -4,35 +4,147 @@ Strategies:
   - name: "xiao_cao_dwdx_a"
     type: "a"
     status: 1
-    params:
-      lpdxScore: -1
-      lpdxIndex: 2
-      hpqbScore: -1
-      hpqbIndex: -1
-      xcjwScore: 200
-      xcjwIndex: -1
-      lbjlScore: -1
-      lbjlIndex: -1
-      open_pct: -10
-      except_st: true
-      except_bottom: false
-      except_first_bottom: true
-      except_down: false
+    cached: true
+    selectors:
+      - name: "check_user_alive"
+        step: 1
+        desc: "用户状态检查"
+        params:
+      - name: "system_time"
+        step: 2
+        desc: "获取系统时间"
+        params:
+          formatter: "%Y-%m-%d"
+      - name: "sort_v2"
+        step: 3
+        desc: "A股全盘绿盘低吸排序"
+        params:
+          sortId: 40
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            index: 0
+            params:
+          - name: "limiter_filter"
+            desc: "限制数量"
+            index: 1
+            params:
+              limit: 3
+      - name: "xiao_cao_index_v2"
+        step: 4
+        desc: "获取明细数据"
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: "{{sort_v2}}"
+          date: "{{system_time}}"
+        filters:
+          - name: "st_filter"
+            index: 0
+            desc: "过滤st的股票"
+            params:
+              is_st: 1
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          - name: "first_bottom_filter"
+            index: 1
+            desc: "过滤首次跌停"
+            params:
+          - name: "low_filter"
+            index: 2
+            desc: "过滤低位趋势"
+            params:
+              is_low: 0
+          - name: "jw_filter"
+            index: 3
+            desc: "过滤竞王分"
+            params:
+              xcjwScore: 200
   - name: "xiao_cao_dwdx_d"
-    type: "t"
+    type: "d"  
     status: 1
-    params:
-      lpdxScore: -1
-      lpdxIndex: 2
-      hpqbScore: -1
-      hpqbIndex: -1
-      xcjwScore: 200
-      xcjwIndex: -1
-      lbjlScore: -1
-      lbjlIndex: -1
-      open_pct: -10
-      except_st: true
-      except_bottom: false
-      except_first_bottom: true
-      except_down: false
+    cached: true
+    selectors:
+      - name: "check_user_alive"
+        step: 1
+        desc: "用户状态检查"
+        params:
+      - name: "system_time"
+        step: 2
+        desc: "获取系统时间"
+        params:
+          formatter: "%Y-%m-%d"
+      - name: "select_block_code"
+        step: 3
+        desc: "获取方向第一"
+        params:
+          limit: 1
+          score_diff: 20
+          category_top: 2
+          date: "{{system_time}}"
+      - name: "block_codes"
+        step: 4
+        desc: "获取板块股票"
+        params:
+          blockCode: "{{select_block_code}}"
+          tradeDate: "{{system_time}}"
+      - name: "sort_v2"
+        step: 5
+        desc: "A股全盘绿盘低吸排序"
+        params:
+          sortId: 40
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            index: 0
+            params:
+          - name: "block_codes_filter"
+            desc: "过滤行业板块"
+            index: 1
+            params:
+              limit: 3
+      - name: "xiao_cao_index_v2"
+        step: 6
+        desc: "获取明细数据"
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: "{{sort_v2}}"
+          date: "{{system_time}}"
+        filters:
+          - name: "st_filter"
+            index: 0
+            desc: "过滤st的股票"
+            params:
+              is_st: 1
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          - name: "first_bottom_filter"
+            index: 1
+            desc: "过滤首次跌停"
+            params:
+          - name: "low_filter"
+            index: 2
+            desc: "过滤低位趋势"
+            params:
+              is_low: 0
+          - name: "jw_filter"
+            index: 3
+            desc: "过滤竞王分"
+            params:
+              xcjwScore: 200
  

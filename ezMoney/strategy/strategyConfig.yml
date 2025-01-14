@@ -25,7 +25,7 @@ Strategies:
           lpdxState: 0
           date: "{{system_time}}"
         filters:
-          - name: "keys_10cm_filter"
+          - name: "keys_10cm_filter" 
             desc: "过滤key为10cm"
             index: 0
             params:
@@ -40,7 +40,7 @@ Strategies:
         params:
           hpqbState: 0
           lpdxState: 0
-          stockCodes: "{{sort_v2}}"
+          stockCodes: "{{sort_v2|join(',')}}"
           date: "{{system_time}}"
         filters:
           - name: "st_filter"

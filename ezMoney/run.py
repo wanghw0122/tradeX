@@ -25,7 +25,11 @@ import time
 # 设置环境变量
 import threading
 import queue
-queue = queue.Queue()
+from multiprocessing import Queue
+global q
+q = Queue(10)
+
+global task_queue
 
 global error_time, cancel_time
 error_time = 0
@@ -55,7 +59,6 @@ def get_target_codes(retry_times=3):
 
 def strategy_schedule_job():
     try:    
-        print("start strategy_schedule_job.")
         is_trade, _ = date.is_trading_day()
         if not is_trade:
             logger.info("[producer] 非交易日，不执行策略.")
@@ -73,7 +76,7 @@ def strategy_schedule_job():
         pct = 0.4
         each_money_pct = pct / length
         for code in auction_codes:
-            queue.put((code, each_money_pct))
+            q.put((code, each_money_pct))
         end_task("code_schedule_job")
     except Exception as e:
         error_time = error_time + 1
@@ -81,24 +84,25 @@ def strategy_schedule_job():
             end_task("code_schedule_job")
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
-def consumer_to_buy():
+def consumer_to_buy(q):
     _, cash, _, _, _ = qmt_trader.get_account_info()
     if cash == None:
         logger.error("get_account_info error!")
         raise
     logger.info(f"[consumer] get account info total can used cash: {cash}")
     while True:
-        data = queue.get()
-        logger.info(f"[consumer] Consumed: {data}")
-        if (type(data) == tuple):
-            c_cash = cash * data[1]
-            qmt_trader.buy_quickly(data[0], c_cash, sync=True)
-            queue.task_done()
-        elif type(data) == str and data == 'end':
-            queue.task_done()
-            break
-        else:
-            raise
+        try:
+            data = q.get()
+            logger.info(f"[consumer] Consumed: {data}")
+            if (type(data) == tuple):
+                c_cash = cash * data[1]
+                qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+            elif type(data) == str and data == 'end':
+                break
+            else:
+                raise
+        except Exception as e:
+            logger.error(f"[consumer] 执行任务出现错误: {e}")
 
 def is_before_930_30():
     now = datetime.datetime.now()
@@ -132,14 +136,15 @@ def remove_job(name):
 
 
 def end_task(name):
+    logger.info(f"任务 {name} 执行结束")
     remove_job(name)
-    queue.put('end')
+    q.put('end')
 
 
 
 if __name__ == "__main__":
 
-    consumer_thread = multiprocessing.Process(target=consumer_to_buy)
+    consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q,))
     consumer_thread.start()
 
     scheduler = BackgroundScheduler()
@@ -167,7 +172,7 @@ if __name__ == "__main__":
         scheduler.shutdown()
 
 
-    queue.join()
+    q.join()
     consumer_thread.join()
     
 

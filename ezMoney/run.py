@@ -1,6 +1,9 @@
+import multiprocessing
 import os
 from re import A
 from typing import ItemsView
+
+from py import log
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 # from http_request import build_http_request
 # from http_request import http_context
@@ -51,7 +54,8 @@ def get_target_codes(retry_times=3):
 
 
 def strategy_schedule_job():
-    try:
+    try:    
+        print("start strategy_schedule_job.")
         is_trade, _ = date.is_trading_day()
         if not is_trade:
             logger.info("[producer] 非交易日，不执行策略.")
@@ -66,7 +70,7 @@ def strategy_schedule_job():
             return
         length = len(auction_codes)
         logger.info(f"[producer] 获取到目标股票: {auction_codes}")
-        pct = 0.5
+        pct = 0.4
         each_money_pct = pct / length
         for code in auction_codes:
             queue.put((code, each_money_pct))
@@ -97,17 +101,18 @@ def consumer_to_buy():
             raise
 
 def is_before_930_30():
-    now = datetime.now()
+    now = datetime.datetime.now()
     target_time = now.replace(hour=9, minute=30, second=30, microsecond=0)
     return now < target_time
 
 def is_after_932():
-    now = datetime.now()
+    now = datetime.datetime.now()
     target_time = now.replace(hour=9, minute=32, second=0, microsecond=0)
     return now > target_time
 
 def cancel_orders():
     if is_before_930_30():
+        logger.info("未到取消时间，不取消订单")
         return
     cancel_result = qmt_trader.cancel_active_orders()
     logger.info(f"取消所有未成交的订单 {cancel_result}")
@@ -134,7 +139,7 @@ def end_task(name):
 
 if __name__ == "__main__":
 
-    consumer_thread = threading.Thread(target=consumer_to_buy)
+    consumer_thread = multiprocessing.Process(target=consumer_to_buy)
     consumer_thread.start()
 
     scheduler = BackgroundScheduler()

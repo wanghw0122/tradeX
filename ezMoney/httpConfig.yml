@@ -6,7 +6,7 @@ head:
   Accept-Language: "zh-Hans-CN;q=1, en-CN;q=0.9"
   Accept-Encoding: "gzip, deflate, br"
   Content-Type: "application/json;charset=UTF-8"
-  token: "748367722e953d9252461db6a67418de"
+  token: "9b4455388947629ee1f4c53a480fd43e"
 Cookie:
   tgw_l7_route: "f5cc5503e6f9962914600e613ba93f5f"
 Steps:
@@ -126,3 +126,12 @@ Steps:
       cookies: "{{Cookie}}"
       timeout: 10
       verify: false
+    - path: "/user/v2/login"
+      name: "user_login"
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 10
+      verify: false
+      method: "post"
+      step: 13
+      data: '{"params":{"type":0,"loginId":"1QIgHC8Y4Z/OkUV8Av7lOQ==","passwd":"Vz53GS09rB+bsm7/8nDHgQ=="}}'

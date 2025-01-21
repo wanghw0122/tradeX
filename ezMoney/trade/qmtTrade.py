@@ -68,6 +68,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
             self.qmt.orders.append(order_id)
         logger.info(f"异步委托回调 投资备注: {response.order_remark}")
 
+
     def on_cancel_order_stock_async_response(self, response):
         """
         :param response: XtCancelOrderResponse 对象
@@ -188,7 +189,8 @@ class QMTTrader:
 
         if max_cash > 0:
             cash = min(cash, max_cash)
-
+        if stock_code in self.all_stocks:
+            stock_code = self.all_stocks[stock_code]
         full_tick = xtdata.get_full_tick([stock_code])
         (account_id, account_cash, account_frozen_cash, account_market_value, account_total_asset) = self.get_account_info()
         
@@ -318,18 +320,18 @@ class QMTTrader:
 
         return tradable_stocks
     
-    def sell_all_holdings(self):
+    def sell_all_holdings(self, order_remark=''):
         """
         卖出所有持仓股票
 
         :param account: 资金账号
         :return: 卖出结果
         """
-        now = datetime.now()
-        if now.hour > 0:
-            logger.error(f"当前时间 {now} 非0点时间，无法自动卖出")
-            return
-        logger.Info(f"开始卖出所有持仓股票")
+        now = datetime.datetime.now()
+        # if now.hour > 0:
+        #     logger.error(f"当前时间 {now} 非0点时间，无法自动卖出")
+        #     return
+        logger.info(f"开始卖出所有持仓股票")
 
         hold_positions = self.get_tradable_stocks()
         sell_results = []
@@ -348,6 +350,7 @@ class QMTTrader:
                     'sell_price': limit_down_price,
                     'sell_result': sell_result
                 })
+                self.seq_ids_dict[sell_result] = (stock_code, limit_down_price, quantity, xtconstant.FIX_PRICE, order_remark)
             else:
                 logger.error(f"股票 {stock_code} 的跌停价计算错误，无法卖出")
         return sell_results
@@ -363,7 +366,9 @@ class QMTTrader:
             full_tick = xtdata.get_full_tick([stock_code])
             if full_tick and 'lastPrice' in full_tick[stock_code]:
                 last_price = full_tick[stock_code]['lastPrice']
-                limit_down_price = round(last_price * 0.9, 2)
+                print(f"last_price {last_price}")
+                from decimal import Decimal, ROUND_HALF_UP
+                limit_down_price = Decimal(str(last_price * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
                 return limit_down_price
             else:
                 logger.error(f"无法获取股票 {stock_code} 的最新价")

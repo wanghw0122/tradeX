@@ -7,16 +7,17 @@ Strategies:
     cached: true
     selectors:
       - name: "check_user_alive"
-        step: 1
+        step: 0
         desc: "用户状态检查"
         params:
       - name: "system_time"
-        step: 2
+        step: 1
         desc: "获取系统时间"
         params:
           formatter: "%Y-%m-%d"
+        cached: false
       - name: "sort_v2"
-        step: 3
+        step: 2
         desc: "A股全盘绿盘低吸排序"
         params:
           sortId: 40
@@ -27,41 +28,44 @@ Strategies:
         filters:
           - name: "keys_10cm_filter" 
             desc: "过滤key为10cm"
-            index: 0
+            index: 1
             params:
           - name: "limiter_filter"
             desc: "限制数量"
-            index: 1
+            index: 0
             params:
               limit: 3
       - name: "xiao_cao_index_v2"
-        step: 4
+        step: 3
         desc: "获取明细数据"
         params:
           hpqbState: 0
           lpdxState: 0
-          stockCodes: "{{sort_v2|join(',')}}"
+          stockCodes: '{{sort_v2|join(",")}}'
           date: "{{system_time}}"
         filters:
-          - name: "st_filter"
+          - name: "change_item_filter"
             index: 0
+            desc: "转换格式"
+            params:
+          - name: "st_filter"
+            index: 1
             desc: "过滤st的股票"
             params:
-              is_st: 1
           # - name: "open_pct_filter"
           #   index: 1
           #   desc: "过滤开盘涨幅"
           #   params:
           #     open_pct: -10
           - name: "first_bottom_filter"
-            index: 1
+            index: 2
             desc: "过滤首次跌停"
             params:
-          - name: "low_filter"
-            index: 2
-            desc: "过滤低位趋势"
-            params:
-              is_low: 0
+          # - name: "low_filter"
+          #   index: 2
+          #   desc: "过滤低位趋势"
+          #   params:
+          #     is_low: 0
           - name: "jw_filter"
             index: 3
             desc: "过滤竞王分"

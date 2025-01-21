@@ -8,6 +8,7 @@ from date_utils import *
 import json
 from logger import logger
 import functools
+import time
 
 
 def log_error(func):
@@ -18,7 +19,19 @@ def log_error(func):
         except Exception as e:
             logger.error(f"Error occurred in {func.__name__}: {e}")
             logger.error(f"Parameters: args={args}, kwargs={kwargs}")
-            raise
+    return wrapper
+
+def get_result(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        if result is None:
+            raise ValueError(f"Request failed with res: {result}")
+        if 'errorcode' in result and result['errorCode']:
+            raise ValueError(f"Request failed with errorcode: {result['errorCode']}, errormsg: {result['errorMsg']}")
+        if 'result' not in result:
+            raise ValueError(f"Request failed with res: {result}")
+        return result['result']
     return wrapper
 
 def get_request_confg_by_name(name):
@@ -26,16 +39,30 @@ def get_request_confg_by_name(name):
         raise ValueError(f"Invalid name: {name}")
     return requests_urls[name]
 
+def replace_tokens(token):
+    for _, url in requests_urls.items():
+        url['headers']['token'] = token
+
 # 请求的 URL 前缀
 url_prefix = "https://p-xcapi.topxlc.com"
 
-@log_error
-def post_request(url, headers, cookies, data=None):
-    response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=2)
-    if response.status_code != 200:
-        logger.error(f"Request failed with status code: {response.status_code}")
+def post_request(url, headers, cookies, data=None, max_retries=3, retry_delay=1):
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=2)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Request failed with status code: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Request exception: {e}")
+        retries += 1
+        time.sleep(retry_delay)
+    
+    logger.error("Max retries exceeded. Request failed.")
+    return None
 
-    return response.json()
 @log_error
 def get_request(url, headers, cookies, params=None):
 
@@ -62,7 +89,20 @@ def check_user_alive():
     post = urlConfig['method'] == 'post'
     data = {}
     if post:
-        return post_request(url, head, cookie, data)
+        post_result = post_request(url, head, cookie, data)
+        i = 0
+        while post_result == None or not post_result['ok']:
+            logger.info("check alive fail user is not login.")
+            user_login()
+            post_result = post_request(url, head, cookie, data)
+            i = i + 1
+            if i > 3:
+                break
+        if post_result and post_result['ok']:
+            logger.info("check alive success.")
+        return post_result
+    else:
+        return get_request(url, head, cookie)
 
 @log_error
 def system_time(formatter = ""):
@@ -70,7 +110,7 @@ def system_time(formatter = ""):
     获取系统时间。
 
     返回:
-        dict: 响应的 JSON 数据。
+        str: 格式化后的时间字符串。
     """
     # 获取请求配置
     urlConfig = get_request_confg_by_name('system_time')
@@ -84,12 +124,11 @@ def system_time(formatter = ""):
         if sys_time_json == None:
             raise ValueError(f"Request failed with res: {sys_time_json}")
         if 'errorCode' in sys_time_json and sys_time_json['errorCode']:
-            raise ValueError(f"Request failed with errorcode: {sys_time_json['errorCode']}, 
-                             errormsg: {sys_time_json['errorMsg']}")
+            raise ValueError(f"Request failed with errorcode: {sys_time_json['errorCode']}, errormsg: {sys_time_json['errorMsg']}")
         if 'result' not in sys_time_json:
             raise ValueError(f"Request failed with res: {sys_time_json}")
         timestamp = sys_time_json['result']
-        date_obj = datetime.fromtimestamp(timestamp)
+        date_obj = datetime.fromtimestamp(timestamp/1000)
         return date_obj.strftime(formatter)
     else:
         raise
@@ -231,6 +270,7 @@ def xiao_cao_environment_second_line_v2(codes = [], date = get_current_date(), j
     return post_request(url, head, cookie, data = json.dumps(data))
 
 @log_error
+@get_result
 def sort_v2(sortId, sortType = 1, queryType = 1, type=0, date = get_current_date(), hpqbState = 0, lpdxState = 0):
     """
     获取排序数据
@@ -296,7 +336,8 @@ def minute_line(code = "", adj = "bfq", freq = "1min", tradeDate = get_current_d
     return post_request(url, head, cookie, data = json.dumps(data))
 
 @log_error
-def xiao_cao_index_v2(stockCodes = [], date = get_current_date(), join_separate = ",", hpqbState = 0, lpdxState = 0):
+@get_result
+def xiao_cao_index_v2(stockCodes = "", date = get_current_date(), hpqbState = 0, lpdxState = 0):
     """
     获取小草指数数据
 
@@ -311,7 +352,7 @@ def xiao_cao_index_v2(stockCodes = [], date = get_current_date(), join_separate 
     head = urlConfig['headers']
     cookie = urlConfig['cookies']
     params = {
-        "stockCodes": join_separate.join(stockCodes),
+        "stockCodes": stockCodes,
         "date": date,
         "hpqbState": hpqbState,
         "lpdxState": lpdxState
@@ -321,6 +362,7 @@ def xiao_cao_index_v2(stockCodes = [], date = get_current_date(), join_separate 
 
 
 @log_error
+@get_result
 def date_kline(code = "", count = 300, freq = "D", adj = "bfq"):
     """
     获取K线数据
@@ -344,6 +386,39 @@ def date_kline(code = "", count = 300, freq = "D", adj = "bfq"):
     }
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
+
+def user_login(loginId = "1QIgHC8Y4Z/OkUV8Av7lOQ==", passwd = "Vz53GS09rB+bsm7/8nDHgQ==", type = 0):
+    """
+    用户登录
+
+    返回:
+        dict: 响应的 JSON 数据。
+    """
+    # 获取请求配置
+    urlConfig = get_request_confg_by_name('user_login')
+    url = url_prefix + urlConfig['path']
+    head = urlConfig['headers']
+    cookie = urlConfig['cookies']
+    params = {
+        "loginId": loginId,
+        "passwd": passwd,
+        "type": type
+    }
+    data = {"params": params}
+    result = post_request(url, head, cookie, data = json.dumps(data))
+    logger.info(f"user login result: {result}")
+    if result == None:
+        raise ValueError(f"Request failed with res: {result}")
+    if 'errorcode' in result and result['errorcode']:
+        raise ValueError(f"Request failed with errorcode: {result['errorcode']}, errormsg: {result['errormsg']}")
+    if'result' not in result:
+        raise ValueError(f"Request failed with res: {result}")
+    real_result = result['result']
+    if 'token' not in real_result:
+        raise ValueError(f"Request failed with res: {real_result}")
+    token =  real_result['token']
+    logger.info(f"user login success. new token: {token}")
+    replace_tokens(token)
 
 
 # 如果脚本作为主程序运行

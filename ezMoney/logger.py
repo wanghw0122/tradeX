@@ -51,3 +51,12 @@ logger = setup_logging("my_logger")
 strategy_logger = setup_logging("strategy_logger")
 order_logger = setup_logging("order_logger")
 order_success_logger = setup_logging("order_success_logger")
+
+def catch(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"An error occurred in {func.__name__}: {e}")
+            raise
+    return wrapper

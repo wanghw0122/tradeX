@@ -102,6 +102,12 @@ def is_trade_date(date_str):
 
     return schedule.empty == False
 
+def is_between_925_and_930():
+    now = datetime.now()
+    start_time = now.replace(hour=9, minute=25, second=0, microsecond=0)
+    end_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    return start_time <= now < end_time
+
 if __name__ == "__main__":
     current_date, previous_trading_date = is_trading_day(pd.Timestamp("2025-01-17").date())
     if current_date:

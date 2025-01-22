@@ -26,7 +26,6 @@ import time
 import threading
 import queue
 from multiprocessing import Queue
-from data_class.xiao_cao_environment_second_line_v2 import *
 global q
 q = Queue(10)
 
@@ -45,9 +44,19 @@ def get_target_codes(retry_times=3):
     if retry_times <= 0:
         return None
     auction_codes = []
+    position = 0.3
     try:
-        items = sm.run_strategys()
+        items = sm.run_strategys(date.get_previous_date())
+        if items == None:
+            return None
+        if len(items) == 0:
+            return None
+        if 'xiao_cao_env' in items:
+            xiaocao_envs = items['xiao_cao_env'][0]
+            position = get_position(xiaocao_envs)
         for _, arr in items.items():
+            if type(arr) != list:
+                continue
             for item in arr:
                 if item == None:
                     continue
@@ -55,12 +64,47 @@ def get_target_codes(retry_times=3):
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}")
         auction_codes = get_target_codes(retry_times-1)
-    return auction_codes
+    return auction_codes, position
+
+
+def get_position(xiaocao_envs):
+    if xiaocao_envs == None:
+        return 0.3
+    env_10cm_qs = xiaocao_envs['9A0001']
+    env_10cm_cd = xiaocao_envs['9B0001']
+    env_10cm_qp = xiaocao_envs['9C0001']
+    positions = (0.3, 0.4, 0.3)
+    lifts = []
+    try:
+        for env in [env_10cm_qs, env_10cm_cd, env_10cm_qp]:
+            if env == None:
+                continue
+            cur_lift = 0.0
+            realShortLineScore = env.realShortLineScore
+            realTrendScore = env.realTrendScore
+            preRealShortLineScore = env.preRealShortLineScore
+            preRealTrendScore = env.preRealTrendScore
+            liftShortScore = realShortLineScore - preRealShortLineScore
+            liftTrendScore = realTrendScore - preRealTrendScore
+            if realShortLineScore and realShortLineScore > 0:
+                cur_lift = cur_lift + (0.01 * realShortLineScore)
+            if realTrendScore and realTrendScore > 0:
+                cur_lift = cur_lift + (0.007 * realTrendScore)
+            if liftShortScore and liftShortScore > 0:
+                cur_lift = cur_lift + 0.004 * liftShortScore
+            if liftTrendScore and liftTrendScore > 0:
+                cur_lift = cur_lift + 0.002 * liftTrendScore
+            lifts.append(cur_lift)
+    except Exception as e:
+        logger.error(f"An error occurred in get_position: {e}")
+    if len(lifts) != 3:
+        return 0.3
+    lift = lifts[0] * positions[0]  + lifts[1] * positions[1] + lifts[2] * positions[2]
+    return max(min(0.3 + lift, 1.0), 0.3)
+
 
 
 
 if __name__ == "__main__":
-
-   items = sm.run_strategys()
-
-   print (items)
+   codes, position = get_target_codes()
+   print(codes, position)

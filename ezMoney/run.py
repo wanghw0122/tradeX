@@ -44,6 +44,7 @@ def get_target_codes(retry_times=3):
     if retry_times <= 0:
         return None
     auction_codes = []
+    position = 0.3
     try:
         items = sm.run_strategys()
         if items == None:
@@ -51,7 +52,7 @@ def get_target_codes(retry_times=3):
         if len(items) == 0:
             return None
         if 'xiao_cao_env' in items:
-            xiaocao_envs = items['xiao_cao_env']
+            xiaocao_envs = items['xiao_cao_env'][0]
             position = get_position(xiaocao_envs)
         for _, arr in items.items():
             if type(arr) != list:
@@ -86,13 +87,13 @@ def get_position(xiaocao_envs):
             liftShortScore = realShortLineScore - preRealShortLineScore
             liftTrendScore = realTrendScore - preRealTrendScore
             if realShortLineScore and realShortLineScore > 0:
-                cur_lift = cur_lift + (0.006 * realShortLineScore)
+                cur_lift = cur_lift + (0.01 * realShortLineScore)
             if realTrendScore and realTrendScore > 0:
-                cur_lift = cur_lift + (0.003 * realTrendScore)
+                cur_lift = cur_lift + (0.007 * realTrendScore)
             if liftShortScore and liftShortScore > 0:
-                cur_lift = cur_lift + 0.0025 * liftShortScore
+                cur_lift = cur_lift + 0.004 * liftShortScore
             if liftTrendScore and liftTrendScore > 0:
-                cur_lift = cur_lift + 0.0025 * liftTrendScore
+                cur_lift = cur_lift + 0.002 * liftTrendScore
             lifts.append(cur_lift)
     except Exception as e:
         logger.error(f"An error occurred in get_position: {e}")

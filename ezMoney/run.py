@@ -46,7 +46,16 @@ def get_target_codes(retry_times=3):
     auction_codes = []
     try:
         items = sm.run_strategys()
+        if items == None:
+            return None
+        if len(items) == 0:
+            return None
+        if 'xiao_cao_env' in items:
+            xiaocao_envs = items['xiao_cao_env']
+            position = get_position(xiaocao_envs)
         for _, arr in items.items():
+            if type(arr) != list:
+                continue
             for item in arr:
                 if item == None:
                     continue
@@ -54,7 +63,43 @@ def get_target_codes(retry_times=3):
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}")
         auction_codes = get_target_codes(retry_times-1)
-    return auction_codes
+    return auction_codes, position
+
+
+def get_position(xiaocao_envs):
+    if xiaocao_envs == None:
+        return 0.3
+    env_10cm_qs = xiaocao_envs['9A0001']
+    env_10cm_cd = xiaocao_envs['9B0001']
+    env_10cm_qp = xiaocao_envs['9C0001']
+    positions = (0.3, 0.4, 0.3)
+    lifts = []
+    try:
+        for env in [env_10cm_qs, env_10cm_cd, env_10cm_qp]:
+            if env == None:
+                continue
+            cur_lift = 0.0
+            realShortLineScore = env.realShortLineScore
+            realTrendScore = env.realTrendScore
+            preRealShortLineScore = env.preRealShortLineScore
+            preRealTrendScore = env.preRealTrendScore
+            liftShortScore = realShortLineScore - preRealShortLineScore
+            liftTrendScore = realTrendScore - preRealTrendScore
+            if realShortLineScore and realShortLineScore > 0:
+                cur_lift = cur_lift + (0.006 * realShortLineScore)
+            if realTrendScore and realTrendScore > 0:
+                cur_lift = cur_lift + (0.003 * realTrendScore)
+            if liftShortScore and liftShortScore > 0:
+                cur_lift = cur_lift + 0.0025 * liftShortScore
+            if liftTrendScore and liftTrendScore > 0:
+                cur_lift = cur_lift + 0.0025 * liftTrendScore
+            lifts.append(cur_lift)
+    except Exception as e:
+        logger.error(f"An error occurred in get_position: {e}")
+    if len(lifts) != 3:
+        return 0.3
+    lift = lifts[0] * positions[0]  + lifts[1] * positions[1] + lifts[2] * positions[2]
+    return max(min(0.3 + lift, 1.0), 0.3)
 
 
 def strategy_schedule_job():
@@ -67,13 +112,18 @@ def strategy_schedule_job():
         if not date.is_between_925_and_930():
             logger.info("[producer] 非交易时间，不执行策略.")
             return
-        auction_codes = get_target_codes()
+        auction_codes, position = get_target_codes()
         if auction_codes == None or len(auction_codes) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             return
         length = len(auction_codes)
         logger.info(f"[producer] 获取到目标股票: {auction_codes}")
-        pct = 0.4
+        if not position:
+            position = 0.3
+        if position >= 0 or position <= 1:
+            pct = position
+        else:
+            pct = 0.3
         each_money_pct = pct / length
         for code in auction_codes:
             q.put((code, each_money_pct))
@@ -171,8 +221,7 @@ if __name__ == "__main__":
         # 关闭调度器
         scheduler.shutdown()
 
-
-    q.join()
+    q.join_thread()
     consumer_thread.join()
     
 

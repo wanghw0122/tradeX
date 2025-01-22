@@ -48,8 +48,13 @@ Strategies:
             index: 0
             desc: "转换格式"
             params:
-          - name: "st_filter"
+          - name: "stock_type_filter"
             index: 1
+            desc: "过滤低位趋势"
+            params:
+              isLow: 1
+          - name: "st_filter"
+            index: 2
             desc: "过滤st的股票"
             params:
           # - name: "open_pct_filter"
@@ -58,22 +63,37 @@ Strategies:
           #   params:
           #     open_pct: -10
           - name: "first_bottom_filter"
-            index: 2
+            index: 3
             desc: "过滤首次跌停"
             params:
-          # - name: "low_filter"
-          #   index: 2
-          #   desc: "过滤低位趋势"
-          #   params:
-          #     is_low: 0
           - name: "jw_filter"
-            index: 3
+            index: 4
             desc: "过滤竞王分"
             params:
               xcjwScore: 200
+  - name: "xiao_cao_env"
+    type: "a"
+    status: 1
+    cached: true
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        params:
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "build_xiaocao_environment_second_line_v2_dict_simple"
+        step: 2
+        desc: "构建环境"
+        params:
+          date: "{{system_time}}"
   - name: "xiao_cao_dwdx_d"
     type: "d"  
-    status: 1
+    status: 0
     cached: true
     selectors:
       - name: "check_user_alive"

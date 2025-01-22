@@ -79,5 +79,7 @@ def build_xiaocao_environment_second_line_v2_dict(date = get_current_date(), cod
 
 
 build_xiaocao_environment_second_line_v2_dict_simple = partial(build_xiaocao_environment_second_line_v2_dict, codes=states_codes)
+build_xiaocao_environment_second_line_v2_dict_simple.__name__ = 'build_xiaocao_environment_second_line_v2_dict_simple'
 
 build_xiaocao_environment_second_line_v2_dict_all= partial(build_xiaocao_environment_second_line_v2_dict, codes=all_env_codes)
+build_xiaocao_environment_second_line_v2_dict_all.__name__ = 'build_xiaocao_environment_second_line_v2_dict_all'

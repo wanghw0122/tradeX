@@ -7,6 +7,7 @@ import os
 from http_request import http_context
 from date_utils import date
 from jinja2 import Template
+from data_class.xiao_cao_environment_second_line_v2 import *
 
 file_name = 'D:\\workspace\\TradeX\\ezMoney\\strategy\\strategyConfig.yml'
 
@@ -106,11 +107,7 @@ class Strategy:
             except Exception as e:
                 logger.error(e)
 
-        result = run_result()
-        if result is None or len(result) == 0:
-            return None
-        else:
-            return [x.code for x in result]
+        return run_result()
             
 
 class StrategyManager:
@@ -127,6 +124,7 @@ class StrategyManager:
         self.selectors_funcs['system_time'] = http_context['system_time']
         self.selectors_funcs['sort_v2'] = http_context['sort_v2']
         self.selectors_funcs['xiao_cao_index_v2'] = http_context['xiao_cao_index_v2']
+        self.selectors_funcs['build_xiaocao_environment_second_line_v2_dict_simple'] = build_xiaocao_environment_second_line_v2_dict_simple
 
     def _init_filters(self):
         self.filters_funcs['keys_10cm_filter'] = keys_10cm_filter
@@ -135,6 +133,7 @@ class StrategyManager:
         self.filters_funcs['first_bottom_filter'] = first_bottom_filter
         self.filters_funcs['jw_filter'] = jw_filter
         self.filters_funcs['change_item_filter'] = change_item_filter
+        self.filters_funcs['stock_type_filter'] = stock_type_filter
 
     def get_selector(self, name):
         return self.selectors_funcs[name]
@@ -165,6 +164,8 @@ class StrategyManager:
                 elif name == 'xiao_cao_dwdx_d':
                     # self.strategy_list.append(XiaoCaoDwdxD(config, self))
                     pass
+                elif name == 'xiao_cao_env':
+                    self.strategy_list.append(Strategy(config, self))
                 else:
                     logger.error(f"strategy config name error. {name}")
     def run_strategys(self, current_date = date.get_current_date()):
@@ -179,6 +180,13 @@ class XiaoCaoDwdxA(Strategy):
     def __init__(self, config, strategy_manager):
         super().__init__(config, strategy_manager)
         pass
+
+    def run(self, current_date=date.get_current_date()):
+        s_result = super().run(current_date)
+        if s_result is None or len(s_result) == 0:
+            return None
+        else:
+            return [x.code for x in s_result]
 
 
 class XiaoCaoDwdxD(Strategy):
@@ -234,6 +242,54 @@ def jw_filter(xcjwScore = 200):
         return [item for item in arr if item.xcjw and item.xcjw >= xcjwScore]
     return inner_filter
 
+
+def stock_type_filter(**args):
+    def inner_filter(arr):
+        if not arr or  len(args) == 0:
+            return arr
+        rtn = []
+        for item in arr:
+            if 'isGestationLine' in args and item.isGestationLine != args['isGestationLine']:
+                continue
+            if 'isBrokenPlate' in args and item.isBrokenPlate != args['isBrokenPlate']:
+                continue
+            if 'isSmallHighOpen' in args and item.isSmallHighOpen != args['isSmallHighOpen']:
+                continue
+            if 'isWeak' in args and item.isWeak!= args['isWeak']:
+                continue
+            if 'isLongShadow' in args and item.isLongShadow!= args['isLongShadow']:
+                continue
+            if 'isUpBroken' in args and item.isUpBroken!= args['isUpBroken']:
+                continue
+            if 'isFirstUpBroken' in args and item.isFirstUpBroken!= args['isFirstUpBroken']:
+                continue
+            if 'isDownBroken' in args and item.isDownBroken!= args['isDownBroken']:
+                continue
+            if 'isFirstDownBroken' in args and item.isFirstDownBroken!= args['isFirstDownBroken']:
+                continue
+            if 'isHalf' in args and item.isHalf!= args['isHalf']:
+                continue
+            if 'isBottom' in args and item.isBottom!= args['isBottom']:
+                continue
+            if 'isPreSt' in args and item.isPreSt!= args['isPreSt']:
+                continue
+            if 'isMedium' in args and item.isMedium!= args['isMedium']:
+                continue
+            if 'isHigh' in args and item.isHigh!= args['isHigh']:
+                continue
+            if 'isMeso' in args and item.isMeso!= args['isMeso']:
+                continue
+            if 'isLow' in args and item.isLow!= args['isLow']:
+                continue
+            if 'isFall' in args and item.isFall!= args['isFall']:
+                continue
+            if 'isPlummet' in args and item.isPlummet!= args['isPlummet']:
+                continue
+            if 'isHighest' in args and item.isHighest!= args['isHighest']:
+                continue
+            rtn.append(item)
+        return rtn
+    return inner_filter
 
 def get_current_config(config_file = 'strategyConfig.yml'):
     import os

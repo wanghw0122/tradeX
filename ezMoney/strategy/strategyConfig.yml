@@ -5,6 +5,7 @@ Strategies:
     type: "a"
     status: 1
     cached: true
+    priority: 1
     selectors:
       - name: "check_user_alive"
         step: 0
@@ -75,6 +76,7 @@ Strategies:
     type: "a"
     status: 1
     cached: true
+    priority: 2
     selectors:
       - name: "check_user_alive"
         step: 0

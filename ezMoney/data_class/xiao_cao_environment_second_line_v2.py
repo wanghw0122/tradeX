@@ -51,6 +51,55 @@ class XiaoCaoEnvironmentSecondLineV2:
     isFall: bool
     isPlummet: bool
 
+    def __eq__(self, other):
+        if isinstance(other, XiaoCaoEnvironmentSecondLineV2):
+            return (
+                self.code == other.code and
+                self.codeName == other.codeName and
+                self.vol == other.vol and
+                self.amt == other.amt and
+                self.preClose == other.preClose and
+                self.open == other.open and
+                self.high == other.high and
+                self.low == other.low and
+                self.trade == other.trade and
+                self.close == other.close and
+                self.pctChange == other.pctChange and
+                self.pctChangeRate == other.pctChangeRate and
+                self.openPctChangeRate == other.openPctChangeRate and
+                self.riseRate == other.riseRate and
+                self.tradeTimestamp == other.tradeTimestamp and
+                self.tradeDate == other.tradeDate and
+                self.tradeStatus == other.tradeStatus and
+                self.tradeSection == other.tradeSection and
+                self.volRatio == other.volRatio and
+                self.turnoverRatio == other.turnoverRatio and
+                self.amplitude == other.amplitude and
+                self.shortLineScore == other.shortLineScore and
+                self.trendScore == other.trendScore and
+                self.realShortLineScore == other.realShortLineScore and
+                self.realTrendScore == other.realTrendScore and
+                self.preShortLineScore == other.preShortLineScore and
+                self.preTrendScore == other.preTrendScore and
+                self.preRealShortLineScore == other.preRealShortLineScore and
+                self.preRealTrendScore == other.preRealTrendScore and
+                self.shortLineScoreChange == other.shortLineScoreChange and
+                self.trendScoreChange == other.trendScoreChange and
+                self.realShortLineScoreChange == other.realShortLineScoreChange and
+                self.realTrendScoreChange == other.realTrendScoreChange and
+                self.position == other.position and
+                self.finalPosition == other.finalPosition and
+                self.openPosition == other.openPosition and
+                self.realPosition == other.realPosition and
+                self.isHigh == other.isHigh and
+                self.isMeso == other.isMeso and
+                self.isLow == other.isLow and
+                self.isBottom == other.isBottom and
+                self.isFall == other.isFall and
+                self.isPlummet == other.isPlummet
+            )
+        return False
+
 
 states_codes = ['9A0001','9A0002','9A0003','9B0001','9B0002','9B0003','9C0001']
 

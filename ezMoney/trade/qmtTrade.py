@@ -25,7 +25,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param order: XtOrder对象
         :return:
         """
-        logger.info("委托回调 投资备注", order.order_remark)
+        logger.info(f"委托回调 投资备注 {order.order_remark}")
 
     def on_stock_trade(self, trade):
         """

@@ -286,7 +286,7 @@ def sort_v2(sortId, sortType = 1, queryType = 1, type=0, date = get_current_date
     返回:
         dict: 响应的 JSON 数据。
     """
-    # 获取请求配置
+    # rslts = []
     urlConfig = get_request_confg_by_name('sort_v2')
     url = url_prefix + urlConfig['path']
     head = urlConfig['headers']
@@ -302,6 +302,44 @@ def sort_v2(sortId, sortType = 1, queryType = 1, type=0, date = get_current_date
     }
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
+    # for _ in range(1, 15):
+    #     rslt = 
+    #     if len(rslts) > 1:
+    #         cur_rslt = rslt['result']
+    #         pre_rslt = rslts[-1]['result']
+    #         pree_rslt = rslts[-2]['result']
+    #         if len(cur_rslt) == len(pre_rslt) and len(cur_rslt) == len(pree_rslt):
+    #             if cur_rslt[0] == pre_rslt[0] and cur_rslt[0] == pree_rslt[0]:
+    #                 if cur_rslt[1] == pre_rslt[1] and cur_rslt[1] == pree_rslt[1]:
+    #                     if cur_rslt[2] == pre_rslt[2] and cur_rslt[2] == pree_rslt[2]:
+    #                         logger.info("[sort_v2] result 3 times is same. return.")
+    #                         return rslt
+    #                     else:
+    #                         rslts.append(rslt)
+    #                         time.sleep(4)
+    #                         logger.info("[sort_v2] result is not same. continue.")
+    #                         continue
+    #                 else:
+    #                     logger.info("[sort_v2] result is not same. continue.")
+    #                     rslts.append(rslt)
+    #                     time.sleep(4)
+    #                     continue
+    #             else:
+    #                 logger.info("[sort_v2] result is not same. continue.")
+    #                 rslts.append(rslt)
+    #                 time.sleep(4)
+    #                 continue
+    #         else:
+    #             logger.info("[sort_v2] result is not same. continue.")
+    #             rslts.append(rslt)
+    #             time.sleep(4)
+    #             continue
+    #     else:
+    #         rslts.append(rslt)
+    #         logger.info("[sort_v2] results < 3. continue.")
+    #         time.sleep(4)
+    # return rslt
+
 
 @log_error
 def minute_line(code = "", adj = "bfq", freq = "1min", tradeDate = get_current_date_no_line(), count = 241):

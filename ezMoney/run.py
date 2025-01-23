@@ -40,6 +40,9 @@ acc_id = '8886660057'
 # 创建QMTTrader实例
 qmt_trader = QMTTrader(path, acc_id)
 
+global cached_auction_infos
+cached_auction_infos = []
+
 def get_target_codes(retry_times=3):
     if retry_times <= 0:
         return None
@@ -117,6 +120,24 @@ def strategy_schedule_job():
         if auction_codes == None or len(auction_codes) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             return
+        if position == None:
+            logger.info("[producer] 未获取到仓位，等待重新执行策略...")
+            return
+        end = False
+        if len(cached_auction_infos) > 1:
+            auction_codes_0 = auction_codes
+            position_0 = position
+            auction_codes_1, position_1 = cached_auction_infos[-1]
+            auction_codes_2, position_2 = cached_auction_infos[-2]
+            if auction_codes_0 == auction_codes_1 and auction_codes_0 == auction_codes_2:
+                logger.info("[producer] 连续3次获取到相同的目标股票...")
+                if position_0 == position_1 and position_0 == position_2:
+                    logger.info("[producer] 连续3次获取到相同的仓位...")
+                    end = True
+        if not end:
+            cached_auction_infos.append((auction_codes, position))
+            return
+        
         length = len(auction_codes)
         logger.info(f"[producer] 获取到目标股票: {auction_codes}")
         if not position:
@@ -128,7 +149,8 @@ def strategy_schedule_job():
         each_money_pct = pct / length
         for code in auction_codes:
             q.put((code, each_money_pct))
-        end_task("code_schedule_job")
+        if end:
+            end_task("code_schedule_job")
     except Exception as e:
         error_time = error_time + 1
         if error_time > 120:
@@ -197,6 +219,7 @@ if __name__ == "__main__":
 
     consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q,))
     consumer_thread.start()
+    cached_auction_infos.clear()
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法

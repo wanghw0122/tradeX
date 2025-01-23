@@ -22,6 +22,7 @@ class Strategy:
         self.strategy_manager = strategy_manager
         self.name = config['name']
         self.type = config['type']
+        self.priority = config['priority']
         self.config = config
         self.status = config['status']
         self.cached = config['cached']
@@ -168,6 +169,9 @@ class StrategyManager:
                     self.strategy_list.append(Strategy(config, self))
                 else:
                     logger.error(f"strategy config name error. {name}")
+            if len(self.strategy_list) > 1:
+                self.strategy_list = sorted(self.strategy_list, key=lambda x: x.priority)
+
     def run_strategys(self, current_date = date.get_current_date()):
         return_result = {}
         for strategy in self.strategy_list:

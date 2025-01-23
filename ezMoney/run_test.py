@@ -46,7 +46,7 @@ def get_target_codes(retry_times=3):
     auction_codes = []
     position = 0.3
     try:
-        items = sm.run_strategys(date.get_previous_date())
+        items = sm.run_strategys(date.get_current_date())
         if items == None:
             return None
         if len(items) == 0:

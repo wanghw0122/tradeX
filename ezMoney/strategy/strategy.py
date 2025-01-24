@@ -27,6 +27,10 @@ class Strategy:
         self.status = config['status']
         self.cached = config['cached']
         self.selectors_config = config['selectors']
+        if 'maxReturnNum' in config:
+            self.max_return_num = config['maxReturnNum']
+        else:
+            self.max_return_num = None
         self.selectors = {}
         self.selector_fucs = []
         self.filters = {}
@@ -190,6 +194,11 @@ class XiaoCaoDwdxA(Strategy):
         if s_result is None or len(s_result) == 0:
             return None
         else:
+            s_result.sort(key=lambda x: x.cjs, reverse=True)
+            if self.max_return_num:
+                s_result = s_result[:self.max_return_num]
+                if s_result is None or len(s_result) == 0:
+                    return None
             return [x.code for x in s_result]
 
 

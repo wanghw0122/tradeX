@@ -6,6 +6,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
+    maxReturnNum: 1
     selectors:
       - name: "check_user_alive"
         step: 0

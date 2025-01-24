@@ -32,15 +32,15 @@ import datetime
 
 def get_target_codes(retry_times=3, date=date.get_current_date()):
     if retry_times <= 0:
-        return None
+        return None, 0.3
     auction_codes = []
     position = 0.3
     try:
         items = sm.run_strategys(date)
         if items == None:
-            return None
+            return None, 0.3
         if len(items) == 0:
-            return None
+            return None, 0.3
         if 'xiao_cao_env' in items:
             xiaocao_envs = items['xiao_cao_env'][0]
             position = get_position(xiaocao_envs)
@@ -53,7 +53,7 @@ def get_target_codes(retry_times=3, date=date.get_current_date()):
                 auction_codes.append(item.split('.')[0])
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}")
-        auction_codes = get_target_codes(retry_times-1, date)
+        return get_target_codes(retry_times-1, date)
     return auction_codes, position
 
 def compute_return(auction_code, date, next_date):
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             code_map[code] = stock
     logger.info(f"构建全市场股票字典完毕。 共{len(code_map)}个")
 
-    trade_days = date.get_trade_dates(date.get_current_date(), 101)
+    trade_days = date.get_trade_dates('2025-01-24', 120)
 
     rslt = {}
     dates = []
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     for current_date, next_date in roll_back_dates:
         logger.info(f"开始回测日期：{current_date}...")
         auction_codes, position = get_target_codes(date = current_date)
-        if auction_codes == None or len(auction_codes) == 0:
+        if not auction_codes or len(auction_codes) == 0:
             logger.info(f"未获取到日期{current_date}的目标股票... 等待继续执行")
             codes.append('')
             names.append('low')
@@ -175,7 +175,6 @@ if __name__ == "__main__":
             is_first = True
             max_return = -1
             avg_return = 0
-            i = 0
             for code in auction_codes:
                 if code not in code_map:
                     logger.error(f"股票{code}不在全市场股票字典中...")
@@ -183,17 +182,16 @@ if __name__ == "__main__":
                 rcode = code_map[code]
                 result = compute_return(rcode, current_date, next_date)
                 avg_return = avg_return + result
-                i = i + 1
                
                 max_return = max(max_return, result)
                 if is_first:
                     first_returns.append(result)
                     is_first = False
-            returns.append(result)
+            returns.append(avg_return/cnum)
             max_returns.append(max_return)
 
-        time.sleep(5)
+        time.sleep(2)
 
     df = pd.DataFrame(rslt)
-    df.to_csv('roll_back.csv', index=False)
+    df.to_csv(r'D:\workspace\TradeX\ezMoney\database\dwdx_fall_back0125.csv', index=False)
     logger.info(f"回测完毕， 结果已保存到roll_back.csv")

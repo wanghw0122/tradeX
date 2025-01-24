@@ -45,15 +45,15 @@ cached_auction_infos = []
 
 def get_target_codes(retry_times=3):
     if retry_times <= 0:
-        return None
+        return None, 0.3
     auction_codes = []
     position = 0.3
     try:
         items = sm.run_strategys()
         if items == None:
-            return None
+            return None, 0.3
         if len(items) == 0:
-            return None
+            return None, 0.3
         if 'xiao_cao_env' in items:
             xiaocao_envs = items['xiao_cao_env'][0]
             position = get_position(xiaocao_envs)
@@ -66,7 +66,7 @@ def get_target_codes(retry_times=3):
                 auction_codes.append(item.split('.')[0])
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}")
-        auction_codes = get_target_codes(retry_times-1)
+        return get_target_codes(retry_times-1)
     return auction_codes, position
 
 

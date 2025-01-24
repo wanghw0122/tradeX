@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
+from arrow import get
 import pandas_market_calendars as mcal
 import pandas as pd
 import pandas_market_calendars as mcal
-import pandas as pd
+import akshare as ak
+
 
 def get_current_date():
     """
@@ -107,6 +109,20 @@ def is_between_925_and_930():
     start_time = now.replace(hour=9, minute=25, second=0, microsecond=0)
     end_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
     return start_time <= now < end_time
+
+def get_trade_dates(end_date, trade_days = 30):
+    import datetime
+    end_date_t = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+    if str(end_date_t) != end_date:
+        raise ValueError("日期格式错误，应为 YYYY-MM-DD")
+    trade_date_df = ak.tool_trade_date_hist_sina()
+    trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
+    trade_date_list.sort()
+    while str(end_date_t) not in trade_date_list:  # 如果当前日期不在交易日期列表内，则当前日期天数减一
+        end_date_t = end_date_t - datetime.timedelta(days=1)
+    start_date_index = trade_date_list.index(str(end_date_t))- trade_days + 1
+    return trade_date_list[start_date_index:start_date_index + trade_days]
+
 
 if __name__ == "__main__":
     current_date, previous_trading_date = is_trading_day(pd.Timestamp("2025-01-17").date())

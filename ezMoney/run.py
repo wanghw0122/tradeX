@@ -71,7 +71,7 @@ def get_target_codes(retry_times=3):
 
 
 def get_position(xiaocao_envs):
-    if xiaocao_envs == None:
+    if xiaocao_envs == None or len(xiaocao_envs) == 0:
         return 0.3
     env_10cm_qs = xiaocao_envs['9A0001']
     env_10cm_cd = xiaocao_envs['9B0001']
@@ -169,7 +169,11 @@ def consumer_to_buy(q):
             logger.info(f"[consumer] Consumed: {data}")
             if (type(data) == tuple):
                 c_cash = cash * data[1]
-                qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                b = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                if not b:
+                    b = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                    if not b:
+                        qmt_trader.buy_quickly(data[0], c_cash, sync=True)
             elif type(data) == str and data == 'end':
                 break
             else:

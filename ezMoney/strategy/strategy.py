@@ -1,5 +1,6 @@
 import multiprocessing
 import re
+from numpy import inner
 import yaml
 from data_class.xiao_cao_index_v2 import XiaoCaoIndexResult
 from logger import logger, catch
@@ -8,6 +9,7 @@ from http_request import http_context
 from date_utils import date
 from jinja2 import Template
 from data_class.xiao_cao_environment_second_line_v2 import *
+from functools import wraps
 
 file_name = 'D:\\workspace\\TradeX\\ezMoney\\strategy\\strategyConfig.yml'
 
@@ -31,11 +33,17 @@ class Strategy:
             self.max_return_num = config['maxReturnNum']
         else:
             self.max_return_num = None
+        if 'depends' in config:
+            self.depends = config['depends'].split(',')
+        else:
+            self.depends = []
         self.selectors = {}
         self.selector_fucs = []
         self.filters = {}
-        self._build_selectors()
         self.running_context = {}
+        self.log_filters = set()
+        self._build_selectors()
+        
 
     def _build_selectors(self):
         self.selectors_config = sorted(self.selectors_config, key=lambda x: x['step'])
@@ -53,10 +61,13 @@ class Strategy:
                     filter_fuc = self.strategy_manager.get_filter(filter_name)
                     if filter_fuc is None:
                         raise Exception(f"filter {filter_name} not found.")
-                    if 'params' in filter_config and filter_config['params'] is not None:
+                    if 'params' in filter_config and filter_config['params'] is not None and len(filter_config['params']) > 0:
                         filter_fuc = filter_fuc(**filter_config['params'])
+                    filter_fuc.__name__ = filter_name
                     if selector_name in self.filters:
                         self.filters[selector_name].append(filter_fuc)
+                        if 'logged' in filter_config and filter_config['logged']:
+                            self.log_filters.add(filter_fuc)
                     else:
                         self.filters[selector_name] = [filter_fuc]
             else:
@@ -83,10 +94,11 @@ class Strategy:
                 for selector_fuc in selector_fucs:
                     selector_name = selector_fuc.__name__
                     params = self.selectors[selector_name]['params']
+                    logged = self.selectors[selector_name]['logged']
                     if params is not None:
                         template = Template(yaml.dump(params))
                         params = yaml.safe_load(template.render(self.running_context))
-                        logger.info(f"{selector_name} params is {params}")
+                        logger.info(f"{selector_name} render result params is {params}")
                         selector_rslt = selector_fuc(**params)
                     else:
                         selector_rslt = selector_fuc()
@@ -94,15 +106,21 @@ class Strategy:
                             logger.info(f"{selector_name} selector result is None.")
                             return None
                     else:
-                        logger.info(f"{selector_name} selector result is {selector_rslt}")
+                        if type(selector_rslt) == list or type(selector_rslt) == tuple or type(selector_rslt) == set or type(selector_rslt) == dict:
+                            logger.info (f"{selector_name} 查询结果数目: {len(selector_rslt)}")
+                        # logger.info(f"{selector_name} selector result success.")
+                        if logged:
+                            logger.info(f"{selector_name} selector result is {selector_rslt}")
                     if selector_name in self.filters:
                         for filter_fuc in self.filters[selector_name]:
-                            selector_rslt = filter_fuc(selector_rslt)
+                            selector_rslt = filter_fuc(selector_rslt, self.running_context)
                             if selector_rslt is None or len(selector_rslt) == 0:
                                 logger.info(f"{selector_name}.{filter_fuc.__name__} filter result is None.")
                                 return None
                             else:
-                                logger.info(f"{selector_name}.{filter_fuc.__name__} filter result is {selector_rslt}")
+                                # logger.info(f"{selector_name}.{filter_fuc.__name__} filter result success.")
+                                if filter_fuc in self.log_filters:
+                                    logger.info(f"{selector_name}.{filter_fuc.__name__} filter result is {selector_rslt}")
                     if 'cached' in self.selectors[selector_name] and not self.selectors[selector_name]['cached']:
                         logger.info(f"{selector_name} selector result is not cached.")
                         continue
@@ -119,26 +137,14 @@ class StrategyManager:
     def __init__(self):
         self.selectors_funcs= {}
         self.filters_funcs = {}
-        self._init_selectors()
-        self._init_filters()
         self.strategy_list = []
+        self.strategy_dict = {}
+
+    def register_selector(self, name, func):
+        self.selectors_funcs[name] = func
     
-
-    def _init_selectors(self):
-        self.selectors_funcs['check_user_alive'] = http_context['check_user_alive']
-        self.selectors_funcs['system_time'] = http_context['system_time']
-        self.selectors_funcs['sort_v2'] = http_context['sort_v2']
-        self.selectors_funcs['xiao_cao_index_v2'] = http_context['xiao_cao_index_v2']
-        self.selectors_funcs['build_xiaocao_environment_second_line_v2_dict_simple'] = build_xiaocao_environment_second_line_v2_dict_simple
-
-    def _init_filters(self):
-        self.filters_funcs['keys_10cm_filter'] = keys_10cm_filter
-        self.filters_funcs['limiter_filter'] = limiter_filter
-        self.filters_funcs['st_filter'] = st_filter
-        self.filters_funcs['first_bottom_filter'] = first_bottom_filter
-        self.filters_funcs['jw_filter'] = jw_filter
-        self.filters_funcs['change_item_filter'] = change_item_filter
-        self.filters_funcs['stock_type_filter'] = stock_type_filter
+    def register_filter(self, name, func):
+        self.filters_funcs[name] = func
 
     def get_selector(self, name):
         return self.selectors_funcs[name]
@@ -165,23 +171,61 @@ class StrategyManager:
                     logger.error("strategy config no Name.")
                     continue
                 elif name == 'xiao_cao_dwdx_a':
-                    self.strategy_list.append(XiaoCaoDwdxA(config, self))
+                    xcd = XiaoCaoDwdxA(config, self)
+                    self.strategy_list.append(xcd)
+                    self.strategy_dict[name] = xcd
                 elif name == 'xiao_cao_dwdx_d':
-                    # self.strategy_list.append(XiaoCaoDwdxD(config, self))
+                    # xcd = XiaoCaoDwdxD(config, self)
+                    # self.strategy_list.append(xcd)
+                    # self.strategy_dict[name] = xcd
                     pass
-                elif name == 'xiao_cao_env':
-                    self.strategy_list.append(Strategy(config, self))
                 else:
-                    logger.error(f"strategy config name error. {name}")
+                    stg = Strategy(config, self)
+                    self.strategy_list.append(stg)
+                    self.strategy_dict[name] = stg
             if len(self.strategy_list) > 1:
                 self.strategy_list = sorted(self.strategy_list, key=lambda x: x.priority)
 
-    def run_strategys(self, current_date = date.get_current_date()):
+    def run_strategys(self, strategy_names, current_date = date.get_current_date()):
         return_result = {}
-        for strategy in self.strategy_list:
+        if strategy_names is None or len(strategy_names) == 0:
+            return return_result
+        run_strategys = []
+        for strategy_name in strategy_names:
+            strategy = self.get_strategy(strategy_name)
+            if strategy is None:
+                logger.error(f"strategy {strategy_name} not found. or status is 0.")
+                continue
+            run_strategys.append(strategy)
+            if strategy.depends is not None and len(strategy.depends) > 0:
+                for depend in strategy.depends:
+                    depend_strategy = self.get_strategy(depend)
+                    if depend_strategy is None:
+                        logger.error(f"strategy {strategy_name}'s depend-{depend} not found. or status is 0.")
+                        continue
+                    if depend_strategy in run_strategys:
+                        continue
+                    run_strategys.append(depend_strategy)
+        run_strategys = sorted(run_strategys, key=lambda x: x.priority)
+        for strategy in run_strategys:
             rslt = strategy.run(current_date)
             return_result[strategy.name] = rslt
         return return_result
+        
+
+    def get_strategy(self, name):
+        if name not in self.strategy_dict:
+            return None
+        if self.strategy_dict[name].status == 0:
+            return None
+        return self.strategy_dict[name]
+
+    def run_all_strategys(self, current_date = date.get_current_date()):
+        strategy_names = self.get_all_strategy_names()
+        return self.run_strategys(strategy_names = strategy_names, current_date = current_date)
+
+    def get_all_strategy_names(self):
+        return [strategy.name for strategy in self.strategy_list if strategy.status > 1]
 
 
 class XiaoCaoDwdxA(Strategy):
@@ -207,57 +251,106 @@ class XiaoCaoDwdxD(Strategy):
         super().__init__(config, strategy_manager)
         pass
 
+
+def count_filtered_items(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        before_count = len(args[0]) if args and args[0] else 0
+        result = func(*args, **kwargs)
+        if callable(result):
+            return count_filtered_items(result)
+        after_count = len(result) if result else 0
+        function_name = func.__name__
+        filter_count = before_count - after_count
+        logger.info(f"过滤器 {function_name} 过滤的数量为 : {filter_count}")
+        return result
+    # wrapper.__name__ = func.__name__
+    return wrapper
+
+
+
+@count_filtered_items
 @catch
-def keys_10cm_filter(arr):
+def item_code_filter(*args, **kwargs):
+    arr = args[0]
+    if not arr:
+        return None
+    return [item.code for item in arr]
+
+@count_filtered_items
+@catch
+def keys_10cm_filter(*args, **kwargs):
+    arr = args[0]
     filtered_arr = []
     for code in arr:
         if code.startswith('60') or code.startswith('00'):
             filtered_arr.append(code)
     return filtered_arr
 
+@count_filtered_items
 @catch
 def limiter_filter(limit):
-    def inner_filter(arr):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
         return arr[:limit]
+    inner_filter.__name__ = "limiter_filter"
     return inner_filter
 
-
+@count_filtered_items
 @catch
-def st_filter(arr):
+def st_filter(*args, **kwargs):
+    arr = args[0]
     return [item for item in arr if not item.isPreSt]
 
+
+@count_filtered_items
 @catch
-def first_bottom_filter(arr):
+def first_bottom_filter(*args, **kwargs):
     rslt = []
+    arr = args[0]
+    cxt = args[1]
+    current_date = cxt['system_time']
     for item in arr:
-        if item.openPctChangeRate and item.openPctChangeRate >= -9.7:
+        if item.openPctChangeRate >= -9.7:
             rslt.append(item)
             continue
         kline_fuc = http_context['date_kline']
         klines = kline_fuc(code=item.code, count=300, freq="D", adj="bfq")
+        logger.info(f"获取{item.code}的300天K线数据.")
         if klines == None:
             rslt.append(item)
             continue
         else:
-            is_trade, previous_date = date.is_trading_day()
+            logger.info(f"获取{item.code}的300天K线数据成功.")
+            is_trade, previous_date = date.is_trading_day(current_date)
+            logger.info(f"获取{current_date}的前一个交易日 为{previous_date}.")
+            if '-' in previous_date:
+                previous_date = previous_date.replace('-', '')
             if not is_trade:
-                raise Exception("Not trading day.")
+                raise Exception(f"Not trading day. {current_date}")
             for kline in klines:
                 if kline['tradeDate'] == previous_date:
-                    if kline['pctChange'] and kline['pctChange'] < -9.7:
+                    logger.info(f"获取{previous_date}pctChangeRate {kline['pctChangeRate']} .")
+                    if kline['pctChangeRate'] and kline['pctChangeRate'] < -9.7:
                         rslt.append(item)
                     break
     return rslt
 
+
+@count_filtered_items
 @catch
 def jw_filter(xcjwScore = 200):
-    def inner_filter(arr):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
         return [item for item in arr if item.xcjw and item.xcjw >= xcjwScore]
+    inner_filter.__name__ = "jw_filter"
     return inner_filter
 
-
+@count_filtered_items
+@catch
 def stock_type_filter(**args):
-    def inner_filter(arr):
+    def inner_filter(*iargs, **kwargs):
+        arr = iargs[0]
         if not arr or  len(args) == 0:
             return arr
         rtn = []
@@ -302,6 +395,7 @@ def stock_type_filter(**args):
                 continue
             rtn.append(item)
         return rtn
+    inner_filter.__name__ = "stock_type_filter"
     return inner_filter
 
 def get_current_config(config_file = 'strategyConfig.yml'):
@@ -310,7 +404,11 @@ def get_current_config(config_file = 'strategyConfig.yml'):
     current_directory = os.path.dirname(current_file_path)
     return os.path.join(current_directory, config_file)
 
-def change_item_filter(arr):
+
+@count_filtered_items
+@catch
+def change_item_filter(*args, **kwargs):
+    arr = args[0]
     if arr == None:
         return []
     
@@ -321,5 +419,23 @@ def change_item_filter(arr):
     else:
         return []
 
+
 sm = StrategyManager()
+sm.register_selector("check_user_alive", http_context['check_user_alive'])
+sm.register_selector("system_time", http_context['system_time'])
+sm.register_selector("sort_v2", http_context['sort_v2'])
+sm.register_selector("xiao_cao_index_v2", http_context['xiao_cao_index_v2'])
+sm.register_selector("build_xiaocao_environment_second_line_v2_dict_simple", build_xiaocao_environment_second_line_v2_dict_simple)
+
+sm.register_filter("keys_10cm_filter", keys_10cm_filter)
+sm.register_filter("jw_filter", jw_filter)
+sm.register_filter("st_filter", st_filter)
+sm.register_filter("first_bottom_filter", first_bottom_filter)
+sm.register_filter("stock_type_filter", stock_type_filter)
+sm.register_filter("change_item_filter", change_item_filter)
+sm.register_filter("item_code_filter", item_code_filter)
+sm.register_filter("limiter_filter", limiter_filter)
 sm.init_strategys(get_current_config())
+
+
+

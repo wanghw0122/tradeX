@@ -6,6 +6,11 @@ import pandas_market_calendars as mcal
 import akshare as ak
 
 
+trade_date_df = ak.tool_trade_date_hist_sina()
+trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
+trade_date_list.sort()
+
+
 def get_current_date():
     """
     获取当前日期。
@@ -71,21 +76,18 @@ def get_hour_of_day():
     return datetime.now().hour
 
 
-def is_trading_day(current_date=None):
-    # 创建A股交易日历
-    shanghai_calendar = mcal.get_calendar('XSHG')
+def is_trading_day(current_date):
+    is_trade = current_date in trade_date_list
+    if is_trade:
+        return True, trade_date_list[trade_date_list.index(current_date) - 1]
+    else:
+        import datetime
+        end_date_t = datetime.datetime.strptime(current_date, "%Y-%m-%d").date()
+        while str(end_date_t) not in trade_date_list:  # 如果当前日期不在交易日期列表内，则当前日期天数减一
+            end_date_t = end_date_t - datetime.timedelta(days=1)
+        return False, str(end_date_t)
 
-    if not current_date:
-        # 获取当前日期
-        current_date = pd.Timestamp.now().date()
 
-    schedule = shanghai_calendar.schedule(start_date=current_date - pd.Timedelta(days=30), end_date=current_date)
-
-    if schedule.empty:
-        return None, None
-    if schedule.index[-1].date() == current_date:
-        return True, schedule.index[-2].date().strftime("%Y%m%d")
-    return False, schedule.index[-1].date().strftime("%Y%m%d")
 def is_trade_date(date_str):
     """
     判断给定日期是否为交易日。
@@ -110,32 +112,52 @@ def is_between_925_and_930():
     end_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
     return start_time <= now < end_time
 
-def get_trade_dates(end_date, trade_days = 30):
+def get_trade_dates_by_end(end_date, trade_days = 30):
     import datetime
     end_date_t = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
     if str(end_date_t) != end_date:
         raise ValueError("日期格式错误，应为 YYYY-MM-DD")
-    trade_date_df = ak.tool_trade_date_hist_sina()
-    trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
-    trade_date_list.sort()
+    # trade_date_df = ak.tool_trade_date_hist_sina()
+    # trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
+    # trade_date_list.sort()
     while str(end_date_t) not in trade_date_list:  # 如果当前日期不在交易日期列表内，则当前日期天数减一
         end_date_t = end_date_t - datetime.timedelta(days=1)
     start_date_index = trade_date_list.index(str(end_date_t))- trade_days + 1
     return trade_date_list[start_date_index:start_date_index + trade_days]
 
 
-if __name__ == "__main__":
-    current_date, previous_trading_date = is_trading_day(pd.Timestamp("2025-01-17").date())
-    if current_date:
-        print(f"今天是交易日: {current_date}")
-        print(f"前一个交易日: {previous_trading_date}")
-    else:
-        print("今天不是交易日")
-        print(f"最近交易日: {previous_trading_date}")
 
-    print(is_trade_date("2025-01-17"))
-    print(is_trade_date("2025-01-18"))
-    print(is_trade_date("2025-01-19"))
-    print(is_trade_date("2025-01-20"))
-    print(is_trade_date("20250117"))
-    print(is_trade_date("20250118"))
+def get_trade_dates(start_date, end_date, trade_days = 30):
+    import datetime
+    if not end_date:
+        end_date = get_current_date()
+    if not start_date:
+        return get_trade_dates_by_end(end_date, trade_days)
+    end_date_t = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+    if str(end_date_t) != end_date:
+        raise ValueError("end date日期格式错误，应为 YYYY-MM-DD")
+    start_date_t = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+    if str(start_date_t)!= start_date:
+        raise ValueError("start date日期格式错误，应为 YYYY-MM-DD")
+    # trade_date_df = ak.tool_trade_date_hist_sina()
+    # trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
+    # trade_date_list.sort()
+    while str(end_date_t) not in trade_date_list:  # 如果当前日期不在交易日期列表内，则当前日期天数减一
+        end_date_t = end_date_t - datetime.timedelta(days=1)
+    while str(start_date_t) not in trade_date_list:  # 如果当前日期不在交易日期列表内，则当前日期天数减一
+        start_date_t = start_date_t + datetime.timedelta(days=1)
+    start_date_index = trade_date_list.index(str(start_date_t))
+    end_date_index = trade_date_list.index(str(end_date_t))
+    rslt =  trade_date_list[start_date_index:end_date_index + 1]
+    if len(rslt) < trade_days:
+        return rslt
+    return rslt[-trade_days:]
+
+
+if __name__ == "__main__":
+    
+    print(trade_date_list)
+    print(is_trading_day("2025-01-17"))
+    print(is_trading_day("2025-01-18"))
+    print(is_trading_day("2025-01-19"))
+    print(is_trading_day("2025-01-20"))

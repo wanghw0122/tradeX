@@ -1,0 +1,8 @@
+configs:
+  - strategy_name: "lpdx_first"
+    start: "2025-01-13"
+    end: "2025-01-14"
+    max_num: 120
+    saved: false
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"

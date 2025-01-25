@@ -5,9 +5,7 @@ from typing import ItemsView
 
 from py import log
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
-# from http_request import build_http_request
-# from http_request import http_context
-# from data_class import *
+
 from strategy.strategy import sm
 from logger import catch, logger
 from trade.qmtTrade import *
@@ -19,7 +17,7 @@ from xtquant import xtconstant
 from date_utils import date
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
-
+import traceback
 # 设置环境变量
 import threading
 import queue
@@ -29,14 +27,18 @@ import pandas_market_calendars as mcal
 import pandas as pd
 import datetime
 
+import yaml
 
-def get_target_codes(retry_times=3, date=date.get_current_date()):
+
+def get_target_codes(strategy_names, date=date.get_current_date(), retry_times=3):
+    if not strategy_names or len(strategy_names) == 0:
+        return None, 0.3
     if retry_times <= 0:
         return None, 0.3
     auction_codes = []
     position = 0.3
     try:
-        items = sm.run_strategys(date)
+        items = sm.run_strategys(strategy_names, current_date=date)
         if items == None:
             return None, 0.3
         if len(items) == 0:
@@ -44,8 +46,12 @@ def get_target_codes(retry_times=3, date=date.get_current_date()):
         if 'xiao_cao_env' in items:
             xiaocao_envs = items['xiao_cao_env'][0]
             position = get_position(xiaocao_envs)
-        for _, arr in items.items():
-            if type(arr) != list:
+        for strategy_name in strategy_names:
+            if strategy_name not in items:
+                logger.error(f"策略{strategy_name}未在回测结果中找到...")
+                continue
+            arr = items[strategy_name]
+            if type(arr)!= list:
                 continue
             for item in arr:
                 if item == None:
@@ -53,7 +59,8 @@ def get_target_codes(retry_times=3, date=date.get_current_date()):
                 auction_codes.append(item.split('.')[0])
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}")
-        return get_target_codes(retry_times-1, date)
+        traceback.print_exc()
+        return get_target_codes(strategy_names, date, retry_times-1)
     return auction_codes, position
 
 def compute_return(auction_code, date, next_date):
@@ -114,84 +121,123 @@ def get_position(xiaocao_envs):
 
 if __name__ == "__main__":
 
-    all_stocks = xtdata.get_stock_list_in_sector('沪深A股')
-    code_map = {}
-    for stock in all_stocks:
-        if stock.startswith('60') or stock.startswith('00'):
-            code = stock.split('.')[0]
-            code_map[code] = stock
-    logger.info(f"构建全市场股票字典完毕。 共{len(code_map)}个")
+    file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
 
-    trade_days = date.get_trade_dates('2025-01-24', 120)
+    with open(file_name, 'r',  encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+        if config is None or 'configs' not in config:
+            logger.error("Config No data Error.")
 
-    rslt = {}
-    dates = []
-    codes = []
-    names = []
-    returns = []
-    max_returns = []
-    first_returns = []
-    positions = []
-    codes_nums = []
+    current_date = datetime.datetime.now().strftime('%Y%m%d')
+    configs = config['configs']
 
-    for d in trade_days:
-        dates.append(d)
-    logger.info(f"开始回测日期：{dates} 总数量：{len(dates)-1}.")
+    if configs is None or len(configs) == 0:
+        logger.error("Config No data Error.")
 
+    for config in configs:
+        config['save_path'] = config['save_path'].format(strategy_name=config['strategy_name'], current_date=current_date)
     
-    roll_back_dates = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
-    dates.pop(-1)
-    if len(roll_back_dates) != len(dates):
-        logger.error(f"回测日期生成失败， 回测日期长度为{len(roll_back_dates)}, 应该为{len(dates)-1}")
-        raise
-    
-    rslt['date'] = dates
-    rslt['code'] = codes
-    rslt['name'] = names
-    rslt['return'] = returns
-    rslt['max_return'] = max_returns
-    rslt['first_return'] = first_returns
-    rslt['position'] = positions
-    rslt['codes_num'] = codes_nums
+    logger.info(f"回测配置：{configs}")
+    logger.info(f"计划回测策略: {[cfg['strategy_name'] for cfg in configs]}, 共{len(configs)}个")
+    logger.info(f"开始回测...")
 
-    for current_date, next_date in roll_back_dates:
-        logger.info(f"开始回测日期：{current_date}...")
-        auction_codes, position = get_target_codes(date = current_date)
-        if not auction_codes or len(auction_codes) == 0:
-            logger.info(f"未获取到日期{current_date}的目标股票... 等待继续执行")
-            codes.append('')
-            names.append('low')
-            returns.append(0.0)
-            max_returns.append(0.0)
-            first_returns.append(0.0)
-            positions.append(position)
-            codes_nums.append(0)
+    i = 1
+    for cfg in configs:
+        start = cfg['start']
+        end = cfg['end']
+        max_num = cfg['max_num']
+        save_path = cfg['save_path']
+        strategy_name = cfg['strategy_name']
+        save_mod = cfg['save_mod']
+        saved = cfg['saved']
+
+        if not strategy_name or len(strategy_name) == 0:
+            logger.error(f"策略名称为空...")
+            raise
+        logger.info(f"开始回测策略-{i}：{strategy_name}")
+        
+        all_stocks = xtdata.get_stock_list_in_sector('沪深A股')
+        code_map = {}
+        for stock in all_stocks:
+            if stock.startswith('60') or stock.startswith('00'):
+                code = stock.split('.')[0]
+                code_map[code] = stock
+        logger.info(f"构建全市场股票字典完毕。 共{len(code_map)}个")
+
+        trade_days = date.get_trade_dates(start_date=start, end_date=end, trade_days=max_num)
+
+        rslt = {}
+        dates = []
+        codes = []
+        names = []
+        returns = []
+        max_returns = []
+        first_returns = []
+        positions = []
+        codes_nums = []
+
+        for d in trade_days:
+            dates.append(d)
+        logger.info(f"开始回测日期：{dates} 总数量：{len(dates)-1}.")
+
+        
+        roll_back_dates = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
+        dates.pop(-1)
+        if len(roll_back_dates) != len(dates):
+            logger.error(f"回测日期生成失败， 回测日期长度为{len(roll_back_dates)}, 应该为{len(dates)-1}")
+            raise
+        
+        rslt['date'] = dates
+        rslt['code'] = codes
+        rslt['name'] = names
+        rslt['return'] = returns
+        rslt['max_return'] = max_returns
+        rslt['first_return'] = first_returns
+        rslt['position'] = positions
+        rslt['codes_num'] = codes_nums
+
+        for current_date, next_date in roll_back_dates:
+            logger.info(f"开始回测日期：{current_date}...")
+            auction_codes, position = get_target_codes(strategy_names= [strategy_name], date = current_date)
+            if not auction_codes or len(auction_codes) == 0:
+                logger.info(f"未获取到日期{current_date}的目标股票... 等待继续执行")
+                codes.append('')
+                names.append('low')
+                returns.append(0.0)
+                max_returns.append(0.0)
+                first_returns.append(0.0)
+                positions.append(position)
+                codes_nums.append(0)
+            else:
+                codes.append(','.join(auction_codes))
+                names.append('low')
+                positions.append(position)
+                codes_nums.append(len(auction_codes))
+                cnum = len(auction_codes)
+                is_first = True
+                max_return = -1
+                avg_return = 0
+                for code in auction_codes:
+                    if code not in code_map:
+                        logger.error(f"股票{code}不在全市场股票字典中...")
+                        raise
+                    rcode = code_map[code]
+                    result = compute_return(rcode, current_date, next_date)
+                    avg_return = avg_return + result
+                
+                    max_return = max(max_return, result)
+                    if is_first:
+                        first_returns.append(result)
+                        is_first = False
+                returns.append(avg_return/cnum)
+                max_returns.append(max_return)
+
+            time.sleep(2)
+
+        df = pd.DataFrame(rslt)
+        if saved:
+            df.to_csv(save_path, index=False, mode=save_mod, header=not os.path.exists(save_path))
+            logger.info(f"回测完毕， 结果已保存到{save_path}")
         else:
-            codes.append(','.join(auction_codes))
-            names.append('low')
-            positions.append(position)
-            codes_nums.append(len(auction_codes))
-            cnum = len(auction_codes)
-            is_first = True
-            max_return = -1
-            avg_return = 0
-            for code in auction_codes:
-                if code not in code_map:
-                    logger.error(f"股票{code}不在全市场股票字典中...")
-                    raise
-                rcode = code_map[code]
-                result = compute_return(rcode, current_date, next_date)
-                avg_return = avg_return + result
-               
-                max_return = max(max_return, result)
-                if is_first:
-                    first_returns.append(result)
-                    is_first = False
-            returns.append(avg_return/cnum)
-            max_returns.append(max_return)
-
-        time.sleep(2)
-
-    df = pd.DataFrame(rslt)
-    df.to_csv(r'D:\workspace\TradeX\ezMoney\database\dwdx_fall_back0125.csv', index=False)
-    logger.info(f"回测完毕， 结果已保存到roll_back.csv")
+            logger.info(f"回测完毕， 结果未保存")
+        i = i + 1

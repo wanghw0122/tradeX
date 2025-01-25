@@ -2,6 +2,7 @@ import logging
 from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 import datetime
 import os
+from functools import wraps
 
 def setup_logging(name):
     # 获取当前日期
@@ -53,6 +54,7 @@ order_logger = setup_logging("order_logger")
 order_success_logger = setup_logging("order_success_logger")
 
 def catch(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)

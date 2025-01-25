@@ -51,6 +51,8 @@ def post_request(url, headers, cookies, data=None, max_retries=3, retry_delay=1)
     while retries < max_retries:
         try:
             response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=2)
+            print(response.status_code)
+            print(response.text)
             if response.status_code == 200:
                 return response.json()
             else:

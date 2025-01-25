@@ -6,9 +6,12 @@ import pandas_market_calendars as mcal
 import akshare as ak
 
 
-trade_date_df = ak.tool_trade_date_hist_sina()
-trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
-trade_date_list.sort()
+try:
+    trade_date_df = ak.tool_trade_date_hist_sina()
+    trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
+    trade_date_list.sort()
+except:
+    trade_date_list = []
 
 
 def get_current_date():

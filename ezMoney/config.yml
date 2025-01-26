@@ -6,7 +6,7 @@ head:
   Accept-Language: "zh-Hans-CN;q=1, en-CN;q=0.9"
   Accept-Encoding: "gzip, deflate, br"
   Content-Type: "application/json;charset=UTF-8"
-  token: "c792104d1c06edc4f9c82a67ac5f73d2"
+  token: "6cc05546df4ed1d53b26b3143173999e"
 Cookie:
   tgw_l7_route: "f5cc5503e6f9962914600e613ba93f5f"
 Steps:

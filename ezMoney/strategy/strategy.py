@@ -10,6 +10,7 @@ from date_utils import date
 from jinja2 import Template
 from data_class.xiao_cao_environment_second_line_v2 import *
 from functools import wraps
+from functools import lru_cache
 
 file_name = 'D:\\workspace\\TradeX\\ezMoney\\strategy\\strategyConfig.yml'
 
@@ -34,7 +35,7 @@ class Strategy:
         else:
             self.max_return_num = None
         if 'depends' in config:
-            self.depends = config['depends'].split(',')
+            self.depends = [depend.strip() for depend in config['depends'].split(',')]
         else:
             self.depends = []
         self.selectors = {}
@@ -49,10 +50,17 @@ class Strategy:
         self.selectors_config = sorted(self.selectors_config, key=lambda x: x['step'])
         for selector_config in self.selectors_config:
             selector_name = selector_config['name']
+            if 'lruCached' in selector_config:
+                lru_cached = selector_config['lruCached']
+            else:
+                lru_cached = False
             self.selectors[selector_name] = selector_config
             selector_fuc = self.strategy_manager.get_selector(selector_name)
             if selector_fuc is None:
                 raise Exception(f"selector {selector_name} not found.")
+            if lru_cached:
+                selector_fuc = lru_cache(maxsize=32)(selector_fuc)
+                selector_fuc.__name__ = selector_name
             self.selector_fucs.append(selector_fuc)
             if 'filters' in selector_config and selector_config['filters'] is not None:
                 selector_config['filters'] = sorted(selector_config['filters'], key=lambda x: x['index'])
@@ -76,61 +84,74 @@ class Strategy:
     def get_selector(self, name):
         return self.selectors_config[name]
     
-    def run(self, current_date = date.get_current_date()):
+    def run(self, current_date = date.get_current_date(), **kwargs):
         if self.status == 0:
-            logger.info(f"{self.name} is not set running.")
+            logger.info(f"策略 {self.name} 状态有误 跳过执行.")
             return
-        is_trade_date = date.is_trade_date(current_date)
+        is_trade_date, _ = date.is_trading_day(current_date)
         if is_trade_date == False:
-            logger.error(f"{current_date} is not trade date.")
+            logger.error(f"{current_date} 非交易日期 跳过执行.")
             return None
         self.running_context['system_time'] = current_date
-        logger.info(f"{self.name} is running. date : {current_date}")
+        if kwargs is not None and len(kwargs) > 0:
+            self.running_context.update(kwargs)
+        if 'sub_task' in self.running_context and self.running_context['sub_task']:
+            logger.info(f"策略-{self.name} 子任务-{self.running_context['sub_task']} 开始运行. 运行在日期 : {current_date}")
+        else:
+            logger.info(f"策略-{self.name} 开始运行. 运行在日期 : {current_date}")
         def run_result():
             try:
                 if self.selector_fucs is None or len(self.selector_fucs) == 0:
-                    return []
+                    return None
                 selector_fucs = self.selector_fucs
                 for selector_fuc in selector_fucs:
                     selector_name = selector_fuc.__name__
                     params = self.selectors[selector_name]['params']
                     logged = self.selectors[selector_name]['logged']
+                    cached = False
+                    if 'cached' in self.selectors[selector_name] and self.selectors[selector_name]['cached']:
+                        cached = True
                     if params is not None:
                         template = Template(yaml.dump(params))
                         params = yaml.safe_load(template.render(self.running_context))
-                        logger.info(f"{selector_name} render result params is {params}")
+                        # logger.info(f"{selector_name} render result params is {params}")
                         selector_rslt = selector_fuc(**params)
                     else:
                         selector_rslt = selector_fuc()
                     if selector_rslt is None or len(selector_rslt) == 0:
-                            logger.info(f"{selector_name} selector result is None.")
-                            return None
+                        logger.info(f"选择器 {selector_name} 结果为空")
+                        if cached and selector_name in self.running_context:
+                            self.running_context.pop(selector_name)
+                        return None
                     else:
                         if type(selector_rslt) == list or type(selector_rslt) == tuple or type(selector_rslt) == set or type(selector_rslt) == dict:
-                            logger.info (f"{selector_name} 查询结果数目: {len(selector_rslt)}")
+                            logger.info (f"选择器 {selector_name} 查询到的结果数目: {len(selector_rslt)}")
                         # logger.info(f"{selector_name} selector result success.")
                         if logged:
-                            logger.info(f"{selector_name} selector result is {selector_rslt}")
+                            logger.info(f"选择器 {selector_name} 结果是 {selector_rslt}")
                     if selector_name in self.filters:
                         for filter_fuc in self.filters[selector_name]:
                             selector_rslt = filter_fuc(selector_rslt, self.running_context)
                             if selector_rslt is None or len(selector_rslt) == 0:
-                                logger.info(f"{selector_name}.{filter_fuc.__name__} filter result is None.")
+                                logger.info(f"过滤器 {selector_name}.{filter_fuc.__name__} 结果为空")
                                 return None
                             else:
                                 # logger.info(f"{selector_name}.{filter_fuc.__name__} filter result success.")
                                 if filter_fuc in self.log_filters:
-                                    logger.info(f"{selector_name}.{filter_fuc.__name__} filter result is {selector_rslt}")
-                    if 'cached' in self.selectors[selector_name] and not self.selectors[selector_name]['cached']:
-                        logger.info(f"{selector_name} selector result is not cached.")
+                                    logger.info(f"过滤器 {selector_name}.{filter_fuc.__name__} 结果是 {selector_rslt}")
+                    if not cached:
+                        logger.info(f"选择器 {selector_name} 跳过缓存")
                         continue
                     else:
                         self.running_context[selector_name] = selector_rslt
                 return selector_rslt
             except Exception as e:
-                logger.error(e)
+                
+                logger.error(f"run_result error. {e}", exc_info=True)
 
-        return run_result()
+        rslt = run_result()
+        self.running_context.clear()
+        return rslt
             
 
 class StrategyManager:
@@ -164,7 +185,7 @@ class StrategyManager:
             data = data['Strategies']
             for config in data:
                 if 'name' not in config:
-                    print("strategy config no Name.")
+                    logger.info("strategy config no Name.")
                     continue
                 name = config['name']
                 if name == '':
@@ -179,6 +200,18 @@ class StrategyManager:
                     # self.strategy_list.append(xcd)
                     # self.strategy_dict[name] = xcd
                     pass
+                elif name == '低吸':
+                    dx = DxStrategy(config, self)
+                    self.strategy_list.append(dx)
+                    self.strategy_dict[name] = dx
+                elif name == '追涨':
+                    qb = QbStrategy(config, self)
+                    self.strategy_list.append(qb)
+                    self.strategy_dict[name] = qb
+                elif name == '接力':
+                    jw = JwStrategy(config, self)
+                    self.strategy_list.append(jw)
+                    self.strategy_dict[name] = jw
                 else:
                     stg = Strategy(config, self)
                     self.strategy_list.append(stg)
@@ -186,7 +219,12 @@ class StrategyManager:
             if len(self.strategy_list) > 1:
                 self.strategy_list = sorted(self.strategy_list, key=lambda x: x.priority)
 
-    def run_strategys(self, strategy_names, current_date = date.get_current_date()):
+    def run_strategys(self, strategy_names, current_date = date.get_current_date(), sub_task = None, params = {}):
+        kwargs = {}
+        if sub_task is not None:
+            kwargs['sub_task'] = sub_task
+        if params is not None and len(params) > 0:
+            kwargs.update(params)
         return_result = {}
         if strategy_names is None or len(strategy_names) == 0:
             return return_result
@@ -208,10 +246,10 @@ class StrategyManager:
                     run_strategys.append(depend_strategy)
         run_strategys = sorted(run_strategys, key=lambda x: x.priority)
         for strategy in run_strategys:
-            rslt = strategy.run(current_date)
+            rslt = strategy.run(current_date, **kwargs)
             return_result[strategy.name] = rslt
         return return_result
-        
+    
 
     def get_strategy(self, name):
         if name not in self.strategy_dict:
@@ -220,12 +258,15 @@ class StrategyManager:
             return None
         return self.strategy_dict[name]
 
-    def run_all_strategys(self, current_date = date.get_current_date()):
+    def run_all_strategys(self, strategies_dict = {}, current_date = date.get_current_date()):
+        if strategies_dict is None or len(strategies_dict) == 0:
+            return {}
+        
         strategy_names = self.get_all_strategy_names()
         return self.run_strategys(strategy_names = strategy_names, current_date = current_date)
 
     def get_all_strategy_names(self):
-        return [strategy.name for strategy in self.strategy_list if strategy.status > 1]
+        return [strategy.name for strategy in self.strategy_list if strategy.status > 0]
 
 
 class XiaoCaoDwdxA(Strategy):
@@ -233,8 +274,8 @@ class XiaoCaoDwdxA(Strategy):
         super().__init__(config, strategy_manager)
         pass
 
-    def run(self, current_date=date.get_current_date()):
-        s_result = super().run(current_date)
+    def run(self, current_date=date.get_current_date(), **kwargs):
+        s_result = super().run(current_date, **kwargs)
         if s_result is None or len(s_result) == 0:
             return None
         else:
@@ -245,11 +286,62 @@ class XiaoCaoDwdxA(Strategy):
                     return None
             return [x.code for x in s_result]
 
-
 class XiaoCaoDwdxD(Strategy):
     def __init__(self, config, strategy_manager):
         super().__init__(config, strategy_manager)
         pass
+
+class DxStrategy(Strategy):
+    def __init__(self, config, strategy_manager):
+        super().__init__(config, strategy_manager)
+        pass
+
+    def run(self, current_date=date.get_current_date(), **kwargs):
+        s_result = super().run(current_date, **kwargs)
+        if s_result is None or len(s_result) == 0:
+            return None
+        else:
+            s_result.sort(key=lambda x: x.cjs, reverse=True)
+            if self.max_return_num:
+                s_result = s_result[:self.max_return_num]
+                if s_result is None or len(s_result) == 0:
+                    return None
+            return [x.code for x in s_result]
+
+class JwStrategy(Strategy):
+    def __init__(self, config, strategy_manager):
+        super().__init__(config, strategy_manager)
+        pass
+
+    def run(self, current_date=date.get_current_date(), **kwargs):
+        s_result = super().run(current_date, **kwargs)
+        if s_result is None or len(s_result) == 0:
+            return None
+        else:
+            s_result.sort(key=lambda x: x.xcjw, reverse=True)
+            if self.max_return_num:
+                s_result = s_result[:self.max_return_num]
+                if s_result is None or len(s_result) == 0:
+                    return None
+            return [x.code for x in s_result]
+
+
+class QbStrategy(Strategy):
+    def __init__(self, config, strategy_manager):
+        super().__init__(config, strategy_manager)
+        pass
+
+    def run(self, current_date=date.get_current_date(), **kwargs):
+        s_result = super().run(current_date, **kwargs)
+        if s_result is None or len(s_result) == 0:
+            return None
+        else:
+            s_result.sort(key=lambda x: x.jssb, reverse=True)
+            if self.max_return_num:
+                s_result = s_result[:self.max_return_num]
+                if s_result is None or len(s_result) == 0:
+                    return None
+            return [x.code for x in s_result]
 
 
 def count_filtered_items(func):
@@ -348,6 +440,25 @@ def jw_filter(xcjwScore = 200):
 
 @count_filtered_items
 @catch
+def dx_filter(xcdxScore = 100):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.cjs and item.cjs >= xcdxScore]
+    inner_filter.__name__ = "dx_filter"
+    return inner_filter
+
+
+@count_filtered_items
+@catch
+def qb_filter(xcqbScore = 100):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.jssb and item.jssb >= xcqbScore]
+    inner_filter.__name__ = "qb_filter"
+    return inner_filter
+
+@count_filtered_items
+@catch
 def stock_type_filter(**args):
     def inner_filter(*iargs, **kwargs):
         arr = iargs[0]
@@ -420,16 +531,40 @@ def change_item_filter(*args, **kwargs):
         return []
 
 
+def get_code_by_block_rank(tradeDate, ranks, blockCodeList = "", industryBlockCodeList = "",categoryCodeList = "",exponentCodeList = ""):
+    codes =  build_http_request.get_code_by_xiao_cao_block_rank(blockCodeList, industryBlockCodeList,categoryCodeList,exponentCodeList,tradeDate)
+    if not ranks or len(ranks) == 0:
+        logger.error("get_code_by_block_rank, sort_v2 ranks is None.")
+        return codes
+    ranklist = ranks.split(",")
+    if codes == None or len(codes) == 0:
+        return None
+    if len(codes) == 1:
+        return codes
+    rank_codes = []
+    for code in ranklist:
+        if not codes or len(codes) == 0:
+            break
+        if code in codes:
+            rank_codes.append(code)
+            codes.remove(code)
+    return rank_codes
+
+
 sm = StrategyManager()
 sm.register_selector("check_user_alive", http_context['check_user_alive'])
 sm.register_selector("system_time", http_context['system_time'])
 sm.register_selector("sort_v2", http_context['sort_v2'])
 sm.register_selector("xiao_cao_index_v2", http_context['xiao_cao_index_v2'])
 sm.register_selector("build_xiaocao_environment_second_line_v2_dict_simple", build_xiaocao_environment_second_line_v2_dict_simple)
+sm.register_selector("build_xiaocao_mod_dict_all", build_xiaocao_mod_dict_all)
+sm.register_selector("get_code_by_block_rank", get_code_by_block_rank)
 
 sm.register_filter("keys_10cm_filter", keys_10cm_filter)
 sm.register_filter("jw_filter", jw_filter)
 sm.register_filter("st_filter", st_filter)
+sm.register_filter("dx_filter", dx_filter)
+sm.register_filter("qb_filter", qb_filter)
 sm.register_filter("first_bottom_filter", first_bottom_filter)
 sm.register_filter("stock_type_filter", stock_type_filter)
 sm.register_filter("change_item_filter", change_item_filter)

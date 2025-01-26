@@ -3,7 +3,7 @@ common:
 Strategies:
   - name: "xiao_cao_dwdx_a"
     type: "小草全盘低位低吸"
-    status: 0
+    status: 1
     cached: true
     priority: 1
     maxReturnNum: 1
@@ -13,6 +13,7 @@ Strategies:
         step: 0
         desc: "用户状态检查"
         logged: true
+        cached: true
         params: {}
       - name: "system_time"
         step: 1
@@ -25,6 +26,7 @@ Strategies:
         step: 2
         desc: "A股全盘绿盘低吸排序"
         logged: false
+        cached: true
         params:
           sortId: 40
           sortType: 1
@@ -47,6 +49,7 @@ Strategies:
         step: 3
         desc: "获取明细数据"
         logged: true
+        cached: true
         params:
           hpqbState: 0
           lpdxState: 0
@@ -85,6 +88,25 @@ Strategies:
             logged: true
             params:
               xcjwScore: 200
+  - name: "xiao_mods_info"
+    type: "小草模块数据"
+    status: 1
+    cached: true
+    priority: 4
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        params: {}
+      - name: "build_xiaocao_mod_dict_all"
+        step: 1
+        desc: "构建小草模式"
+        logged: false
+        cached: true
+        lruCached: true
+        params:
+          date: "{{system_time}}"
   - name: "xiao_cao_env"
     type: "小草环境数据"
     status: 1
@@ -94,19 +116,21 @@ Strategies:
       - name: "check_user_alive"
         step: 0
         desc: "用户状态检查"
-        logged: true
+        logged: false
+        cached: true
         params: {}
       - name: "system_time"
         step: 1
         desc: "获取系统时间"
-        logged: true
+        logged: false
         params:
           formatter: "%Y-%m-%d"
         cached: false
       - name: "build_xiaocao_environment_second_line_v2_dict_simple"
         step: 2
         desc: "构建环境"
-        logged: true
+        logged: false
+        cached: true
         params:
           date: "{{system_time}}"
   - name: "lpdx_first"
@@ -121,6 +145,7 @@ Strategies:
         step: 0
         desc: "用户状态检查"
         logged: false
+        cached: true
         params: {}
       - name: "system_time"
         step: 1
@@ -133,6 +158,7 @@ Strategies:
         step: 2
         desc: "A股全盘绿盘低吸排序"
         logged: false
+        cached: true
         params:
           sortId: 40
           sortType: 1
@@ -142,12 +168,12 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
-            logged: true
+            logged: false
             index: 0
             params: {}
           - name: "limiter_filter"
             desc: "限制数量"
-            logged: true
+            logged: false
             index: 1
             params:
               limit: 1
@@ -155,6 +181,7 @@ Strategies:
         step: 3
         desc: "获取明细数据"
         logged: false
+        cached: true
         params:
           hpqbState: 0
           lpdxState: 0
@@ -190,37 +217,31 @@ Strategies:
             index: 5
             desc: "转换格式"
             logged: true
-  - name: "xiao_cao_dwdx_d"
-    type: "d"
-    status: 0
+  - name: "低吸"
+    type: "小草低吸"
+    status: 1
     cached: true
+    priority: 1
+    depends: "xiao_cao_env,xiao_mods_info"
     selectors:
       - name: "check_user_alive"
-        step: 1
+        step: 0
         desc: "用户状态检查"
+        logged: false
+        cached: true
         params: {}
       - name: "system_time"
-        step: 2
+        step: 1
         desc: "获取系统时间"
+        logged: false
         params:
           formatter: "%Y-%m-%d"
-      - name: "select_block_code"
-        step: 3
-        desc: "获取方向第一"
-        params:
-          limit: 1
-          score_diff: 20
-          category_top: 2
-          date: "{{system_time}}"
-      - name: "block_codes"
-        step: 4
-        desc: "获取板块股票"
-        params:
-          blockCode: "{{select_block_code}}"
-          tradeDate: "{{system_time}}"
+        cached: false
       - name: "sort_v2"
-        step: 5
+        step: 2
         desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
         params:
           sortId: 40
           sortType: 1
@@ -230,33 +251,219 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
+            logged: false
             index: 0
             params: {}
-          - name: "block_codes_filter"
-            desc: "过滤行业板块"
-            index: 1
-            params:
-              limit: 3
+      - name: "get_code_by_block_rank"
+        step: 3
+        desc: "获取股票数据"
+        logged: true
+        cached: true
+        params:
+          blockCodeList: ""
+          industryBlockCodeList: ""
+          categoryCodeList: ""
+          exponentCodeList: "{{code}}"
+          tradeDate: "{{system_time}}"
+          ranks: '{{sort_v2|join(",")}}'
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: false
+            index: 0
+            params: {}
       - name: "xiao_cao_index_v2"
-        step: 6
+        step: 4
         desc: "获取明细数据"
+        logged: false
+        cached: true
         params:
           hpqbState: 0
           lpdxState: 0
-          stockCodes: "{{sort_v2}}"
+          stockCodes: '{{get_code_by_block_rank|join(",")}}'
           date: "{{system_time}}"
         filters:
-          - name: "st_filter"
+          - name: "change_item_filter"
             index: 0
-            desc: "过滤st的股票"
-            params:
-              is_st: 1
-          # - name: "open_pct_filter"
-          #   index: 1
-          #   desc: "过滤开盘涨幅"
-          #   params:
-          #     open_pct: -10
-          - name: "first_bottom_filter"
-            index: 1
-            desc: "过滤首次跌停"
+            desc: "转换格式"
+            logged: false
             params: {}
+          - name: "st_filter"
+            index: 2
+            desc: "过滤st的股票"
+            logged: false
+            params: {}
+          - name: "first_bottom_filter"
+            index: 3
+            desc: "过滤首次跌停"
+            logged: false
+          - name: "dx_filter"
+            index: 4
+            desc: "过滤竞王分"
+            logged: false
+            params:
+              xcdxScore: 1
+  - name: "追涨"
+    type: "小草追涨"
+    status: 1
+    cached: true
+    priority: 1
+    depends: "xiao_cao_env,xiao_mods_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘红盘起爆排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 39
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: false
+            index: 0
+            params: {}
+      - name: "get_code_by_block_rank"
+        step: 3
+        desc: "获取股票数据"
+        logged: true
+        cached: true
+        params:
+          blockCodeList: ""
+          industryBlockCodeList: ""
+          categoryCodeList: ""
+          exponentCodeList: "{{code}}"
+          tradeDate: "{{system_time}}"
+          ranks: "{{sort_v2}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: false
+            index: 0
+            params: {}
+      - name: "xiao_cao_index_v2"
+        step: 4
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{get_code_by_block_rank|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "st_filter"
+            index: 2
+            desc: "过滤st的股票"
+            logged: false
+            params: {}
+          - name: "qb_filter"
+            index: 4
+            desc: "过滤起爆分"
+            logged: false
+            params:
+              xcqbScore: 1
+  - name: "接力"
+    type: "小草追涨"
+    status: 1
+    cached: true
+    priority: 1
+    depends: "xiao_cao_env,xiao_mods_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘竞王分排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 38
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: false
+            index: 0
+            params: {}
+      - name: "get_code_by_block_rank"
+        step: 3
+        desc: "获取股票数据"
+        logged: true
+        cached: true
+        params:
+          blockCodeList: ""
+          industryBlockCodeList: ""
+          categoryCodeList: ""
+          exponentCodeList: "{{code}}"
+          tradeDate: "{{system_time}}"
+          ranks: "{{sort_v2}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: false
+            index: 0
+            params: {}
+      - name: "xiao_cao_index_v2"
+        step: 4
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{get_code_by_block_rank|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "st_filter"
+            index: 2
+            desc: "过滤st的股票"
+            logged: false
+            params: {}
+          - name: "jw_filter"
+            index: 4
+            desc: "过滤竞王分"
+            logged: false
+            params:
+              xcjwScore: 10

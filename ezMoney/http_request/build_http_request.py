@@ -27,7 +27,7 @@ def get_result(func):
         result = func(*args, **kwargs)
         if result is None:
             raise ValueError(f"Request failed with res: {result}")
-        if 'errorcode' in result and result['errorCode']:
+        if 'errorcode' in result and result['errorCode'] or ('ok' in result and result['ok'] == False):
             raise ValueError(f"Request failed with errorcode: {result['errorCode']}, errormsg: {result['errorMsg']}")
         if 'result' not in result:
             raise ValueError(f"Request failed with res: {result}")
@@ -50,9 +50,7 @@ def post_request(url, headers, cookies, data=None, max_retries=3, retry_delay=1)
     retries = 0
     while retries < max_retries:
         try:
-            response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=2)
-            print(response.status_code)
-            print(response.text)
+            response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=3)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -216,8 +214,32 @@ def get_code_by_xiao_cao_block(blockCodeList=[], industryBlockCodeList=[],catego
     }
 
     data = {"params": params}
-    print(json.dumps(data))
     return post_request(url, head, cookie, data = json.dumps(data))
+
+@log_error
+@get_result
+def get_code_by_xiao_cao_block_rank(blockCodeList="", industryBlockCodeList="",categoryCodeList="", exponentCodeList="", tradeDate = get_current_date()):
+    """
+    获取行业的股票数据
+
+    返回:
+        dict: 响应的 JSON 数据。
+    """
+    urlConfig = get_request_confg_by_name('get_code_by_xiao_cao_block')
+    url = url_prefix + urlConfig['path']
+    head = urlConfig['headers']
+    cookie = urlConfig['cookies']
+    params = {
+        "blockCodeList": blockCodeList,
+        "industryBlockCodeList": industryBlockCodeList,
+        "categoryCodeList": categoryCodeList,
+        "exponentCodeList": exponentCodeList,
+        "tradeDate": tradeDate
+    }
+
+    data = {"params": params}
+    return post_request(url, head, cookie, data = json.dumps(data))
+
 
 @log_error
 def stock_call_auction(code = "", tradeDate = get_current_date_no_line()):

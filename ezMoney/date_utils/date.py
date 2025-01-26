@@ -79,7 +79,9 @@ def get_hour_of_day():
     return datetime.now().hour
 
 
-def is_trading_day(current_date):
+def is_trading_day(current_date = get_current_date()):
+    if '-' not in current_date:
+        current_date = current_date[0:4] + '-' + current_date[4:6] + '-' + current_date[6:8]
     is_trade = current_date in trade_date_list
     if is_trade:
         return True, trade_date_list[trade_date_list.index(current_date) - 1]

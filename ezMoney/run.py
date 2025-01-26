@@ -21,6 +21,7 @@ from date_utils import date
 import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
+from run_roll_back import *
 
 # 设置环境变量
 import threading
@@ -43,31 +44,63 @@ qmt_trader = QMTTrader(path, acc_id)
 global cached_auction_infos
 cached_auction_infos = []
 
-def get_target_codes(retry_times=3):
+
+strategies = {
+    "低吸": {
+        "低位孕线低吸": {
+            "code": "9G0086"
+        }
+    },
+    "lpdx_first": {}
+}
+
+def get_target_return_keys_dict(starategies_dict = strategies):
+    target_return_keys_dict = {}
+    for strategy_name, sub_task_dict in starategies_dict.items():
+        if not sub_task_dict or len(sub_task_dict) == 0:
+            target_return_keys_dict[strategy_name] = strategy_name
+        else:
+            for sub_task_name, _ in sub_task_dict.items():
+                target_return_keys_dict[strategy_name + '_' + sub_task_name] = strategy_name
+    return target_return_keys_dict
+
+def get_target_codes_by_all_strategies(retry_times=3):
+    rslt_dct = {}
     if retry_times <= 0:
-        return None, 0.3
-    auction_codes = []
-    position = 0.3
+        return None
+    default_position = 0.3
     try:
-        items = sm.run_all_strategys()
+        items = sm.run_all_strategys(strategies_dict=strategies)
+        rkeys = get_target_return_keys_dict(strategies)
+        if rkeys == None or len(rkeys) == 0:
+            return None
         if items == None:
-            return None, 0.3
+            return None
         if len(items) == 0:
-            return None, 0.3
-        if 'xiao_cao_env' in items:
-            xiaocao_envs = items['xiao_cao_env'][0]
-            position = get_position(xiaocao_envs)
-        for _, arr in items.items():
-            if type(arr) != list:
+            return None
+        for key, name in rkeys.items():
+            if key not in items:
                 continue
-            for item in arr:
-                if item == None:
-                    continue
-                auction_codes.append(item.split('.')[0])
+            item = items[key]
+            if item == None:
+                continue
+            position = default_position
+            auction_codes = []
+            if 'xiao_cao_env' in item:
+                xiaocao_envs = item['xiao_cao_env'][0]
+                position = get_position(xiaocao_envs)
+            if name in item:
+                real_item_list = item[name]
+                for code in real_item_list:
+                    if not code or len(code) == 0:
+                        continue
+                    auction_codes.append(code.split('.')[0])
+            if len(auction_codes):
+                rslt_dct[key] = (auction_codes, position)
     except Exception as e:
-        logger.error(f"An error occurred in get_target_codes: {e}")
-        return get_target_codes(retry_times-1)
-    return auction_codes, position
+        logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
+        return get_target_codes_by_all_strategies(retry_times-1)
+    return rslt_dct
 
 
 def get_position(xiaocao_envs):
@@ -106,6 +139,27 @@ def get_position(xiaocao_envs):
     return max(min(0.3 + lift, 1.0), 0.3)
 
 
+def merge_result(rslt):
+    if type(rslt) is not dict:
+        logger.error(f"merge result type error{type(rslt)}")
+        return {}
+    if len(rslt) == 0:
+        return {}
+    code_to_position = {}
+    ll = len(rslt)
+    for key, value in rslt.items():
+        logger.info(f"策略{key}, 成功得到结果 {value}.")
+        codes = value[0]
+        code_len = len(codes)
+        if code_len <= 0:
+            continue
+        position = value[1]
+        for code in codes:
+            code_to_position[code] = position / code_len / ll
+    return code_to_position
+
+
+
 def strategy_schedule_job():
     try:    
         is_trade, _ = date.is_trading_day()
@@ -115,40 +169,29 @@ def strategy_schedule_job():
             return
         if not date.is_between_925_and_930():
             logger.info("[producer] 非交易时间，不执行策略.")
+            end_task("code_schedule_job")
             return
-        auction_codes, position = get_target_codes()
-        if auction_codes == None or len(auction_codes) == 0:
+        rslt = get_target_codes_by_all_strategies()
+        if not rslt or len(rslt) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
-            return
-        if position == None:
-            logger.info("[producer] 未获取到仓位，等待重新执行策略...")
-            return
+            cached_auction_infos.append({})
+        m_rslt = merge_result(rslt)
         end = False
         if len(cached_auction_infos) > 1:
-            auction_codes_0 = auction_codes
-            position_0 = position
-            auction_codes_1, position_1 = cached_auction_infos[-1]
-            auction_codes_2, position_2 = cached_auction_infos[-2]
-            if auction_codes_0 == auction_codes_1 and auction_codes_0 == auction_codes_2:
+            pre_rslt = cached_auction_infos[-1]
+            pree_rslt = cached_auction_infos[-2]
+            if pre_rslt.keys() == pree_rslt.keys() and m_rslt.keys() == pre_rslt.keys():
                 logger.info("[producer] 连续3次获取到相同的目标股票...")
-                if position_0 == position_1 and position_0 == position_2:
-                    logger.info("[producer] 连续3次获取到相同的仓位...")
-                    end = True
+                end = True
         if not end:
-            cached_auction_infos.append((auction_codes, position))
+            cached_auction_infos.append(m_rslt)
             return
-        
-        length = len(auction_codes)
-        logger.info(f"[producer] 获取到目标股票: {auction_codes}")
-        if not position:
-            position = 0.3
-        if position >= 0 or position <= 1:
-            pct = position
         else:
-            pct = 0.3
-        each_money_pct = pct / length
-        for code in auction_codes:
-            q.put((code, each_money_pct))
+            cached_auction_infos.clear()
+        
+        logger.info(f"[producer] 获取到目标股票: {m_rslt}")
+        for code, position in m_rslt.items():
+            q.put((code, position))
         if end:
             end_task("code_schedule_job")
     except Exception as e:
@@ -192,13 +235,18 @@ def is_after_932():
     return now > target_time
 
 def cancel_orders():
+    is_trade, _ = date.is_trading_day()
+    if not is_trade:
+        logger.info("[cancel_orders] 非交易日，不执行策略.")
+        remove_job("code_cancel_job")
+        return
     if is_before_930_30():
         logger.info("未到取消时间，不取消订单")
         return
     cancel_result = qmt_trader.cancel_active_orders()
     logger.info(f"取消所有未成交的订单 {cancel_result}")
-    cacel_time = cancel_time + 1
-    if cacel_time > 5:
+    cancel_time = cancel_time + 1
+    if cancel_time > 5:
         remove_job("code_cancel_job")
 
 
@@ -241,17 +289,19 @@ if __name__ == "__main__":
     try:
         while True:
             if is_after_932():
-                print("达到最大执行时间，退出程序")
+                logger.info("达到最大执行时间，退出程序")
+                q.put('end')
                 scheduler.shutdown()
                 break
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         # 关闭调度器
         scheduler.shutdown()
-
+    
+    q.close()
     q.join_thread()
     consumer_thread.join()
-    
+    logger.info("Consumer thread joined.")    
 
     # # 卖出股票
     # order_id = qmt_trader.sell('600000.SH', 11.0, 50)

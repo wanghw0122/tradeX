@@ -2,7 +2,276 @@ configs:
   - strategy_name: "lpdx_first"
     start: "2025-01-13"
     end: "2025-01-14"
+    sub_tasks: {}
     max_num: 120
+    valid: false
+    saved: false
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"
+  - strategy_name: "低吸"
+    sub_tasks:
+      - name: "绿盘低吸"
+        params:
+          code: "9G0002"
+      - name: "首红断低吸"
+        params:
+          code: "9G0008"
+      - name: "红断低吸"
+        params:
+          code: "9G0015"
+      - name: "绿断低吸"
+        params:
+          code: "9G0017"
+      - name: "低位低吸"
+        params:
+          code: "9G0020"
+      - name: "高位低吸"
+        params:
+          code: "9G0024"
+      - name: "中位低吸"
+        params:
+          code: "9G0026"
+      - name: "下跌低吸"
+        params:
+          code: "9G0028"
+      - name: "断低吸"
+        params:
+          code: "9G0032"
+      - name: "连断低吸"
+        params:
+          code: "9G0033"
+      - name: "首断低吸"
+        params:
+          code: "9G0034"
+      - name: "绿盘低吸前3"
+        params:
+          code: "9G0040"
+      - name: "高位断板低吸"
+        params:
+          code: "9G0041"
+      - name: "中位断板低吸"
+        params:
+          code: "9G0042"
+      - name: "低位断板低吸"
+        params:
+          code: "9G0043"
+      - name: "最高低吸"
+        params:
+          code: "9G0046"
+      - name: "最高断板低吸"
+        params:
+          code: "9G0048"
+      - name: "首绿断低吸"
+        params:
+          code: "9G0049"
+      - name: "最高N字低吸"
+        params:
+          code: "9G0077"
+      - name: "高位N字低吸"
+        params:
+          code: "9G0078"
+      - name: "中位N字低吸"
+        params:
+          code: "9G0079"
+      - name: "低位N字低吸"
+        params:
+          code: "9G0080"
+      - name: "下跌N字低吸"
+        params:
+          code: "9G0081"
+      - name: "最高孕线低吸"
+        params:
+          code: "9G0083"
+      - name: "高位孕线低吸"
+        params:
+          code: "9G0084"
+      - name: "中位孕线低吸"
+        params:
+          code: "9G0085"
+      - name: "低位孕线低吸"
+        params:
+          code: "9G0086"
+      - name: "下跌孕线低吸"
+        params:
+          code: "9G0087"
+      - name: "放宽低吸前3"
+        params:
+          code: "9G0099"
+    start: "2025-01-13"
+    end: "2025-01-14"
+    max_num: 120
+    valid: true
+    saved: true
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"
+  - strategy_name: "追涨"
+    sub_tasks:
+      - name: "首红断追涨"
+        params:
+          code: "9G0016"
+      - name: "长影追涨"
+        params:
+          code: "9G0018"
+      - name: "小高开追涨"
+        params:
+          code: "9G0019"
+      - name: "低位追涨"
+        params:
+          code: "9G0021"
+      - name: "高位追涨"
+        params:
+          code: "9G0025"
+      - name: "中位追涨"
+        params:
+          code: "9G0027"
+      - name: "下跌追涨"
+        params:
+          code: "9G0030"
+      - name: "超跌追涨"
+        params:
+          code: "9G0031"
+      - name: "断追涨"
+        params:
+          code: "9G0035"
+      - name: "连断追涨"
+        params:
+          code: "9G0036"
+      - name: "首断追涨"
+        params:
+          code: "9G0037"
+      - name: "最高追涨"
+        params:
+          code: "9G0047"
+      - name: "最高断板追涨"
+        params:
+          code: "9G0050"
+      - name: "高位断板追涨"
+        params:
+          code: "9G0051"
+      - name: "中位断板追涨"
+        params:
+          code: "9G0052"
+      - name: "低位断板追涨"
+        params:
+          code: "9G0053"
+      - name: "红断追涨"
+        params:
+          code: "9G0056"
+      - name: "绿断追涨"
+        params:
+          code: "9G0057"
+      - name: "首绿断追涨"
+        params:
+          code: "9G0058"
+      - name: "一进二追涨"
+        params:
+          code: "9G0095"
+      - name: "二板以上追涨"
+        params:
+          code: "9G0096"
+      - name: "放宽追涨前3"
+        params:
+          code: "9G0100"
+      - name: "红盘起爆"
+        params:
+          code: "9G0001"
+      - name: "红盘起爆前3"
+        params:
+          code: "9G0039"
+      - name: "最高小高开起爆"
+        params:
+          code: "9G0089"
+      - name: "高位小高开起爆"
+        params:
+          code: "9G0090"
+      - name: "中位小高开起爆"
+        params:
+          code: "9G0091"
+      - name: "低位小高开起爆"
+        params:
+          code: "9G0092"
+      - name: "下跌小高开起爆"
+        params:
+          code: "9G0093"
+    start: "2024-01-09"
+    end: "2025-01-14"
+    max_num: 120
+    valid: false
+    saved: true
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"
+  - strategy_name: "接力"
+    sub_tasks:
+      - name: "一进二弱转强"
+        params:
+          code: "9G0003"
+      - name: "一进二中弱转强"
+        params:
+          code: "9G0004"
+      - name: "中高位弱转强"
+        params:
+          code: "9G0005"
+      - name: "中高位中弱转强"
+        params:
+          code: "9G0006"
+      - name: "倒接力"
+        params:
+          code: "9G0007"
+      - name: "中高位连板打板"
+        params: 
+          code: "9G0009"
+      - name: "一进二打板"
+        params:
+          code: "9G0010"
+      - name: "N半23"
+        params:
+          code: "9G0011"
+      - name: "N半"
+        params:
+          code: "9G0012"
+      - name: "N"
+        params:
+          code: "9G0013"
+      - name: "孕线"
+        params:
+          code: "9G0014"
+      - name: "首板打板"
+        params:
+          code: "9G0038"
+      - name: "最高倒接力"
+        params:
+          code: "9G0065"
+      - name: "高位倒接力"
+        params:
+          code: "9G0066"
+      - name: "中位倒接力"
+        params:
+          code: "9G0067"
+      - name: "低位倒接力"
+        params:
+          code: "9G0068"
+      - name: "下跌倒接力"
+        params:
+          code: "9G0069"
+      - name: "最高弱板倒接力"
+        params:
+          code: "9G0071"
+      - name: "高位弱板倒接力"
+        params:
+          code: "9G0072"
+      - name: "中位弱板倒接力"
+        params:
+          code: "9G0073"
+      - name: "低位弱板倒接力"
+        params:
+          code: "9G0074"
+      - name: "二进三以上弱转强"
+        params:
+          code: "9G0101"
+    start: "2025-01-13"
+    end: "2025-01-14"
+    max_num: 120
+    valid: false
     saved: false
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "w"

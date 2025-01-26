@@ -179,6 +179,8 @@ def run(strategy_name, date, next_date, rslt, code_map, sub_task = None, params 
         rslt['return'].append(0.0)
         rslt['max_return'].append(0.0)
         rslt['first_return'].append(0.0)
+        rslt['top2_return'].append(0.0)
+        rslt['top3_return'].append(0.0)
         rslt['position'].append(position)
         rslt['codes_num'].append(0)
     else:
@@ -195,22 +197,42 @@ def run(strategy_name, date, next_date, rslt, code_map, sub_task = None, params 
         is_first = True
         max_return = -1
         avg_return = 0
+        top2_return = 0
+        top2_cnt = 0
+        top3_cnt = 0
+        top3_return = 0
+        index = 0
         for code in auction_codes:
             if code not in code_map:
                 logger.error(f"股票{code}不在全市场股票字典中...")
-                raise
+                continue
             rcode = code_map[code]
             result = compute_return(rcode, current_date, next_date)
+            if index < 2:
+                top2_return = top2_return + result
+                top2_cnt = top2_cnt + 1
+            if index < 3:
+                top3_return = top3_return + result
+                top3_cnt = top3_cnt + 1
             avg_return = avg_return + result
         
             max_return = max(max_return, result)
             if is_first:
                 rslt['first_return'].append(result)
                 is_first = False
+            index = index + 1
+        if top2_cnt == 0:
+            rslt['top2_return'].append(0.0)
+        else:
+            rslt['top2_return'].append(top2_return/top2_cnt)
+        if top3_cnt == 0:
+            rslt['top3_return'].append(0.0)
+        else:
+            rslt['top3_return'].append(top3_return/top3_cnt)
         rslt['return'].append(avg_return/cnum)
         rslt['max_return'].append(max_return)
 
-def save_rslt(rslt, save_path, save_mod, nums = 100):
+def save_rslt(rslt, save_path, save_mod, nums = 300):
     if 'w' == save_mod:
         return
     if len(rslt['date']) < nums:
@@ -284,6 +306,8 @@ if __name__ == "__main__":
         returns = []
         max_returns = []
         first_returns = []
+        top2_returns = []
+        top3_returns = []
         positions = []
         codes_nums = []
 
@@ -306,6 +330,8 @@ if __name__ == "__main__":
         rslt['return'] = returns
         rslt['max_return'] = max_returns
         rslt['first_return'] = first_returns
+        rslt['top2_return'] = top2_returns
+        rslt['top3_return'] = top3_returns
         rslt['position'] = positions
         rslt['codes_num'] = codes_nums
 
@@ -334,7 +360,7 @@ if __name__ == "__main__":
             else:
                 run(strategy_name, current_date, next_date, rslt, code_map)
 
-            time.sleep(1)
+            # time.sleep(1)
         i = i + 1
         df = pd.DataFrame(rslt)
         if saved:

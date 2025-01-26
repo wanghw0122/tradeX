@@ -174,9 +174,9 @@ class QMTTrader:
         if sync:
             order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
             if order_id < 0:
-                logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
+                logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}, 委托ID: {order_id}")
             else:
-                logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
+                logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}, 委托ID: {order_id}")
                 self.orders.append(order_id)
             return order_id
         else:
@@ -243,7 +243,8 @@ class QMTTrader:
             logger.error(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
             return
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
-        self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync)
+        id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync)
+        return id
 
     def sell(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark=''):
         """

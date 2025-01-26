@@ -351,7 +351,7 @@ Strategies:
           categoryCodeList: ""
           exponentCodeList: "{{code}}"
           tradeDate: "{{system_time}}"
-          ranks: "{{sort_v2}}"
+          ranks: '{{sort_v2|join(",")}}'
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
@@ -433,7 +433,7 @@ Strategies:
           categoryCodeList: ""
           exponentCodeList: "{{code}}"
           tradeDate: "{{system_time}}"
-          ranks: "{{sort_v2}}"
+          ranks: '{{sort_v2|join(",")}}'
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"

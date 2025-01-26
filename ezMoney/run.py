@@ -61,7 +61,7 @@ def get_target_return_keys_dict(starategies_dict = strategies):
             target_return_keys_dict[strategy_name] = strategy_name
         else:
             for sub_task_name, _ in sub_task_dict.items():
-                target_return_keys_dict[strategy_name + '_' + sub_task_name] = strategy_name
+                target_return_keys_dict[strategy_name + '-' + sub_task_name] = strategy_name
     return target_return_keys_dict
 
 def get_target_codes_by_all_strategies(retry_times=3):
@@ -188,12 +188,11 @@ def strategy_schedule_job():
             return
         else:
             cached_auction_infos.clear()
-        
-        logger.info(f"[producer] 获取到目标股票: {m_rslt}")
-        for code, position in m_rslt.items():
-            q.put((code, position))
-        if end:
+            logger.info(f"[producer] 获取到目标股票: {m_rslt}")
+            for code, position in m_rslt.items():
+                q.put((code, position))
             end_task("code_schedule_job")
+
     except Exception as e:
         error_time = error_time + 1
         if error_time > 120:
@@ -212,11 +211,11 @@ def consumer_to_buy(q):
             logger.info(f"[consumer] Consumed: {data}")
             if (type(data) == tuple):
                 c_cash = cash * data[1]
-                b = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
-                if not b:
-                    b = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
-                    if not b:
-                        qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                order_id = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                if order_id < 0:
+                     order_id = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                     if order_id < 0:
+                        order_id = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
             elif type(data) == str and data == 'end':
                 break
             else:
@@ -288,11 +287,11 @@ if __name__ == "__main__":
     # 保持程序运行，以便调度器可以执行任务
     try:
         while True:
-            if is_after_932():
-                logger.info("达到最大执行时间，退出程序")
-                q.put('end')
-                scheduler.shutdown()
-                break
+            # if is_after_932():
+            #     logger.info("达到最大执行时间，退出程序")
+            #     q.put('end')
+            #     scheduler.shutdown()
+            #     break
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         # 关闭调度器

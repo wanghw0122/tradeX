@@ -230,6 +230,7 @@ class StrategyManager:
             return return_result
         run_strategys = []
         for strategy_name in strategy_names:
+            logger.info(f'start run strategy_name: {strategy_name}')
             strategy = self.get_strategy(strategy_name)
             if strategy is None:
                 logger.error(f"strategy {strategy_name} not found. or status is 0.")
@@ -259,11 +260,24 @@ class StrategyManager:
         return self.strategy_dict[name]
 
     def run_all_strategys(self, strategies_dict = {}, current_date = date.get_current_date()):
+        logger.info(f"strategies_dict: {strategies_dict}")
+        return_rslt = {}
         if strategies_dict is None or len(strategies_dict) == 0:
             return {}
-        
-        strategy_names = self.get_all_strategy_names()
-        return self.run_strategys(strategy_names = strategy_names, current_date = current_date)
+        all_valid_strategy_names = self.get_all_strategy_names()
+        for strategy_name, sub_task_dict in strategies_dict.items():
+            if strategy_name not in all_valid_strategy_names:
+                logger.info(f"策略 {strategy_name} 无效，取消执行.")
+                continue
+            if sub_task_dict and len(sub_task_dict) > 0:
+                for sub_task, params in sub_task_dict.items():
+                    rslt = self.run_strategys([strategy_name], current_date, sub_task, params)
+                    return_rslt[strategy_name + '-' + sub_task] = rslt
+            else:
+                rslt = self.run_strategys([strategy_name], current_date)
+                return_rslt[strategy_name] = rslt
+        return return_rslt
+
 
     def get_all_strategy_names(self):
         return [strategy.name for strategy in self.strategy_list if strategy.status > 0]

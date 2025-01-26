@@ -48,10 +48,11 @@ cached_auction_infos = []
 strategies = {
     "低吸": {
         "低位孕线低吸": {
-            "code": "9G0086"
+            "code": "9G0086",
+            "returnNum": 1
         }
     },
-    "lpdx_first": {}
+    "xiao_cao_dwdx_a": {}
 }
 
 def get_target_return_keys_dict(starategies_dict = strategies):
@@ -91,6 +92,8 @@ def get_target_codes_by_all_strategies(retry_times=3):
                 position = get_position(xiaocao_envs)
             if name in item:
                 real_item_list = item[name]
+                if real_item_list == None:
+                    continue
                 for code in real_item_list:
                     if not code or len(code) == 0:
                         continue
@@ -287,11 +290,11 @@ if __name__ == "__main__":
     # 保持程序运行，以便调度器可以执行任务
     try:
         while True:
-            # if is_after_932():
-            #     logger.info("达到最大执行时间，退出程序")
-            #     q.put('end')
-            #     scheduler.shutdown()
-            #     break
+            if is_after_932():
+                logger.info("达到最大执行时间，退出程序")
+                q.put('end')
+                scheduler.shutdown()
+                break
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         # 关闭调度器

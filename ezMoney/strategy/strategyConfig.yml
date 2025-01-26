@@ -222,6 +222,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
+    maxReturnNum: 1
     depends: "xiao_cao_env,xiao_mods_info"
     selectors:
       - name: "check_user_alive"

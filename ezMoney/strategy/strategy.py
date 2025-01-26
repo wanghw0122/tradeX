@@ -292,13 +292,16 @@ class XiaoCaoDwdxA(Strategy):
         s_result = super().run(current_date, **kwargs)
         if s_result is None or len(s_result) == 0:
             return None
-        else:
-            s_result.sort(key=lambda x: x.cjs, reverse=True)
-            if self.max_return_num:
-                s_result = s_result[:self.max_return_num]
-                if s_result is None or len(s_result) == 0:
-                    return None
-            return [x.code for x in s_result]
+        s_result.sort(key=lambda x: x.cjs, reverse=True)
+        if self.max_return_num:
+            s_result = s_result[:self.max_return_num]
+            if s_result is None or len(s_result) == 0:
+                return None
+        
+        rs = [x.code for x in s_result]
+        if 'returnNum' in kwargs and kwargs['returnNum']:
+            return rs[:kwargs['returnNum']]
+        return rs
 
 class XiaoCaoDwdxD(Strategy):
     def __init__(self, config, strategy_manager):
@@ -314,13 +317,16 @@ class DxStrategy(Strategy):
         s_result = super().run(current_date, **kwargs)
         if s_result is None or len(s_result) == 0:
             return None
-        else:
-            s_result.sort(key=lambda x: x.cjs, reverse=True)
-            if self.max_return_num:
-                s_result = s_result[:self.max_return_num]
-                if s_result is None or len(s_result) == 0:
-                    return None
-            return [x.code for x in s_result]
+        s_result.sort(key=lambda x: x.cjs, reverse=True)
+        if self.max_return_num:
+            s_result = s_result[:self.max_return_num]
+            if s_result is None or len(s_result) == 0:
+                return None
+        
+        rs = [x.code for x in s_result]
+        if 'returnNum' in kwargs and kwargs['returnNum'] >= 0:
+            return rs[:kwargs['returnNum']]
+        return rs
 
 class JwStrategy(Strategy):
     def __init__(self, config, strategy_manager):
@@ -331,14 +337,15 @@ class JwStrategy(Strategy):
         s_result = super().run(current_date, **kwargs)
         if s_result is None or len(s_result) == 0:
             return None
-        else:
-            s_result.sort(key=lambda x: x.xcjw, reverse=True)
-            if self.max_return_num:
-                s_result = s_result[:self.max_return_num]
-                if s_result is None or len(s_result) == 0:
-                    return None
-            return [x.code for x in s_result]
-
+        s_result.sort(key=lambda x: x.xcjw, reverse=True)
+        if self.max_return_num:
+            s_result = s_result[:self.max_return_num]
+            if s_result is None or len(s_result) == 0:
+                return None
+        rs = [x.code for x in s_result]
+        if 'returnNum' in kwargs and kwargs['returnNum']:
+            return rs[:kwargs['returnNum']]
+        return rs
 
 class QbStrategy(Strategy):
     def __init__(self, config, strategy_manager):
@@ -349,13 +356,15 @@ class QbStrategy(Strategy):
         s_result = super().run(current_date, **kwargs)
         if s_result is None or len(s_result) == 0:
             return None
-        else:
-            s_result.sort(key=lambda x: x.jssb, reverse=True)
-            if self.max_return_num:
-                s_result = s_result[:self.max_return_num]
-                if s_result is None or len(s_result) == 0:
-                    return None
-            return [x.code for x in s_result]
+        s_result.sort(key=lambda x: x.jssb, reverse=True)
+        if self.max_return_num:
+            s_result = s_result[:self.max_return_num]
+            if s_result is None or len(s_result) == 0:
+                return None
+        rs = [x.code for x in s_result]
+        if 'returnNum' in kwargs and kwargs['returnNum']:
+            return rs[:kwargs['returnNum']]
+        return rs
 
 
 def count_filtered_items(func):

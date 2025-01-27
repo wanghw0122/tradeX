@@ -130,7 +130,7 @@ configs:
     end: "2025-01-26"
     max_num: 200
     valid: false
-    saved: true
+    saved: false
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"
   - strategy_name: "追涨"
@@ -255,7 +255,7 @@ configs:
     end: "2025-01-26"
     max_num: 200
     valid: false
-    saved: true
+    saved: false
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"
   - strategy_name: "接力"
@@ -348,10 +348,10 @@ configs:
         params:
           code: "9G0101"
           returnNum: 10
-    start: "2024-10-24"
+    start: "2025-01-23"
     end: "2025-01-26"
     max_num: 200
     valid: true
-    saved: true
+    saved: false
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"

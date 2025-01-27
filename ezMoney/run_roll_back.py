@@ -168,8 +168,8 @@ def run(strategy_name, date, next_date, rslt, code_map, sub_task = None, params 
             raise
     auction_codes, position = get_target_codes(strategy_names= [strategy_name], date = date, sub_task = sub_task, params = params, call_back=call_back)
     if not auction_codes or len(auction_codes) == 0:
-        logger.info(f"未获取到日期{current_date}的目标股票... 等待继续执行")
-        rslt['date'].append(current_date)
+        logger.info(f"未获取到日期{date}的目标股票... 等待继续执行")
+        rslt['date'].append(date)
         rslt['code'].append('')
         rslt['strategy_name'].append(strategy_name)
         if sub_task:
@@ -184,7 +184,7 @@ def run(strategy_name, date, next_date, rslt, code_map, sub_task = None, params 
         rslt['position'].append(position)
         rslt['codes_num'].append(0)
     else:
-        rslt['date'].append(current_date)
+        rslt['date'].append(date)
         rslt['code'].append(','.join(auction_codes))
         rslt['strategy_name'].append(strategy_name)
         if sub_task:
@@ -207,7 +207,7 @@ def run(strategy_name, date, next_date, rslt, code_map, sub_task = None, params 
                 logger.error(f"股票{code}不在全市场股票字典中...")
                 continue
             rcode = code_map[code]
-            result = compute_return(rcode, current_date, next_date)
+            result = compute_return(rcode, date, next_date)
             if index < 2:
                 top2_return = top2_return + result
                 top2_cnt = top2_cnt + 1
@@ -244,8 +244,7 @@ def save_rslt(rslt, save_path, save_mod, nums = 300):
     for k, _ in rslt.items():
         rslt[k].clear()
 
-if __name__ == "__main__":
-
+def run_roll_back(once_daily = False):
     file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
 
     with open(file_name, 'r',  encoding='utf-8') as file:
@@ -368,3 +367,7 @@ if __name__ == "__main__":
             logger.info(f"回测完毕， 结果已保存到{save_path}")
         else:
             logger.info(f"回测完毕， 结果未保存")
+
+if __name__ == "__main__":
+    run_roll_back()
+    

@@ -39,6 +39,7 @@ cancel_time = 0
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
 # 创建QMTTrader实例
+logger.info("开始初始化QMT....")
 qmt_trader = QMTTrader(path, acc_id)
 
 global cached_auction_infos

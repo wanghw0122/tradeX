@@ -79,7 +79,7 @@ def compute_return(auction_code, date, next_date):
     length = len(df)
     if length != 2:
         logger.error(f"股票{auction_code}在{date}, {next_date}的历史数据长度不为2，长度为{length}")
-        raise
+        return 0.0
     x_data = df.loc[n_date: n_next_date]['open'].astype(float)
     start_price = x_data[n_date]
     end_price = x_data[n_next_date]

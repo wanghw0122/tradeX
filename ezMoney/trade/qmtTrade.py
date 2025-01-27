@@ -118,12 +118,16 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
 
 class QMTTrader:
     def __init__(self, path, acc_id):
+        logger.info('初始化QMTTrader')
         self.acc = StockAccount(acc_id, 'STOCK')
         self.callback = MyXtQuantTraderCallback()
         self.callback.qmt = self
         self.trader = self.get_xttrader(path)
         if not self.trader:
-            raise Exception('交易接口连接失败')
+            logger.error('QMT未启动，交易接口连接失败, 退出执行.')
+            raise Exception('QMT交易接口连接失败')
+        else:
+            logger.info('QMT交易接口连接成功')
         self.orders = []
         self.seq_ids_dict = {}
         self.orders_dict = {}
@@ -150,13 +154,13 @@ class QMTTrader:
             trader.start()
             connect_result = trader.connect()
             if trader and connect_result == 0:
-                print('连接成功，session_id:{}', session_id)
+                logger.info('连接成功，session_id:{}', session_id)
                 trader.subscribe(self.acc) 
                 return trader
             else:
-                print('连接失败，session_id:{}，继续尝试下一个id', session_id)
+                logger.info('连接失败，session_id:{}，继续尝试下一个id', session_id)
                 continue   
-        print('所有id都尝试后仍失败，放弃连接')
+        logger.info('所有id都尝试后仍失败，放弃连接')
         return None
 
     def buy(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True):

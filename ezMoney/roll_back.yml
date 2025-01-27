@@ -129,7 +129,7 @@ configs:
     start: "2024-08-01"
     end: "2025-01-26"
     max_num: 200
-    valid: true
+    valid: false
     saved: true
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"
@@ -254,7 +254,7 @@ configs:
     start: "2024-08-01"
     end: "2025-01-26"
     max_num: 200
-    valid: true
+    valid: false
     saved: true
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"
@@ -348,7 +348,7 @@ configs:
         params:
           code: "9G0101"
           returnNum: 10
-    start: "2024-08-01"
+    start: "2024-10-24"
     end: "2025-01-26"
     max_num: 200
     valid: true

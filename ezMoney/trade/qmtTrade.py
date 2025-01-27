@@ -7,7 +7,7 @@ from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 from xtquant import xtconstant
 
-from logger import logger
+from logger import logger, order_logger
 
 
 
@@ -154,12 +154,12 @@ class QMTTrader:
             trader.start()
             connect_result = trader.connect()
             if trader and connect_result == 0:
-                logger.info('连接成功，session_id:{}', session_id)
+                logger.info(f'连接成功，session_id:{session_id}')
                 trader.subscribe(self.acc) 
                 return trader
             else:
-                logger.info('连接失败，session_id:{}，继续尝试下一个id', session_id)
-                continue   
+                logger.info(f'连接失败，session_id:{session_id}，继续尝试下一个id')
+                continue
         logger.info('所有id都尝试后仍失败，放弃连接')
         return None
 
@@ -248,6 +248,7 @@ class QMTTrader:
             return
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
         id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync)
+        order_logger.info(f"下单买入股票 {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price} 委托ID {id}")
         return id
 
     def sell(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark=''):

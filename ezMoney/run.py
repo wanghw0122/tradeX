@@ -3,13 +3,12 @@ import os
 from re import A
 from typing import ItemsView
 
-from py import log
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 # from http_request import build_http_request
 # from http_request import http_context
 # from data_class import *
 from strategy.strategy import sm
-from logger import catch, logger
+from logger import catch, logger, order_logger, strategy_logger, order_success_logger
 from trade.qmtTrade import *
 from xtquant import xttrader
 from xtquant import xtdata
@@ -195,6 +194,7 @@ def strategy_schedule_job():
             logger.info(f"[producer] 获取到目标股票: {m_rslt}")
             for code, position in m_rslt.items():
                 q.put((code, position))
+                order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
             end_task("code_schedule_job")
 
     except Exception as e:
@@ -238,6 +238,7 @@ def is_after_932():
     return now > target_time
 
 def cancel_orders():
+    global cancel_time
     is_trade, _ = date.is_trading_day()
     if not is_trade:
         logger.info("[cancel_orders] 非交易日，不执行策略.")
@@ -247,6 +248,8 @@ def cancel_orders():
         logger.info("未到取消时间，不取消订单")
         return
     cancel_result = qmt_trader.cancel_active_orders()
+    if cancel_result:
+        order_logger.log(f"取消所有未成交的订单: {cancel_result}")
     logger.info(f"取消所有未成交的订单 {cancel_result}")
     cancel_time = cancel_time + 1
     if cancel_time > 5:

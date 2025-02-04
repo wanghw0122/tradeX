@@ -17,6 +17,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         连接断开
         :return:
         """
+        order_logger.error("连接断开回调")
         logger.error("连接断开回调")
 
     def on_stock_order(self, order):
@@ -25,6 +26,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param order: XtOrder对象
         :return:
         """
+        order_logger.info(f"委托回调 投资备注 {order.order_remark}")
         logger.info(f"委托回调 投资备注 {order.order_remark}")
 
     def on_stock_trade(self, trade):
@@ -33,6 +35,20 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param trade: XtTrade对象
         :return:
         """
+        order_id = trade.order_id
+        if order_id in self.qmt.orders_dict:
+            (stock_code, price, volume, order_type, order_remark, time_stemp) = self.qmt.orders_dict[order_id]
+            traded_amount = trade.traded_amount
+            traded_volume = trade.traded_volume
+            trade_order_remark = trade.order_remark
+            trade_stock_code = trade.stock_code
+            trade_order_type = trade.order_type
+            traded_price = trade.traded_price
+
+            if traded_volume > 0:
+                order_logger.info(f"成交回调后实际：投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount}")
+                order_logger.info(f"成交前订单申报：股票代码 {stock_code} 委托价格 {price} 委托数量 {volume} 委托类型 {order_type} 投资备注 {order_remark} 委托时间 {time_stemp} 价格差异 {traded_price - price} 数量差异 {traded_volume - volume}")
+        order_logger.info('成交回调: ', trade.order_remark, f"{trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
         logger.info('成交回调: ', trade.order_remark, f"{trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
 
     def on_order_error(self, order_error):
@@ -42,6 +58,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :return:
         """
         order_id = order_error.order_id
+        order_logger.error(f"委托报错回调 {order_error.order_remark} {order_error.error_msg}")
         logger.error(f"委托报错回调 {order_error.order_remark} {order_error.error_msg}")
 
     def on_cancel_error(self, cancel_error):
@@ -50,6 +67,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param cancel_error: XtCancelError 对象
         :return:
         """
+        order_logger.error(f"撤单报错回调 {cancel_error.order_id} {cancel_error.error_msg}")
         logger.error(f"撤单报错回调 {cancel_error.order_id} {cancel_error.error_msg}")
 
     def on_order_stock_async_response(self, response):
@@ -62,10 +80,13 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         seq = response.seq
         (stock_code, price, volume, order_type, order_remark) = self.qmt.seq_ids_dict[seq]
         if order_id < 0:
+            order_logger.error(f"异步委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
             logger.error(f"异步委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
         else:
+            order_logger.info(f"异步委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
             logger.info(f"异步委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
             self.qmt.orders.append(order_id)
+            self.qmt.orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time())
         logger.info(f"异步委托回调 投资备注: {response.order_remark}")
 
 
@@ -74,6 +95,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param response: XtCancelOrderResponse 对象
         :return:
         """
+        order_logger.info(sys._getframe().f_code.co_name)
         logger.info(sys._getframe().f_code.co_name)
 
     def on_account_status(self, status):
@@ -81,6 +103,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param response: XtAccountStatus 对象
         :return:
         """
+        order_logger.info(sys._getframe().f_code.co_name)
         logger.info(sys._getframe().f_code.co_name)
 
 
@@ -176,11 +199,17 @@ class QMTTrader:
         :return: 委托ID
         """
         if sync:
-            order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
-            if order_id < 0:
-                logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}, 委托ID: {order_id}")
+            if order_type == xtconstant.FIX_PRICE:
+                order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
             else:
-                logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}, 委托ID: {order_id}")
+                order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, 0, order_remark)
+            if order_id < 0:
+                logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                order_logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+            else:
+                logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                order_logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                self.orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time())
                 self.orders.append(order_id)
             return order_id
         else:
@@ -200,18 +229,23 @@ class QMTTrader:
         
         if not full_tick or len(full_tick) == 0:
             logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+            order_logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
             return
         elif stock_code not in full_tick:
             logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+            order_logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
             return
         elif 'lastPrice' not in full_tick[stock_code]:
             logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+            order_logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
             return
         elif 'askPrice' not in full_tick[stock_code]:
             logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+            order_logger.error(f"获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
             return
         else:
             logger.info(f"{stock_code} 全推行情： {full_tick}")
+            order_logger.info(f"{stock_code} 全推行情： {full_tick}")
         
         current_price = full_tick[stock_code]['lastPrice']
         ask_price = full_tick[stock_code]['askPrice']

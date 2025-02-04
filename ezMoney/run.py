@@ -27,7 +27,9 @@ import threading
 import queue
 from multiprocessing import Queue
 global q
+global qq
 q = Queue(10)
+qq = Queue(10)
 
 global task_queue
 
@@ -194,6 +196,7 @@ def strategy_schedule_job():
             logger.info(f"[producer] 获取到目标股票: {m_rslt}")
             for code, position in m_rslt.items():
                 q.put((code, position))
+                qq.put((code, position))
                 order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
             end_task("code_schedule_job")
 
@@ -215,17 +218,54 @@ def consumer_to_buy(q):
             logger.info(f"[consumer] Consumed: {data}")
             if (type(data) == tuple):
                 c_cash = cash * data[1]
-                order_id = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='market', sync=True)
                 if order_id < 0:
-                     order_id = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True)
                      if order_id < 0:
-                        order_id = qmt_trader.buy_quickly(data[0], c_cash, sync=True)
+                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True)
             elif type(data) == str and data == 'end':
                 break
             else:
                 raise
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
+
+def consumer_to_subscribe(qq):
+    subscribe_ids = []
+    while True:
+        try:
+            data = qq.get()
+            logger.info(f"[subscribe] Consumed: {data}")
+            if (type(data) == tuple):
+                code = data[0]
+                period = 'tick'
+                def calculate_seconds_difference(specified_time):
+                    current_time = datetime.datetime.now().timestamp()
+                    time_difference =  current_time - (specified_time / 1000)
+                    return time_difference
+                def on_data(res, stock=code):
+                    logger.info(f"[subscribe] on_data: {data}")
+                    diff = calculate_seconds_difference(res[stock][0]['time'])
+                    if period != 'tick':
+                        close_value = res[stock][0]['close']
+                    else:
+                        close_value = res[stock][0]['lastPrice']
+                    logger.info(f'时间戳：{res[stock][0]["time"]}, 股票代码：{stock}, 当前价格：{close_value}, 延迟：{diff}')
+                id = xtdata.subscribe_quote(code,period=period,count=1, callback=on_data) # 设置count = -1来取到当天所有
+                if id < 0:
+                    logger.error(f"[subscribe] subscribe_quote error: {data}")
+                    continue
+                else:
+                    logger.info(f"[subscribe] subscribe_quote success: {data}")
+                subscribe_ids.append(id)
+            elif type(data) == str and data == 'end':
+                for id in subscribe_ids:
+                    xtdata.unsubscribe_quote(id)
+                break
+            else:
+                raise
+        except Exception as e:
+            logger.error(f"[subscribe] 执行任务出现错误: {e}")
 
 def is_before_930_30():
     now = datetime.datetime.now()
@@ -270,13 +310,16 @@ def end_task(name):
     logger.info(f"任务 {name} 执行结束")
     remove_job(name)
     q.put('end')
+    qq.put('end')
 
 
 
 if __name__ == "__main__":
 
     consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q,))
+    subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
     consumer_thread.start()
+    subscribe_thread.start()
     cached_auction_infos.clear()
 
     scheduler = BackgroundScheduler()
@@ -297,6 +340,7 @@ if __name__ == "__main__":
             if is_after_932():
                 logger.info("达到最大执行时间，退出程序")
                 q.put('end')
+                qq.put('end')
                 scheduler.shutdown()
                 break
             time.sleep(1)
@@ -306,8 +350,12 @@ if __name__ == "__main__":
     
     q.close()
     q.join_thread()
+    qq.close()
+    qq.join_thread()
     consumer_thread.join()
-    logger.info("Consumer thread joined.")    
+    subscribe_thread.join()
+    logger.info("Consumer thread joined.")
+    logger.info("Subscribe thread joined.")  
 
     # # 卖出股票
     # order_id = qmt_trader.sell('600000.SH', 11.0, 50)

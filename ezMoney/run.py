@@ -55,6 +55,12 @@ strategies = {
             "returnNum": 1
         }
     },
+    "接力":{
+        "首板打板": {
+            "code": "9G0038",
+            "returnNum": 1
+        }
+    },
     "xiao_cao_dwdx_a": {}
 }
 
@@ -72,7 +78,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
     rslt_dct = {}
     if retry_times <= 0:
         return None
-    default_position = 0.3
+    default_position = 0.4
     try:
         items = sm.run_all_strategys(strategies_dict=strategies)
         rkeys = get_target_return_keys_dict(strategies)

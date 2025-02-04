@@ -353,8 +353,9 @@ if __name__ == "__main__":
     
     q.close()
     q.join_thread()
-    qq.close()
-    qq.join_thread()
+    if end_subscribe:
+        qq.close()
+        qq.join_thread()
     consumer_thread.join()
     subscribe_thread.join()
     logger.info("Consumer thread joined.")

@@ -30,6 +30,7 @@ global q
 global qq
 q = Queue(10)
 qq = Queue(10)
+end_subscribe = False
 
 global task_queue
 
@@ -310,7 +311,8 @@ def end_task(name):
     logger.info(f"任务 {name} 执行结束")
     remove_job(name)
     q.put('end')
-    qq.put('end')
+    if end_subscribe:
+        qq.put('end')
 
 
 
@@ -340,7 +342,8 @@ if __name__ == "__main__":
             if is_after_932():
                 logger.info("达到最大执行时间，退出程序")
                 q.put('end')
-                qq.put('end')
+                if end_subscribe:
+                    qq.put('end')
                 scheduler.shutdown()
                 break
             time.sleep(1)

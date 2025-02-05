@@ -44,6 +44,10 @@ strategies = {
         "低位孕线低吸": {
             "code": "9G0086",
             "returnNum": 1
+        },
+        "低位N字低吸": {
+            "code": "9G0080",
+            "returnNum": 1
         }
     },
     "接力":{
@@ -51,9 +55,9 @@ strategies = {
             "code": "9G0038",
             "returnNum": 1
         }
-    },
-    "xiao_cao_dwdx_a": {}
+    }
 }
+
 
 def get_target_return_keys_dict(starategies_dict = strategies):
     target_return_keys_dict = {}

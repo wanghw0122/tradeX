@@ -172,7 +172,6 @@ def strategy_schedule_job():
             return
         if not date.is_between_925_and_930():
             logger.info("[producer] 非交易时间，不执行策略.")
-            end_task("code_schedule_job")
             return
         rslt = get_target_codes_by_all_strategies()
         if not rslt or len(rslt) == 0:

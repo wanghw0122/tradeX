@@ -1,3 +1,4 @@
+import pprint
 import re
 import time, datetime, traceback, sys
 from numpy import true_divide
@@ -6,12 +7,19 @@ from xtquant import xtdata
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 from xtquant import xtconstant
+from multiprocessing import Manager
 
 from logger import logger, order_logger
 
 
 
 class MyXtQuantTraderCallback(XtQuantTraderCallback):
+
+    def __init__(self):
+        self.qmt = None
+
+    def set_qmt(self, qmt):
+        self.qmt = qmt
     def on_disconnected(self):
         """
         连接断开
@@ -26,6 +34,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param order: XtOrder对象
         :return:
         """
+        order_id = order.order_id
         order_logger.info(f"委托回调 投资备注 {order.order_remark}")
         logger.info(f"委托回调 投资备注 {order.order_remark}")
 
@@ -48,8 +57,8 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
             if traded_volume > 0:
                 order_logger.info(f"成交回调后实际：投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount}")
                 order_logger.info(f"成交前订单申报：股票代码 {stock_code} 委托价格 {price} 委托数量 {volume} 委托类型 {order_type} 投资备注 {order_remark} 委托时间 {time_stemp} 价格差异 {traded_price - price} 数量差异 {traded_volume - volume}")
-        order_logger.info('成交回调: ', trade.order_remark, f"{trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
-        logger.info('成交回调: ', trade.order_remark, f"{trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
+        order_logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
+        logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
 
     def on_order_error(self, order_error):
         """
@@ -144,19 +153,21 @@ class QMTTrader:
         logger.info('初始化QMTTrader')
         self.acc = StockAccount(acc_id, 'STOCK')
         self.callback = MyXtQuantTraderCallback()
-        self.callback.qmt = self
+        # self.callback.qmt = self
         self.trader = self.get_xttrader(path)
         if not self.trader:
             logger.error('QMT未启动，交易接口连接失败, 退出执行.')
             raise Exception('QMT交易接口连接失败')
         else:
             logger.info('QMT交易接口连接成功')
-        self.orders = []
-        self.seq_ids_dict = {}
-        self.orders_dict = {}
         self.all_stocks = {}
         self.build_all_stocks()
 
+    def init_order_context(self):
+        manager = Manager()
+        self.orders = manager.list()
+        self.seq_ids_dict = manager.dict()
+        self.orders_dict = manager.dict()
 
     def build_all_stocks(self):
         all_stocks = xtdata.get_stock_list_in_sector('沪深A股')
@@ -186,7 +197,7 @@ class QMTTrader:
         logger.info('所有id都尝试后仍失败，放弃连接')
         return None
 
-    def buy(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True):
+    def buy(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, orders_dict = None, orders = None):
         """
         买入股票
 
@@ -209,8 +220,10 @@ class QMTTrader:
             else:
                 logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
                 order_logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
-                self.orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time())
-                self.orders.append(order_id)
+                if orders_dict != None:
+                    orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time())
+                if orders != None:
+                    orders.append(order_id)
             return order_id
         else:
             seq_id = self.trader.order_stock_async(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
@@ -218,7 +231,7 @@ class QMTTrader:
             return seq_id
 
 
-    def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0):
+    def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0, orders_dict = None, orders = None):
 
         if max_cash > 0:
             cash = min(cash, max_cash)
@@ -281,7 +294,7 @@ class QMTTrader:
             logger.error(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
             return
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
-        id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync)
+        id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
         order_logger.info(f"下单买入股票 {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price} 委托ID {id}")
         return id
 

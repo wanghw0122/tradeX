@@ -1,19 +1,12 @@
 import multiprocessing
 import os
-from re import A
 from typing import ItemsView
 
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
-# from http_request import build_http_request
-# from http_request import http_context
-# from data_class import *
 from strategy.strategy import sm
 from logger import catch, logger, order_logger, strategy_logger, order_success_logger
 from trade.qmtTrade import *
-from xtquant import xttrader
 from xtquant import xtdata
-from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
-from xtquant.xttype import StockAccount
 from xtquant import xtconstant
 from date_utils import date
 
@@ -23,8 +16,6 @@ import time
 from run_roll_back import *
 
 # 设置环境变量
-import threading
-import queue
 from multiprocessing import Queue
 global q
 global qq
@@ -33,20 +24,20 @@ qq = Queue(10)
 end_subscribe = False
 
 global task_queue
-
 global error_time, cancel_time
 error_time = 0
 cancel_time = 0
+
+global cached_auction_infos
+cached_auction_infos = []
 
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
 # 创建QMTTrader实例
 logger.info("开始初始化QMT....")
+
 qmt_trader = QMTTrader(path, acc_id)
-
-global cached_auction_infos
-cached_auction_infos = []
-
+qmt_trader.callback.set_qmt(qmt_trader)
 
 strategies = {
     "低吸": {
@@ -213,7 +204,7 @@ def strategy_schedule_job():
             end_task("code_schedule_job")
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
-def consumer_to_buy(q):
+def consumer_to_buy(q, orders_dict, orders):
     _, cash, _, _, _ = qmt_trader.get_account_info()
     if cash == None:
         logger.error("get_account_info error!")
@@ -225,11 +216,11 @@ def consumer_to_buy(q):
             logger.info(f"[consumer] Consumed: {data}")
             if (type(data) == tuple):
                 c_cash = cash * data[1]
-                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='market', sync=True)
+                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='market', sync=True, orders_dict=orders_dict, orders=orders)
                 if order_id < 0:
-                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True)
+                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders)
                      if order_id < 0:
-                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True)
+                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders)
             elif type(data) == str and data == 'end':
                 break
             else:
@@ -245,13 +236,17 @@ def consumer_to_subscribe(qq):
             logger.info(f"[subscribe] Consumed: {data}")
             if (type(data) == tuple):
                 code = data[0]
+                code = qmt_trader.all_stocks[code]
+                if not code:
+                    logger.error(f"[subscribe] 股票代码不存在: {data}")
+                    continue
                 period = 'tick'
                 def calculate_seconds_difference(specified_time):
                     current_time = datetime.datetime.now().timestamp()
                     time_difference =  current_time - (specified_time / 1000)
                     return time_difference
                 def on_data(res, stock=code):
-                    logger.info(f"[subscribe] on_data: {data}")
+                    # logger.info(f"[subscribe] on_data: {data}")
                     diff = calculate_seconds_difference(res[stock][0]['time'])
                     if period != 'tick':
                         close_value = res[stock][0]['close']
@@ -296,7 +291,7 @@ def cancel_orders():
         return
     cancel_result = qmt_trader.cancel_active_orders()
     if cancel_result:
-        order_logger.log(f"取消所有未成交的订单: {cancel_result}")
+        order_logger.info(f"取消所有未成交的订单: {cancel_result}")
     logger.info(f"取消所有未成交的订单 {cancel_result}")
     cancel_time = cancel_time + 1
     if cancel_time > 5:
@@ -323,8 +318,8 @@ def end_task(name):
 
 
 if __name__ == "__main__":
-
-    consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q,))
+    qmt_trader.init_order_context()
+    consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
     subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
     consumer_thread.start()
     subscribe_thread.start()

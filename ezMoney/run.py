@@ -54,6 +54,10 @@ strategies = {
         "首板打板": {
             "code": "9G0038",
             "returnNum": 1
+        },
+        "中高位连板打板": {
+            "code": "9G0009",
+            "returnNum": 1
         }
     }
 }
@@ -73,7 +77,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
     rslt_dct = {}
     if retry_times <= 0:
         return None
-    default_position = 0.4
+    default_position = 0.45
     try:
         items = sm.run_all_strategys(strategies_dict=strategies)
         rkeys = get_target_return_keys_dict(strategies)
@@ -104,6 +108,8 @@ def get_target_codes_by_all_strategies(retry_times=3):
                     auction_codes.append(code.split('.')[0])
             if len(auction_codes):
                 rslt_dct[key] = (auction_codes, position)
+            else:
+                rslt_dct[key] = ([], 0.0)
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
         return get_target_codes_by_all_strategies(retry_times-1)
@@ -156,13 +162,17 @@ def merge_result(rslt):
     ll = len(rslt)
     for key, value in rslt.items():
         logger.info(f"策略{key}, 成功得到结果 {value}.")
+        order_logger.info(f"策略{key}, 成功得到结果 {value}.")
         codes = value[0]
         code_len = len(codes)
         if code_len <= 0:
             continue
         position = value[1]
         for code in codes:
-            code_to_position[code] = position / code_len / ll
+            if code in code_to_position:
+                code_to_position[code] = code_to_position[code] + position / code_len / ll
+            else:
+                code_to_position[code] = position / code_len / ll
     return code_to_position
 
 
@@ -330,7 +340,7 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
+    scheduler.add_job(strategy_schedule_job, 'interval', seconds=3, id="code_schedule_job")
 
     scheduler.add_job(cancel_orders, 'interval', seconds=3, id="code_cancel_job")
 

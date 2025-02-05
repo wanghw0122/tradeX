@@ -480,3 +480,9 @@ Strategies:
             logged: false
             params:
               xcjwScore: 10
+          - name: "jl_filter"
+            index: 5
+            desc: "过滤接力分"
+            logged: false
+            params:
+              xcjlScore: 1

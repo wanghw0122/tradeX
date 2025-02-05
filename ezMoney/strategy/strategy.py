@@ -480,6 +480,16 @@ def qb_filter(xcqbScore = 100):
     inner_filter.__name__ = "qb_filter"
     return inner_filter
 
+
+@count_filtered_items
+@catch
+def jl_filter(xcjlScore = 1):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.jsjl and item.jsjl >= xcjlScore]
+    inner_filter.__name__ = "jl_filter"
+    return inner_filter
+
 @count_filtered_items
 @catch
 def stock_type_filter(**args):
@@ -585,6 +595,7 @@ sm.register_selector("get_code_by_block_rank", get_code_by_block_rank)
 
 sm.register_filter("keys_10cm_filter", keys_10cm_filter)
 sm.register_filter("jw_filter", jw_filter)
+sm.register_filter("jl_filter", jl_filter)
 sm.register_filter("st_filter", st_filter)
 sm.register_filter("dx_filter", dx_filter)
 sm.register_filter("qb_filter", qb_filter)

@@ -1,3 +1,4 @@
+from functools import total_ordering
 import multiprocessing
 import os
 from typing import ItemsView
@@ -32,6 +33,11 @@ circle = 0
 
 global cached_auction_infos
 cached_auction_infos = []
+
+global default_position
+default_position = 0.3
+
+do_test = False
 
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
@@ -79,7 +85,6 @@ def get_target_codes_by_all_strategies(retry_times=3):
     rslt_dct = {}
     if retry_times <= 0:
         return None
-    default_position = 0.45
     try:
         items = sm.run_all_strategys(strategies_dict=strategies)
         rkeys = get_target_return_keys_dict(strategies)
@@ -120,11 +125,11 @@ def get_target_codes_by_all_strategies(retry_times=3):
 
 def get_position(xiaocao_envs):
     if xiaocao_envs == None or len(xiaocao_envs) == 0:
-        return 0.3
+        return default_position
     env_10cm_qs = xiaocao_envs['9A0001']
     env_10cm_cd = xiaocao_envs['9B0001']
     env_10cm_qp = xiaocao_envs['9C0001']
-    positions = (0.3, 0.4, 0.3)
+    positions = (0.25, 0.45, 0.3)
     lifts = []
     try:
         for env in [env_10cm_qs, env_10cm_cd, env_10cm_qp]:
@@ -138,20 +143,20 @@ def get_position(xiaocao_envs):
             liftShortScore = realShortLineScore - preRealShortLineScore
             liftTrendScore = realTrendScore - preRealTrendScore
             if realShortLineScore and realShortLineScore > 0:
-                cur_lift = cur_lift + (0.01 * realShortLineScore)
+                cur_lift = cur_lift + (0.008 * realShortLineScore)
             if realTrendScore and realTrendScore > 0:
-                cur_lift = cur_lift + (0.007 * realTrendScore)
+                cur_lift = cur_lift + (0.005 * realTrendScore)
             if liftShortScore and liftShortScore > 0:
-                cur_lift = cur_lift + 0.004 * liftShortScore
+                cur_lift = cur_lift + 0.003 * liftShortScore
             if liftTrendScore and liftTrendScore > 0:
-                cur_lift = cur_lift + 0.002 * liftTrendScore
+                cur_lift = cur_lift + 0.001 * liftTrendScore
             lifts.append(cur_lift)
     except Exception as e:
         logger.error(f"An error occurred in get_position: {e}")
     if len(lifts) != 3:
-        return 0.3
+        return default_position
     lift = lifts[0] * positions[0]  + lifts[1] * positions[1] + lifts[2] * positions[2]
-    return max(min(0.3 + lift, 1.0), 0.3)
+    return max(min(default_position + lift, 1.0), default_position)
 
 
 def merge_result(rslt):
@@ -182,11 +187,11 @@ def merge_result(rslt):
 def strategy_schedule_job():
     try:    
         is_trade, _ = date.is_trading_day()
-        if not is_trade:
+        if not is_trade and not do_test:
             logger.info("[producer] 非交易日，不执行策略.")
             end_task("code_schedule_job")
             return
-        if not date.is_between_925_and_930():
+        if not date.is_between_925_and_930() and not do_test:
             logger.info("[producer] 非交易时间，不执行策略.")
             return
         rslt = get_target_codes_by_all_strategies()
@@ -224,7 +229,7 @@ def strategy_schedule_job():
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
 def consumer_to_buy(q, orders_dict, orders):
-    _, cash, _, _, _ = qmt_trader.get_account_info()
+    _, cash, _, _, total_assert = qmt_trader.get_account_info()
     if cash == None:
         logger.error("get_account_info error!")
         raise
@@ -234,7 +239,7 @@ def consumer_to_buy(q, orders_dict, orders):
             data = q.get()
             logger.info(f"[consumer] Consumed: {data}")
             if (type(data) == tuple):
-                c_cash = cash * data[1]
+                c_cash = total_assert * data[1]
                 order_id = qmt_trader.buy_quickly(data[0], c_cash, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='market', sync=True, orders_dict=orders_dict, orders=orders)
                 if order_id < 0:
                      order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders)
@@ -359,7 +364,7 @@ if __name__ == "__main__":
     # 保持程序运行，以便调度器可以执行任务
     try:
         while True:
-            if is_after_932():
+            if is_after_932() and not do_test:
                 logger.info("达到最大执行时间，退出程序")
                 q.put('end')
                 if end_subscribe:

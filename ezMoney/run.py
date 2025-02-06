@@ -229,17 +229,17 @@ def strategy_schedule_job():
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
 def consumer_to_buy(q, orders_dict, orders):
-    _, cash, _, _, total_assert = qmt_trader.get_account_info()
-    if cash == None:
-        logger.error("get_account_info error!")
-        raise
-    logger.info(f"[consumer] get account info total can used cash: {cash}")
     while True:
         try:
             data = q.get()
             logger.info(f"[consumer] Consumed: {data}")
+            _, cash, _, _, total_assert = qmt_trader.get_account_info()
+            if cash == None or cash <= 0:
+                logger.error(f"get_account_info error! no cache {cash}")
+                continue
+            logger.info(f"[consumer] get account info total can used cash: {cash}")
             if (type(data) == tuple):
-                c_cash = total_assert * data[1]
+                c_cash = min(total_assert * data[1], cash)
                 order_id = qmt_trader.buy_quickly(data[0], c_cash, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='market', sync=True, orders_dict=orders_dict, orders=orders)
                 if order_id < 0:
                      order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders)

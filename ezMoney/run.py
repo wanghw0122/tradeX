@@ -25,8 +25,10 @@ end_subscribe = False
 
 global task_queue
 global error_time, cancel_time
+global circle
 error_time = 0
 cancel_time = 0
+circle = 0
 
 global cached_auction_infos
 cached_auction_infos = []
@@ -198,6 +200,10 @@ def strategy_schedule_job():
             pree_rslt = cached_auction_infos[-2]
             if pre_rslt.keys() == pree_rslt.keys() and m_rslt.keys() == pre_rslt.keys():
                 logger.info("[producer] 连续3次获取到相同的目标股票...")
+                if (not pre_rslt or not pree_rslt.keys()) and circle < 5:
+                    logger.info("[producer] 连续3次获取到相同的目标股票，但是目标股票为空，等待重新执行策略...")
+                    circle = circle + 1
+                    return
                 end = True
         if not end:
             cached_auction_infos.append(m_rslt)

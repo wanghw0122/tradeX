@@ -56,8 +56,8 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
             traded_time = trade.traded_time
 
             if traded_volume > 0:
-                order_logger.info(f"成交回调后实际：投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount} 成交时间 {traded_time}")
-                order_logger.info(f"成交前订单申报：股票代码 {stock_code} 委托价格 {price} 委托数量 {volume} 委托类型 {order_type} 投资备注 {order_remark} 委托时间 {time_stemp} 价格差异 {traded_price - price} 滑点比例 {(traded_price - price) / price} 数量差异 {traded_volume - volume}")
+                order_logger.info(f"成交回调后实际：订单号 {order_id} 投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount} 成交时间 {traded_time}")
+                order_logger.info(f"成交前订单申报：订单号 {order_id} 投资备注 {order_remark} 股票代码 {stock_code} 委托类型 {order_type} 委托价格 {price} 委托数量 {volume}  委托时间 {time_stemp} 价格差异 {traded_price - price} 滑点比例 {(traded_price - price) / price} 数量差异 {traded_volume - volume}")
         order_logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
         logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
 
@@ -296,7 +296,7 @@ class QMTTrader:
             return
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
         id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
-        order_logger.info(f"下单买入股票 {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price} 委托ID {id}")
+        order_logger.info(f"下单买入股票 {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {id}")
         return id
 
     def sell(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark=''):

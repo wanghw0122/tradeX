@@ -1,6 +1,202 @@
 common:
   Host: "p-xcapi.topxlc.com"
 Strategies:
+  - name: "xiao_cao_dwyxdx"
+    type: "小草全盘低位孕线低吸"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 1
+    depends: "xiao_cao_env"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: true
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: true
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 40
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: true
+            index: 1
+            params: {}
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 20
+      - name: "xiao_cao_index_v2"
+        step: 3
+        desc: "获取明细数据"
+        logged: true
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: true
+            params: {}
+          - name: "stock_type_filter"
+            index: 1
+            desc: "过滤低位趋势"
+            logged: true
+            params:
+              isLow: 1
+          - name: "st_filter"
+            index: 2
+            desc: "过滤st的股票"
+            logged: true
+            params: {}
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          - name: "first_bottom_filter"
+            index: 3
+            desc: "过滤首次跌停"
+            logged: true
+            params: {}
+          - name: "jw_filter"
+            index: 5
+            desc: "过滤竞王分"
+            logged: true
+            params:
+              xcjwScore: 150
+          - name: "yx_filter"
+            index: 6
+            desc: "过滤孕线"
+            logged: true
+            params: {}
+          - name: "dx_filter"
+            index: 7
+            desc: "过滤低吸"
+            logged: true
+            params:
+              xcdxScore: 1
+  - name: "xiao_cao_dwndx"
+    type: "小草全盘低位n字低吸"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 1
+    depends: "xiao_cao_env"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: true
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: true
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 40
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: true
+            index: 1
+            params: {}
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 20
+      - name: "xiao_cao_index_v2"
+        step: 3
+        desc: "获取明细数据"
+        logged: true
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: true
+            params: {}
+          - name: "stock_type_filter"
+            index: 1
+            desc: "过滤低位趋势"
+            logged: true
+            params:
+              isLow: 1
+          - name: "st_filter"
+            index: 2
+            desc: "过滤st的股票"
+            logged: true
+            params: {}
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          - name: "first_bottom_filter"
+            index: 3
+            desc: "过滤首次跌停"
+            logged: true
+            params: {}
+          - name: "n_filter"
+            index: 4
+            desc: "过滤n字"
+            logged: true
+            params: {}
+          - name: "jw_filter"
+            index: 5
+            desc: "过滤竞王分"
+            logged: true
+            params:
+              xcjwScore: 150
+          - name: "dx_filter"
+            index: 6
+            desc: "过滤低吸"
+            logged: true
+            params:
+              xcdxScore: 1
   - name: "xiao_cao_dwdx_a"
     type: "小草全盘低位低吸"
     status: 1
@@ -44,7 +240,7 @@ Strategies:
             logged: true
             index: 0
             params:
-              limit: 3
+              limit: 2
       - name: "xiao_cao_index_v2"
         step: 3
         desc: "获取明细数据"

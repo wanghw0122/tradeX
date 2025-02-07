@@ -26,18 +26,19 @@ end_subscribe = False
 
 global task_queue
 global error_time, cancel_time
-global circle
 error_time = 0
 cancel_time = 0
-circle = 0
 
 global cached_auction_infos
 cached_auction_infos = []
 
 global default_position
-default_position = 0.3
+default_position = 0.33
 
-do_test = False
+do_test = True
+
+global final_results
+final_results = {}
 
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
@@ -67,7 +68,10 @@ strategies = {
             "code": "9G0009",
             "returnNum": 1
         }
-    }
+    },
+    "xiao_cao_dwdx_a": {},
+    "xiao_cao_dwndx": {},
+    "xiao_cao_dwyxdx": {}
 }
 
 
@@ -143,13 +147,13 @@ def get_position(xiaocao_envs):
             liftShortScore = realShortLineScore - preRealShortLineScore
             liftTrendScore = realTrendScore - preRealTrendScore
             if realShortLineScore and realShortLineScore > 0:
-                cur_lift = cur_lift + (0.008 * realShortLineScore)
+                cur_lift = cur_lift + (0.0047 * realShortLineScore)
             if realTrendScore and realTrendScore > 0:
-                cur_lift = cur_lift + (0.005 * realTrendScore)
+                cur_lift = cur_lift + (0.0026 * realTrendScore)
             if liftShortScore and liftShortScore > 0:
-                cur_lift = cur_lift + 0.003 * liftShortScore
+                cur_lift = cur_lift + 0.0012 * liftShortScore
             if liftTrendScore and liftTrendScore > 0:
-                cur_lift = cur_lift + 0.001 * liftTrendScore
+                cur_lift = cur_lift + 0.0007 * liftTrendScore
             lifts.append(cur_lift)
     except Exception as e:
         logger.error(f"An error occurred in get_position: {e}")
@@ -194,37 +198,36 @@ def strategy_schedule_job():
         if not date.is_between_925_and_930() and not do_test:
             logger.info("[producer] 非交易时间，不执行策略.")
             return
+        if date.is_after_929() and not do_test:
+            logger.info("[producer] 已过交易时间，结束执行策略.")
+            end_task("code_schedule_job")
+            return
         rslt = get_target_codes_by_all_strategies()
         if not rslt or len(rslt) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             cached_auction_infos.append({})
+            return
         m_rslt = merge_result(rslt)
-        end = False
+        logger.info(f"[producer] 获取到目标股票 {m_rslt}.")
+        cached_auction_infos.append(m_rslt)
         if len(cached_auction_infos) > 1:
             pre_rslt = cached_auction_infos[-1]
             pree_rslt = cached_auction_infos[-2]
-            if pre_rslt.keys() == pree_rslt.keys() and m_rslt.keys() == pre_rslt.keys():
-                logger.info("[producer] 连续3次获取到相同的目标股票...")
-                if (not pre_rslt or not pree_rslt.keys()) and circle < 15:
-                    logger.info("[producer] 连续3次获取到相同的目标股票，但是目标股票为空，等待重新执行策略...")
-                    circle = circle + 1
+            if pre_rslt == pree_rslt and m_rslt == pre_rslt:
+                if m_rslt == final_results:
+                    cached_auction_infos.append(m_rslt)
                     return
-                end = True
-        if not end:
-            cached_auction_infos.append(m_rslt)
-            return
-        else:
-            cached_auction_infos.clear()
-            logger.info(f"[producer] 获取到目标股票: {m_rslt}")
-            for code, position in m_rslt.items():
-                q.put((code, position))
-                qq.put((code, position))
-                order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
-            end_task("code_schedule_job")
-
+                logger.info(f"[producer] 连续3次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
+                for code, position in m_rslt.items():
+                    if code in final_results:
+                        continue
+                    q.put((code, position))
+                    qq.put((code, position))
+                    final_results[code] = position
+                    order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
     except Exception as e:
         error_time = error_time + 1
-        if error_time > 120:
+        if error_time > 20:
             end_task("code_schedule_job")
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
@@ -351,9 +354,9 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=2, id="code_schedule_job")
+    scheduler.add_job(strategy_schedule_job, 'interval', seconds=4, id="code_schedule_job")
 
-    scheduler.add_job(cancel_orders, 'interval', seconds=2, id="code_cancel_job")
+    scheduler.add_job(cancel_orders, 'interval', seconds=4, id="code_cancel_job")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

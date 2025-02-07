@@ -191,7 +191,7 @@ class StrategyManager:
                 if name == '':
                     logger.error("strategy config no Name.")
                     continue
-                elif name == 'xiao_cao_dwdx_a':
+                elif name == 'xiao_cao_dwdx_a' or name == 'xiao_cao_dwndx' or name == 'xiao_cao_dwyxdx':
                     xcd = XiaoCaoDwdxA(config, self)
                     self.strategy_list.append(xcd)
                     self.strategy_dict[name] = xcd
@@ -420,6 +420,18 @@ def st_filter(*args, **kwargs):
 
 @count_filtered_items
 @catch
+def n_filter(*args, **kwargs):
+    arr = args[0]
+    return [item for item in arr if item.firstLimitUpDays > 0]
+
+@count_filtered_items
+@catch
+def yx_filter(*args, **kwargs):
+    arr = args[0]
+    return [item for item in arr if item.isGestationLine]
+
+@count_filtered_items
+@catch
 def first_bottom_filter(*args, **kwargs):
     rslt = []
     arr = args[0]
@@ -599,6 +611,8 @@ sm.register_filter("jl_filter", jl_filter)
 sm.register_filter("st_filter", st_filter)
 sm.register_filter("dx_filter", dx_filter)
 sm.register_filter("qb_filter", qb_filter)
+sm.register_filter("n_filter", n_filter)
+sm.register_filter("yx_filter", yx_filter)
 sm.register_filter("first_bottom_filter", first_bottom_filter)
 sm.register_filter("stock_type_filter", stock_type_filter)
 sm.register_filter("change_item_filter", change_item_filter)

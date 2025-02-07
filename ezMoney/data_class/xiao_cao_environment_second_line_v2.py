@@ -113,6 +113,7 @@ xiaocao_mod = ['9G0024','9G0026','9G0020','9G0025','9G0027','9G0021','9G0001','9
                '9G0041','9G0042','9G0043','9G0015','9G0017','9G0008','9G0049','9G0050','9G0051','9G0052','9G0053','9G0056','9G0057','9G0016','9G0058','9G0003','9G0004','9G0101',
                '9G0065','9G0066','9G0067','9G0068','9G0069','9G0071','9G0072','9G0073','9G0074','9G0077','9G0078','9G0079','9G0080','9G0081','9G0011','9G0083','9G0084','9G0085',
                '9G0086','9G0087','9G0089','9G0090','9G0091','9G0092','9G0093','9G0018']
+
 def build_xiaocao_environment_second_line_v2_dict(date = get_current_date(), codes = []):
     rslt = build_http_request.xiao_cao_environment_second_line_v2(codes=codes, date = date)
     if rslt == None:

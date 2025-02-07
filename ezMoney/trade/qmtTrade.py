@@ -35,7 +35,6 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :return:
         """
         order_id = order.order_id
-        order_logger.info(f"委托回调 投资备注 {order.order_remark}")
         logger.info(f"委托回调 投资备注 {order.order_remark}")
 
     def on_stock_trade(self, trade):
@@ -58,7 +57,6 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
             if traded_volume > 0:
                 order_logger.info(f"成交回调后实际：订单号 {order_id} 投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount} 成交时间 {traded_time}")
                 order_logger.info(f"成交前订单申报：订单号 {order_id} 投资备注 {order_remark} 股票代码 {stock_code} 委托类型 {order_type} 委托价格 {price} 委托数量 {volume}  委托时间 {time_stemp} 价格差异 {traded_price - price} 滑点比例 {(traded_price - price) / price} 数量差异 {traded_volume - volume}")
-        order_logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
         logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
 
     def on_order_error(self, order_error):
@@ -259,7 +257,6 @@ class QMTTrader:
             return
         else:
             logger.info(f"{stock_code} 全推行情： {full_tick}")
-            order_logger.info(f"{stock_code} 全推行情： {full_tick}")
         
         current_price = full_tick[stock_code]['lastPrice']
         ask_price = full_tick[stock_code]['askPrice']

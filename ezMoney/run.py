@@ -173,7 +173,6 @@ def merge_result(rslt):
     ll = len(rslt)
     for key, value in rslt.items():
         logger.info(f"策略{key}, 成功得到结果 {value}.")
-        order_logger.info(f"策略{key}, 成功得到结果 {value}.")
         codes = value[0]
         code_len = len(codes)
         if code_len <= 0:
@@ -218,6 +217,7 @@ def strategy_schedule_job():
                     cached_auction_infos.append(m_rslt)
                     return
                 logger.info(f"[producer] 连续3次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
+                order_logger.info(f"[producer] 连续3次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
                 for code, position in m_rslt.items():
                     if code in final_results:
                         continue

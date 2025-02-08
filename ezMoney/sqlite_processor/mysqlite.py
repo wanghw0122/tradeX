@@ -1,0 +1,89 @@
+import sqlite3
+from datetime import datetime
+
+db_name = './strategy_data.db'
+
+def create_table():
+    # 获取当前日期
+    current_date = datetime.now().strftime("%Y%m")
+    # 表名
+    table_name = f"strategy_data_premarket_{current_date}"
+    # 连接到SQLite数据库
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    # SQL创建表的语句
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date_key TEXT NOT NULL,
+        strategy_name TEXT NOT NULL,
+        sub_strategy_name TEXT DEFAULT '',
+        stock_code TEXT NOT NULL,
+        stock_name TEXT DEFAULT '',
+        block_category TEXT DEFAULT '',
+        block_codes TEXT DEFAULT '',
+        industry_code TEXT DEFAULT '',
+        max_block_category_rank INTEGER DEFAULT -1,
+        max_block_code_rank INTEGER DEFAULT -1,
+        max_industry_code_rank INTEGER DEFAULT -1,
+        is_bottom INTEGER CHECK (is_bottom IN (0, 1)) DEFAULT 0,
+        is_broken_plate INTEGER CHECK (is_broken_plate IN (0, 1)) DEFAULT 0,
+        is_down_broken INTEGER CHECK (is_down_broken IN (0, 1)) DEFAULT 0,
+        is_fall INTEGER CHECK (is_fall IN (0, 1)) DEFAULT 0,
+        is_first_down_broken INTEGER CHECK (is_first_down_broken IN (0, 1)) DEFAULT 0,
+        is_first_up_broken INTEGER CHECK (is_first_up_broken IN (0, 1)) DEFAULT 0,
+        is_gestation_line INTEGER CHECK (is_gestation_line IN (0, 1)) DEFAULT 0,
+        is_half INTEGER CHECK (is_half IN (0, 1)) DEFAULT 0,
+        is_high INTEGER CHECK (is_high IN (0, 1)) DEFAULT 0,
+        is_highest INTEGER CHECK (is_highest IN (0, 1)) DEFAULT 0,
+        is_long_shadow INTEGER CHECK (is_long_shadow IN (0, 1)) DEFAULT 0,
+        is_low INTEGER CHECK (is_low IN (0, 1)) DEFAULT 0,
+        is_medium INTEGER CHECK (is_medium IN (0, 1)) DEFAULT 0,
+        is_meso INTEGER CHECK (is_meso IN (0, 1)) DEFAULT 0,
+        is_plummet INTEGER CHECK (is_plummet IN (0, 1)) DEFAULT 0,
+        is_pre_st INTEGER CHECK (is_pre_st IN (0, 1)) DEFAULT 0,
+        is_small_high_open INTEGER CHECK (is_small_high_open IN (0, 1)) DEFAULT 0,
+        is_up_broken INTEGER CHECK (is_up_broken IN (0, 1)) DEFAULT 0,
+        is_weak INTEGER CHECK (is_weak IN (0, 1)) DEFAULT 0,
+        first_limit_up_days INTEGER DEFAULT 0,
+        jsjl REAL DEFAULT 0.0,
+        cjs REAL DEFAULT 0.0,
+        xcjw REAL DEFAULT 0.0,
+        jssb REAL DEFAULT 0.0,
+        open_pct_rate REAL DEFAULT -100.0,
+        open_price REAL DEFAULT -1,
+        close_price REAL DEFAULT -1,
+        pre_close_price REAL DEFAULT -1,
+        next_day_open_price REAL DEFAULT -1,
+        next_day_close_price REAL DEFAULT -1,
+        next_day_high_price_open_10mins REAL DEFAULT -1,
+        next_day_low_price_open_10mins REAL DEFAULT -1,
+        next_day_high_price REAL DEFAULT -1,
+        next_day_low_price REAL DEFAULT -1,
+        in_premarket INTEGER CHECK (in_premarket IN (0, 1)) DEFAULT 0,
+        in_premarket_match INTEGER CHECK (in_premarket_match IN (0, 1)) DEFAULT 0,
+        mod_code TEXT DEFAULT '',
+        mod_name TEXT DEFAULT '',
+        mod_short_line_score REAL DEFAULT -100,
+        mod_short_line_score_change REAL DEFAULT -100,
+        mod_short_line_rank INTEGER DEFAULT -1,
+        mod_trend_score REAL DEFAULT -100,
+        mod_trend_score_change REAL DEFAULT -100,
+        mod_trend_rank INTEGER DEFAULT -1,
+        env_json_info TEXT DEFAULT '',
+        block_category_info TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (date_key, strategy_name, sub_strategy_name, stock_code)
+    )
+    """
+
+    # 执行创建表的语句
+    cursor.execute(create_table_query)
+
+    # 提交更改并关闭连接
+    conn.commit()
+    conn.close()
+
+if __name__ == "__main__":
+    create_table()

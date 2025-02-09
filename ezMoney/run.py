@@ -35,7 +35,7 @@ cached_auction_infos = []
 global default_position
 default_position = 0.33
 
-do_test = True
+do_test = False
 
 global final_results
 final_results = {}

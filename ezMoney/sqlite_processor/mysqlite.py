@@ -1,7 +1,33 @@
 import sqlite3
 from datetime import datetime
 
-db_name = './strategy_data.db'
+db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+
+
+class SQLiteManager:
+    def __init__(self, db_name):
+        self.db_name = db_name
+        self.conn = sqlite3.connect(db_name)
+        self.cursor = self.conn.cursor()
+    
+    def create_table(self, table_name, columns):
+        column_definitions = ', '.join([f"{col} {col_type}" for col, col_type in columns.items()])
+        create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_definitions})"
+        self.cursor.execute(create_table_query)
+
+
+    def insert_data(self, table_name, data_dict):
+        columns = ', '.join(data_dict.keys())
+        placeholders = ', '.join(['?' for _ in data_dict])
+        values = tuple(data_dict.values())
+        insert_query = f"INSERT INTO strategy_data_premarket_202502 ({columns}) VALUES ({placeholders})"
+        cursor.execute(insert_query, values)
+        conn.commit()
+        print("Data inserted successfully.")
+    
+    def close(self):
+        self.conn.close()
+        
 
 def create_table():
     # 获取当前日期
@@ -85,5 +111,80 @@ def create_table():
     conn.commit()
     conn.close()
 
+
+# 连接到 SQLite 数据库
+conn = sqlite3.connect('your_database.db')
+cursor = conn.cursor()
+
+# 插入数据
+def insert_data(data_dict):
+    columns = ', '.join(data_dict.keys())
+    placeholders = ', '.join(['?' for _ in data_dict])
+    values = tuple(data_dict.values())
+    insert_query = f"INSERT INTO strategy_data_premarket_202502 ({columns}) VALUES ({placeholders})"
+    cursor.execute(insert_query, values)
+    conn.commit()
+    print("Data inserted successfully.")
+
+# 删除数据
+def delete_data(condition_dict):
+    conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+    values = tuple(condition_dict.values())
+    delete_query = f"DELETE FROM strategy_data_premarket_202502 WHERE {conditions}"
+    cursor.execute(delete_query, values)
+    conn.commit()
+    print("Data deleted successfully.")
+
+# 更新数据
+def update_data(update_dict, condition_dict):
+    set_clause = ', '.join([f"{key} = ?" for key in update_dict])
+    conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+    values = tuple(update_dict.values()) + tuple(condition_dict.values())
+    update_query = f"UPDATE strategy_data_premarket_202502 SET {set_clause} WHERE {conditions}"
+    cursor.execute(update_query, values)
+    conn.commit()
+    print("Data updated successfully.")
+
+# 示例数据
+insert_dict = {
+    "date_key": "20250209",
+    "strategy_name": "SampleStrategy",
+    "sub_strategy_name": "SubSample",
+    "stock_code": "600001",
+    "stock_name": "SampleStock",
+    # 可以根据需要添加更多字段
+}
+
+delete_dict = {
+    "date_key": "20250209",
+    "strategy_name": "SampleStrategy"
+}
+
+update_dict = {
+    "stock_name": "UpdatedStockName"
+}
+
+condition_dict = {
+    "date_key": "20250209",
+    "strategy_name": "SampleStrategy"
+}
+
+# 执行插入操作
+insert_data(insert_dict)
+
+# 执行删除操作
+delete_data(delete_dict)
+
+# 执行更新操作
+update_data(update_dict, condition_dict)
+
+# 关闭数据库连接
+conn.close()
+
+
+
 if __name__ == "__main__":
     create_table()
+
+
+    

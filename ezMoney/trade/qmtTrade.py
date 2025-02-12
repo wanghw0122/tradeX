@@ -230,7 +230,7 @@ class QMTTrader:
             return seq_id
 
 
-    def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0, orders_dict = None, orders = None):
+    def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0, orders_dict = None, orders = None, buffer= 0.0):
 
         if max_cash > 0:
             cash = min(cash, max_cash)
@@ -284,6 +284,7 @@ class QMTTrader:
         buy_amount = min(account_cash, cash)
         #买入数量 取整为100的整数倍
         buy_vol = int(buy_amount / bid_price / 100) * 100
+
         if max_vol > 0:
             buy_vol = min(buy_vol, max_vol)
         if min_vol > 0:
@@ -292,9 +293,20 @@ class QMTTrader:
             logger.error(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
             return
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
-        id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
-        order_logger.info(f"下单买入股票 {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {id}")
-        return id
+        if buy_vol > 200 and buffer > 0:
+            half_vol = buy_vol // 100 // 2 * 100
+            half_id = self.buy(stock_code, bid_price, half_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
+            order_logger.info(f"下单买入股票无buffer {stock_code} 买入股数 {half_vol} 买入金额 {half_vol * bid_price} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {half_id}")
+
+            buy_vol = buy_vol - half_vol
+            buy_amount = buy_vol * bid_price * (1 + buffer)
+            buy_id = self.buy(stock_code, bid_price * (1 + buffer), buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
+            order_logger.info(f"下单买入股票有buffer {buffer} {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price * (1 + buffer)} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {buy_id}")
+            return half_id
+        else:
+            id = self.buy(stock_code, bid_price, buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
+            order_logger.info(f"下单买入股票 {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {id}")
+            return id
 
     def sell(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark=''):
         """

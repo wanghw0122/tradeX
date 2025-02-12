@@ -29,6 +29,9 @@ global error_time, cancel_time
 error_time = 0
 cancel_time = 0
 
+global back_cash
+back_cash = 200000
+
 global cached_auction_infos
 cached_auction_infos = []
 
@@ -48,6 +51,33 @@ logger.info("开始初始化QMT....")
 qmt_trader = QMTTrader(path, acc_id)
 qmt_trader.callback.set_qmt(qmt_trader)
 
+# strategies = {
+#     "低吸": {
+#         "低位孕线低吸": {
+#             "code": "9G0086",
+#             "returnNum": 1
+#         },
+#         "低位N字低吸": {
+#             "code": "9G0080",
+#             "returnNum": 1
+#         }
+#     },
+#     "接力":{
+#         "首板打板": {
+#             "code": "9G0038",
+#             "returnNum": 1
+#         },
+#         "中高位连板打板": {
+#             "code": "9G0009",
+#             "returnNum": 1
+#         }
+#     },
+#     "xiao_cao_dwdx_a": {},
+#     "xiao_cao_dwndx": {},
+#     "xiao_cao_dwyxdx": {}
+# }
+
+
 strategies = {
     "低吸": {
         "低位孕线低吸": {
@@ -59,20 +89,11 @@ strategies = {
             "returnNum": 1
         }
     },
-    "接力":{
-        "首板打板": {
-            "code": "9G0038",
-            "returnNum": 1
-        },
-        "中高位连板打板": {
-            "code": "9G0009",
-            "returnNum": 1
-        }
-    },
     "xiao_cao_dwdx_a": {},
     "xiao_cao_dwndx": {},
     "xiao_cao_dwyxdx": {}
 }
+
 
 
 def get_target_return_keys_dict(starategies_dict = strategies):
@@ -213,14 +234,21 @@ def strategy_schedule_job():
             pre_rslt = cached_auction_infos[-1]
             pree_rslt = cached_auction_infos[-2]
             if pre_rslt == pree_rslt and m_rslt == pre_rslt:
-                if m_rslt == final_results:
-                    cached_auction_infos.append(m_rslt)
+                if m_rslt.keys() == final_results.keys():
                     return
-                logger.info(f"[producer] 连续3次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
-                order_logger.info(f"[producer] 连续3次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
+                logger.info(f"[producer] 连续2次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
+                order_logger.info(f"[producer] 连续2次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
+                l = len(final_results)
+                min_position = 0.0
+                total_position = 0.0
+                if l > 0:
+                    for _, v in final_results.items():
+                        total_position = total_position + v
+                    min_position = total_position / (l + 1)
                 for code, position in m_rslt.items():
                     if code in final_results:
                         continue
+                    position = max(min_position, position)
                     q.put((code, position))
                     qq.put((code, position))
                     final_results[code] = position
@@ -241,13 +269,14 @@ def consumer_to_buy(q, orders_dict, orders):
                 logger.error(f"get_account_info error! no cache {cash}")
                 continue
             logger.info(f"[consumer] get account info total can used cash: {cash}")
+            total_assert = total_assert - back_cash
             if (type(data) == tuple):
                 c_cash = min(total_assert * data[1], cash)
-                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='market', sync=True, orders_dict=orders_dict, orders=orders)
+                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
                 if order_id < 0:
-                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders)
+                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
                      if order_id < 0:
-                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders)
+                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
             elif type(data) == str and data == 'end':
                 break
             else:
@@ -356,7 +385,7 @@ if __name__ == "__main__":
     # 每隔5秒执行一次 job_func 方法
     scheduler.add_job(strategy_schedule_job, 'interval', seconds=4, id="code_schedule_job")
 
-    scheduler.add_job(cancel_orders, 'interval', seconds=4, id="code_cancel_job")
+    # scheduler.add_job(cancel_orders, 'interval', seconds=4, id="code_cancel_job")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

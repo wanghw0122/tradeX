@@ -408,11 +408,22 @@ def consumer_to_subscribe_whole(qq):
                         for code in subscribe_codes:
                             whole_tick_info_dict[code] = {'total_amount': 0, 'total_volume': 0, 'price_list': [], 'avg_price_list': [], 'cost_diff': [], 'times': []}
                 elif data == 'end':
+                    if whole_tick_info_dict:
+                        import json
+                        file_path = "tick_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
+                        with open(file_path, 'w', encoding='utf-8') as file:
+                            json.dump(whole_tick_info_dict, file, ensure_ascii=False, indent=4)
                     for id in subscribe_ids:
                         xtdata.unsubscribe_quote(id)
                     break
             else:
                 continue
+        except KeyboardInterrupt:
+            if not whole_tick_info_dict:
+                break
+            file_path = "tick_snapshot_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
+            with open(file_path, 'w', encoding='utf-8') as file:
+                json.dump(whole_tick_info_dict, file, ensure_ascii=False, indent=4)
         except Exception as e:
             logger.error(f"[subscribe] 执行任务出现错误: {e}")
 

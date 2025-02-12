@@ -1,6 +1,7 @@
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from trade.qmtTrade import *
+from sqlite_processor.mysqlite import *
 
 class MyClass:
     def __init__(self):
@@ -31,35 +32,27 @@ if __name__ == '__main__':
     #     p.start()
     #     p.join()
     #     print(f"主进程值: {v.obj.get_value()}")
-    path = r'D:\qmt\userdata_mini'  # QMT客户端路径
     
-    acc_id = '8886660057'
+    create_strategy_table("202502")
+    # with SQLiteManager(db_name) as manager:
+    #    manager.insert_data("strategy_data_premarket_202502", insert_dict)
 
-    # 创建QMTTrader实例
-    qmt_trader = QMTTrader(path, acc_id)
+    # with SQLiteManager(db_name) as manager:
+    #    manager.update_data("strategy_data_premarket_202502", update_dict, condition_dict)
+    # with SQLiteManager(db_name) as manager:
+    #    manager.delete_data("strategy_data_premarket_202502", delete_dict)
+    insert_list = [
+        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600004", "stock_name": "SampleStock"},
+        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600002", "stock_name": "SampleStock2"},
+        {"date_key": "20250210", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600003", "stock_name": "SampleStock3"}
+    ]
 
-    print("download")
-    xtdata.download_history_data('603496.SH', '1d', start_time='', end_time='20250211')
+    delete_list = [
+        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600004", "stock_name": "SampleStock"},
+        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600002", "stock_name": "SampleStock2"},
+        {"date_key": "20250210", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600003", "stock_name": "SampleStock3"}
+    ]
 
-    # 买入股票
-    order_id = qmt_trader.buy_quickly('603496.SH', 1000, sync=False)
-    print(f"买入委托ID: {order_id}")
+    with SQLiteManager(db_name) as manager:
+        manager.batch_delete_data("strategy_data_premarket_202502", delete_list)
 
-    
-
-    # # 卖出股票
-    # order_id = qmt_trader.sell('600000.SH', 11.0, 50)
-    # print(f"卖出委托ID: {order_id}")
-
-    # # 撤单
-    # cancel_result = qmt_trader.cancel_order(order_id)
-    # print(f"撤单结果: {cancel_result}")
-
-    # 获取账户信息
-    # account_info = qmt_trader.get_account_info()
-    # print(f"账户信息: {account_info}")
-
-    # get_tradable_stocks = qmt_trader.get_tradable_stocks()
-    # print(f"股票数据: {get_tradable_stocks}")
-
-    qmt_trader.set_running()

@@ -1,7 +1,9 @@
 import sqlite3
 from datetime import datetime
+from logger import logger
 
 db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+from functools import partial
 
 class SQLiteManager:
     def __init__(self, db_name):
@@ -20,7 +22,8 @@ class SQLiteManager:
 
     def create_table(self, table_name, columns):
         column_definitions = ', '.join([f"{col} {col_type}" for col, col_type in columns.items()])
-        create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_definitions})"
+        unique_constraint = "UNIQUE (date_key, strategy_name, sub_strategy_name, stock_code)"
+        create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_definitions}, {unique_constraint})"
         self.cursor.execute(create_table_query)
         self.conn.commit()
 
@@ -31,7 +34,7 @@ class SQLiteManager:
         insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
         self.cursor.execute(insert_query, values)
         self.conn.commit()
-        print("Data inserted successfully.")
+        logger.info("Data inserted successfully.")
 
     def delete_data(self, table_name, condition_dict):
         conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
@@ -39,7 +42,7 @@ class SQLiteManager:
         delete_query = f"DELETE FROM {table_name} WHERE {conditions}"
         self.cursor.execute(delete_query, values)
         self.conn.commit()
-        print("Data deleted successfully.")
+        logger.info("Data deleted successfully.")
 
     def update_data(self, table_name, update_dict, condition_dict):
         set_clause = ', '.join([f"{key} = ?" for key in update_dict])
@@ -48,11 +51,139 @@ class SQLiteManager:
         update_query = f"UPDATE {table_name} SET {set_clause} WHERE {conditions}"
         self.cursor.execute(update_query, values)
         self.conn.commit()
-        print("Data updated successfully.")
+        logger.info("Data updated successfully.")
 
-def create_table(specified_date = datetime.now().strftime("%Y%m")):
+    def query_data(self, table_name, condition_dict=None, columns="*"):
+        """
+        查询指定表的数据
+        :param table_name: 要查询的表名
+        :param condition_dict: 查询条件，字典形式，键为列名，值为查询值
+        :param columns: 要查询的列，默认为所有列
+        :return: 查询结果列表
+        """
+        if condition_dict:
+            conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+            values = tuple(condition_dict.values())
+            query = f"SELECT {columns} FROM {table_name} WHERE {conditions}"
+        else:
+            query = f"SELECT {columns} FROM {table_name}"
+            values = ()
+        self.cursor.execute(query, values)
+        return self.cursor.fetchall()
+    
+    def query_data_dict(self, table_name, condition_dict=None, columns="*"):
+        """
+        查询指定表的数据
+        :param table_name: 要查询的表名
+        :param condition_dict: 查询条件，字典形式，键为列名，值为查询值
+        :param columns: 要查询的列，默认为所有列
+        :return: 查询结果列表，每个元素为以列名为键的字典
+        """
+        if condition_dict:
+            conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+            values = tuple(condition_dict.values())
+            query = f"SELECT {columns} FROM {table_name} WHERE {conditions}"
+        else:
+            query = f"SELECT {columns} FROM {table_name}"
+            values = ()
+        self.cursor.execute(query, values)
+        # 获取列名
+        column_names = [description[0] for description in self.cursor.description]
+        # 将查询结果转换为字典列表
+        results = []
+        for row in self.cursor.fetchall():
+            row_dict = dict(zip(column_names, row))
+            results.append(row_dict)
+        return results
+
+    def drop_table(self, table_name):
+        drop_table_query = f"DROP TABLE IF EXISTS {table_name}"
+        self.cursor.execute(drop_table_query)
+        self.conn.commit()
+        logger.info(f"Table {table_name} dropped successfully.")
+
+    
+    def batch_insert_data(self, table_name, data_list):
+        """
+        批量插入数据
+        :param table_name: 要插入数据的表名
+        :param data_list: 数据列表，每个元素为一个字典，代表一行数据
+        """
+        if not data_list:
+            return
+        columns = ', '.join(data_list[0].keys())
+        placeholders = ', '.join(['?' for _ in data_list[0]])
+        insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+        values = [tuple(data.values()) for data in data_list]
+        self.cursor.executemany(insert_query, values)
+        self.conn.commit()
+        logger.info("Batch data inserted successfully.")
+    
+    def batch_delete_data(self, table_name, condition_list):
+        """
+        批量删除数据
+        :param table_name: 要删除数据的表名
+        :param condition_list: 条件列表，每个元素为一个字典，代表一组删除条件
+        """
+        if not condition_list:
+            return
+        for condition_dict in condition_list:
+            conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+            values = tuple(condition_dict.values())
+            delete_query = f"DELETE FROM {table_name} WHERE {conditions}"
+            self.cursor.execute(delete_query, values)
+        self.conn.commit()
+        logger.info("Batch data deleted successfully.")
+
+    def batch_update_data(self, table_name, update_condition_list):
+        """
+        批量更新数据
+        :param table_name: 要更新数据的表名
+        :param update_condition_list: 列表，每个元素为一个元组，元组第一个元素为更新字典，第二个元素为条件字典
+        """
+        if not update_condition_list:
+            return
+        for update_dict, condition_dict in update_condition_list:
+            set_clause = ', '.join([f"{key} = ?" for key in update_dict])
+            conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+            values = tuple(update_dict.values()) + tuple(condition_dict.values())
+            update_query = f"UPDATE {table_name} SET {set_clause} WHERE {conditions}"
+            self.cursor.execute(update_query, values)
+        self.conn.commit()
+        logger.info("Batch data updated successfully.")
+
+
+    def batch_query_data(self, table_name, condition_list, columns="*"):
+        """
+        批量查询数据
+        :param table_name: 要查询数据的表名
+        :param condition_list: 条件列表，每个元素为一个字典，代表一组查询条件
+        :param columns: 要查询的列，默认为所有列
+        :return: 查询结果列表，每个元素为以列名为键的字典
+        """
+        all_results = []
+        for condition_dict in condition_list:
+            if condition_dict:
+                conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
+                values = tuple(condition_dict.values())
+                query = f"SELECT {columns} FROM {table_name} WHERE {conditions}"
+            else:
+                query = f"SELECT {columns} FROM {table_name}"
+                values = ()
+            self.cursor.execute(query, values)
+            # 获取列名
+            column_names = [description[0] for description in self.cursor.description]
+            # 将查询结果转换为字典列表
+            results = []
+            for row in self.cursor.fetchall():
+                row_dict = dict(zip(column_names, row))
+                results.append(row_dict)
+            all_results.extend(results)
+        return all_results
+
+def create_strategy_table(prefix = "strategy_data_premarket_", specified_date = datetime.now().strftime("%Y%m")):
     # 表名
-    table_name = f"strategy_data_premarket_{specified_date}"
+    table_name = prefix + specified_date
     columns = {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
         "date_key": "TEXT NOT NULL",
@@ -117,6 +248,9 @@ def create_table(specified_date = datetime.now().strftime("%Y%m")):
     with SQLiteManager(db_name) as manager:
         manager.create_table(table_name, columns)
 
+create_premarket_table = partial(create_strategy_table, prefix="strategy_data_premarket_")
+create_aftermarket_table = partial(create_strategy_table, prefix="strategy_data_aftermarket_")
+
 # 示例数据
 insert_dict = {
     "date_key": "20250209",
@@ -137,12 +271,16 @@ update_dict = {
 }
 
 condition_dict = {
-    "date_key": "20250209",
-    "strategy_name": "SampleStrategy"
+    "stock_name": "UpdatedStockName"
 }
 
 
 if __name__ == "__main__":
-    create_table("202503")
+    create_strategy_table("202503")
     with SQLiteManager(db_name) as manager:
        manager.insert_data("strategy_data_premarket_202503", insert_dict)
+
+    # with SQLiteManager(db_name) as manager:
+    #    manager.update_data("strategy_data_premarket_202503", update_dict, condition_dict)
+    # with SQLiteManager(db_name) as manager:
+    #    manager.delete_data("strategy_data_premarket_202503", delete_dict)

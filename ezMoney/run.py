@@ -22,7 +22,8 @@ global q
 global qq
 q = Queue(10)
 qq = Queue(10)
-end_subscribe = False
+end_subscribe = True
+start_subscribe = True
 
 global task_queue
 global error_time, cancel_time
@@ -321,9 +322,101 @@ def consumer_to_subscribe(qq):
                     xtdata.unsubscribe_quote(id)
                 break
             else:
-                raise
+                continue
         except Exception as e:
             logger.error(f"[subscribe] 执行任务出现错误: {e}")
+
+
+
+def consumer_to_subscribe_whole(qq):
+    subscribe_ids = []
+    subscribe_codes = []
+    whole_tick_info_dict= {}
+    scribed = False
+    while True:
+        try:
+            data = qq.get()
+            logger.info(f"[subscribe] Consumed: {data}")
+            if (type(data) == tuple):
+                code = data[0]
+                code = qmt_trader.all_stocks[code]
+                if not code:
+                    logger.error(f"[subscribe] 股票代码不存在: {data}")
+                    continue
+                if code in subscribe_codes:
+                    continue
+                subscribe_codes.append(code)
+                
+            elif type(data) == str:
+                if data == 'start':
+                    if scribed:
+                        continue
+                    if len(subscribe_codes) == 0:
+                        logger.error(f"[subscribe] 没有股票代码需要订阅，跳出: {subscribe_codes}")
+                        continue
+                    def calculate_seconds_difference(specified_time):
+                        current_time = datetime.datetime.now().timestamp()
+                        time_difference =  current_time - (specified_time / 1000)
+                        return time_difference
+                    def on_data(res, stocks=subscribe_codes, info_dict = whole_tick_info_dict):
+                        # logger.info(f"[subscribe] on_data: {data}")
+                        for stock in stocks:
+                            info = info_dict[stock]
+                            times = info['times']
+                            cost_diff = info['cost_diff']
+                            price_list = info['price_list']
+                            avg_price_list = info['avg_price_list']
+                            total_amount = info['total_amount']
+                            total_volume = info['total_volume']
+
+                            data = res[stock]
+                            time = data['time']
+                            diff = calculate_seconds_difference(time)
+                            lastPrice = data['lastPrice']
+                            open = data['open']
+                            high = data['high']
+                            low = data['low']
+                            lastClose = data['lastClose']
+                            volume = data['volume']
+                            amount = data['amount']
+                            pvolume = data['pvolume']
+                            askPrice = data['askPrice']
+                            bidPrice = data['bidPrice']
+                            askVol = data['askVol']
+                            bidVol = data['bidVol']
+
+                            total_amount = total_amount + amount
+                            total_volume = total_volume + pvolume
+
+                            info['total_amount'] = total_amount
+                            info['total_volume'] = total_volume
+                            times.append(time)
+                            cost_diff.append(diff)
+                            cur_avg_price = total_amount / total_volume
+                            price_list.append(lastPrice)
+                            avg_price_list.append(cur_avg_price)
+                            logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{cur_avg_price}，总成交额：{total_amount}, 总成交量：{total_volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
+
+                    id = xtdata.subscribe_whole_quote(subscribe_codes, callback=on_data) # 设置count = -1来取到当天所有
+                    if id < 0:
+                        logger.error(f"[subscribe] subscribe_quote error: {subscribe_codes}")
+                        continue
+                    else:
+                        logger.info(f"[subscribe] subscribe_quote success: {subscribe_codes}")
+                        scribed = True
+                        subscribe_ids.append(id)
+                        for code in subscribe_codes:
+                            whole_tick_info_dict[code] = {'total_amount': 0, 'total_volume': 0, 'price_list': [], 'avg_price_list': [], 'cost_diff': [], 'times': []}
+                elif data == 'end':
+                    for id in subscribe_ids:
+                        xtdata.unsubscribe_quote(id)
+                    break
+            else:
+                continue
+        except Exception as e:
+            logger.error(f"[subscribe] 执行任务出现错误: {e}")
+
+
 
 def is_before_930_30():
     now = datetime.datetime.now()
@@ -333,6 +426,11 @@ def is_before_930_30():
 def is_after_932():
     now = datetime.datetime.now()
     target_time = now.replace(hour=9, minute=32, second=0, microsecond=0)
+    return now > target_time
+
+def is_after_940():
+    now = datetime.datetime.now()
+    target_time = now.replace(hour=9, minute=40, second=0, microsecond=0)
     return now > target_time
 
 def cancel_orders():
@@ -368,15 +466,16 @@ def end_task(name):
     logger.info(f"任务 {name} 执行结束")
     remove_job(name)
     q.put('end')
-    if end_subscribe:
-        qq.put('end')
+    if start_subscribe:
+        qq.put('start')
 
 
 
 if __name__ == "__main__":
     qmt_trader.init_order_context()
     consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
-    subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
+    # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
+    subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq,))
     consumer_thread.start()
     subscribe_thread.start()
     cached_auction_infos.clear()
@@ -396,7 +495,7 @@ if __name__ == "__main__":
     # 保持程序运行，以便调度器可以执行任务
     try:
         while True:
-            if is_after_932() and not do_test:
+            if is_after_940() and not do_test:
                 logger.info("达到最大执行时间，退出程序")
                 q.put('end')
                 if end_subscribe:

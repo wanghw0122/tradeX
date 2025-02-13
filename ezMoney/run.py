@@ -39,7 +39,8 @@ cached_auction_infos = []
 global default_position
 default_position = 0.33
 
-do_test = False
+do_test = True
+buy = False
 
 global final_results
 final_results = {}
@@ -90,7 +91,6 @@ strategies = {
             "returnNum": 1
         }
     },
-    "xiao_cao_dwdx_a": {},
     "xiao_cao_dwndx": {},
     "xiao_cao_dwyxdx": {}
 }
@@ -211,6 +211,9 @@ def merge_result(rslt):
 
 def strategy_schedule_job():
     try:    
+        if do_test and len(cached_auction_infos) > 3:
+            end_task("code_schedule_job")
+            return
         is_trade, _ = date.is_trading_day()
         if not is_trade and not do_test:
             logger.info("[producer] 非交易日，不执行策略.")
@@ -261,6 +264,8 @@ def strategy_schedule_job():
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
 def consumer_to_buy(q, orders_dict, orders):
+    if not buy:
+        return
     while True:
         try:
             data = q.get()
@@ -286,6 +291,8 @@ def consumer_to_buy(q, orders_dict, orders):
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 
 def consumer_to_subscribe(qq):
+    from xtquant import xtdata
+    xtdata.connect(port=58611)
     subscribe_ids = []
     while True:
         try:
@@ -329,8 +336,11 @@ def consumer_to_subscribe(qq):
 
 
 def consumer_to_subscribe_whole(qq):
+    from xtquant import xtdata
+    xtdata.connect(port=58611)
+    print ("consumer_to_subscribe_whole connect success")
     subscribe_ids = []
-    subscribe_codes = []
+    subscribe_codes = ['603966.SH']
     whole_tick_info_dict= {}
     scribed = False
     while True:
@@ -359,8 +369,11 @@ def consumer_to_subscribe_whole(qq):
                         time_difference =  current_time - (specified_time / 1000)
                         return time_difference
                     def on_data(res, stocks=subscribe_codes, info_dict = whole_tick_info_dict):
-                        # logger.info(f"[subscribe] on_data: {data}")
+                        logger.info(f"[subscribe] codes: {subscribe_codes}")
                         for stock in stocks:
+                            if stock not in res:
+                                continue
+                            print (info_dict)
                             info = info_dict[stock]
                             times = info['times']
                             cost_diff = info['cost_diff']
@@ -395,8 +408,12 @@ def consumer_to_subscribe_whole(qq):
                             cur_avg_price = total_amount / total_volume
                             price_list.append(lastPrice)
                             avg_price_list.append(cur_avg_price)
+                            print(len(price_list))
                             logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{cur_avg_price}，总成交额：{total_amount}, 总成交量：{total_volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
 
+                    for code in subscribe_codes:
+                        whole_tick_info_dict[code] = {'total_amount': 0, 'total_volume': 0, 'price_list': [], 'avg_price_list': [], 'cost_diff': [], 'times': []}
+                    print(f"初始化 info dict {whole_tick_info_dict}")
                     id = xtdata.subscribe_whole_quote(subscribe_codes, callback=on_data) # 设置count = -1来取到当天所有
                     if id < 0:
                         logger.error(f"[subscribe] subscribe_quote error: {subscribe_codes}")
@@ -405,8 +422,7 @@ def consumer_to_subscribe_whole(qq):
                         logger.info(f"[subscribe] subscribe_quote success: {subscribe_codes}")
                         scribed = True
                         subscribe_ids.append(id)
-                        for code in subscribe_codes:
-                            whole_tick_info_dict[code] = {'total_amount': 0, 'total_volume': 0, 'price_list': [], 'avg_price_list': [], 'cost_diff': [], 'times': []}
+                        
                 elif data == 'end':
                     if whole_tick_info_dict:
                         import json
@@ -483,6 +499,18 @@ def end_task(name):
 
 
 if __name__ == "__main__":
+
+    from xtquant import xtdatacenter as xtdc
+    xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")
+
+    print('xtdc.init')
+    xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几秒的时间
+    print('done')
+
+    print('xtdc.listen')
+    listen_addr = xtdc.listen(port = 58611)
+    print(f'done, listen_addr:{listen_addr}')
+
     qmt_trader.init_order_context()
     consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
     # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
@@ -493,7 +521,7 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=4, id="code_schedule_job")
+    scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=4, id="code_cancel_job")
 

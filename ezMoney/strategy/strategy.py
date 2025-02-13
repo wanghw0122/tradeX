@@ -269,10 +269,12 @@ class StrategyManager:
             if strategy_name not in all_valid_strategy_names:
                 logger.info(f"策略 {strategy_name} 无效，取消执行.")
                 continue
-            if sub_task_dict and len(sub_task_dict) > 0:
-                for sub_task, params in sub_task_dict.items():
+            if 'sub_strategies' in sub_task_dict and sub_task_dict['sub_strategies']:
+                sub_strategies = sub_task_dict['sub_strategies']
+                for sub_task, params in sub_strategies.items():
                     rslt = self.run_strategys([strategy_name], current_date, sub_task, params)
                     return_rslt[strategy_name + '-' + sub_task] = rslt
+            
             else:
                 rslt = self.run_strategys([strategy_name], current_date)
                 return_rslt[strategy_name] = rslt

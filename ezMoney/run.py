@@ -39,8 +39,8 @@ cached_auction_infos = []
 global default_position
 default_position = 0.33
 
-do_test = True
-buy = False
+do_test = False
+buy = True
 
 global final_results
 final_results = {}
@@ -79,30 +79,122 @@ qmt_trader.callback.set_qmt(qmt_trader)
 #     "xiao_cao_dwyxdx": {}
 # }
 
+budgets = {
+    "ydx": {
+        "name" : "ydx",
+        "value": 0.5,
+        "codes": [],
+        "total_position": default_position
+    },
+    "ndx": {
+        "name" : "ndx",
+        "value": 0.5,
+        "codes": [],
+        "total_position": default_position
+    }
+}
 
 strategies = {
     "低吸": {
-        "低位孕线低吸": {
-            "code": "9G0086",
-            "returnNum": 1
-        },
-        "低位N字低吸": {
-            "code": "9G0080",
-            "returnNum": 1
+        "sub_strategies": {
+            "低位孕线低吸": {
+                "code": "9G0086",
+                "returnNum": 1,
+                "budget": "ydx"
+            },
+            "低位N字低吸": {
+                "code": "9G0080",
+                "returnNum": 1,
+                "budget": "ndx"
+            }
         }
     },
-    "xiao_cao_dwndx": {},
-    "xiao_cao_dwyxdx": {}
+    "xiao_cao_dwndx": {
+        "sub_strategies": {},
+        "budget": "ndx"
+    },
+    "xiao_cao_dwyxdx": {
+        "sub_strategies": {},
+        "budget": "ydx"
+    }
 }
 
 
+def set_strategy_codes_to_budgets(strategy_name, codes, strategies_dict = strategies, budgets_dict = budgets):
+    if not strategy_name or len(strategy_name) == 0:
+        return
+    if not codes or len(codes) == 0:
+        return
+    if not strategies_dict or len(strategies_dict) == 0:
+        return
+    if not budgets_dict or len(budgets_dict) == 0:
+        return
+    if '-' in strategy_name:
+        strategy = strategy_name.split('-')[0]
+        sub_task_name = strategy_name.split('-')[1]
+        if strategy not in strategies_dict:
+            return
+        if 'sub_strategies' not in strategies_dict[strategy]:
+            return
+        sub_stategies_dict = strategies_dict[strategy]['sub_strategies']
+        if not sub_stategies_dict or len(sub_stategies_dict) == 0:
+            logger.error(f"sub_stategies_dict not found in strategies_dict")
+            return
+        
+        sub_task = sub_stategies_dict[sub_task_name]
+        if not sub_task or len(sub_task) == 0:
+            return
+        if 'budget' not in sub_task:
+            return
+        budget_name = sub_task['budget']
+        if budget_name not in budgets_dict:
+            return
+        budget = budgets_dict[budget_name]
+        if not budget or len(budget) == 0:
+            return
+        for code in codes:
+            if code in budget['codes']:
+                continue
+            budget['codes'].append(code)
+    else:
+        if strategy_name not in strategies_dict:
+            return
+        budget_name = strategies_dict[strategy_name]['budget']
+        if budget_name not in budgets_dict:
+            logger.error(f"budget {budget_name} not found in budgets_dict")
+            return
+        for code in codes:
+            if code in budgets_dict[budget_name]['codes']:
+                continue
+            budgets_dict[budget_name]['codes'].append(code)
+
+def set_position_to_budgets(position = default_position, budgets_dict = budgets):
+    for _, budget in budgets_dict.items():
+        if not budget or len(budget) == 0:
+            continue
+        budget['total_position'] = position
+
+def get_position_from_budgets(budgets_dict = budgets):
+    rslt = {}
+    for _, budget in budgets_dict.items():
+        if not budget or len(budget) == 0:
+            continue
+        codes = budget['codes']
+        value = budget['value']
+        if not codes or len(codes) == 0:
+            continue
+        position = budget['total_position'] / len(codes)
+        for code in codes:
+            rslt[code] = position * value
+    return rslt
 
 def get_target_return_keys_dict(starategies_dict = strategies):
     target_return_keys_dict = {}
-    for strategy_name, sub_task_dict in starategies_dict.items():
-        if not sub_task_dict or len(sub_task_dict) == 0:
+    for strategy_name, strategy_dict in starategies_dict.items():
+        if 'sub_strategies' not in strategy_dict:
             target_return_keys_dict[strategy_name] = strategy_name
         else:
+            sub_task_dict = strategy_dict['sub_strategies']
             for sub_task_name, _ in sub_task_dict.items():
                 target_return_keys_dict[strategy_name + '-' + sub_task_name] = strategy_name
     return target_return_keys_dict
@@ -110,16 +202,16 @@ def get_target_return_keys_dict(starategies_dict = strategies):
 def get_target_codes_by_all_strategies(retry_times=3):
     rslt_dct = {}
     if retry_times <= 0:
-        return None
+        return None, 0
     try:
         items = sm.run_all_strategys(strategies_dict=strategies)
         rkeys = get_target_return_keys_dict(strategies)
         if rkeys == None or len(rkeys) == 0:
-            return None
+            return None, 0
         if items == None:
-            return None
+            return None, 0
         if len(items) == 0:
-            return None
+            return None, 0
         for key, name in rkeys.items():
             if key not in items:
                 continue
@@ -140,13 +232,13 @@ def get_target_codes_by_all_strategies(retry_times=3):
                         continue
                     auction_codes.append(code.split('.')[0])
             if len(auction_codes):
-                rslt_dct[key] = (auction_codes, position)
+                rslt_dct[key] = auction_codes
             else:
-                rslt_dct[key] = ([], 0.0)
+                rslt_dct[key] = []
+        return rslt_dct, position
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
         return get_target_codes_by_all_strategies(retry_times-1)
-    return rslt_dct
 
 
 def get_position(xiaocao_envs):
@@ -185,27 +277,21 @@ def get_position(xiaocao_envs):
     return max(min(default_position + lift, 1.0), default_position)
 
 
-def merge_result(rslt):
+def merge_result(rslt, position):
     if type(rslt) is not dict:
         logger.error(f"merge result type error{type(rslt)}")
         return {}
     if len(rslt) == 0:
         return {}
-    code_to_position = {}
-    ll = len(rslt)
-    for key, value in rslt.items():
-        logger.info(f"策略{key}, 成功得到结果 {value}.")
-        codes = value[0]
+    for key, codes in rslt.items():
+        logger.info(f"策略{key}, 成功得到结果 {codes}.")
         code_len = len(codes)
         if code_len <= 0:
             continue
-        position = value[1]
-        for code in codes:
-            if code in code_to_position:
-                code_to_position[code] = code_to_position[code] + position / code_len / ll
-            else:
-                code_to_position[code] = position / code_len / ll
-    return code_to_position
+        set_strategy_codes_to_budgets(key, codes)
+    set_position_to_budgets(position)
+    
+    return get_position_from_budgets()
 
 
 
@@ -226,12 +312,12 @@ def strategy_schedule_job():
             logger.info("[producer] 已过交易时间，结束执行策略.")
             end_task("code_schedule_job")
             return
-        rslt = get_target_codes_by_all_strategies()
+        rslt, position = get_target_codes_by_all_strategies()
         if not rslt or len(rslt) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             cached_auction_infos.append({})
             return
-        m_rslt = merge_result(rslt)
+        m_rslt = merge_result(rslt, position)
         logger.info(f"[producer] 获取到目标股票 {m_rslt}.")
         cached_auction_infos.append(m_rslt)
         if len(cached_auction_infos) > 1:
@@ -248,7 +334,7 @@ def strategy_schedule_job():
                 if l > 0:
                     for _, v in final_results.items():
                         total_position = total_position + v
-                    min_position = total_position / (l + 1)
+                    min_position = total_position / l
                 for code, position in m_rslt.items():
                     if code in final_results:
                         continue
@@ -336,12 +422,14 @@ def consumer_to_subscribe(qq):
 
 
 def consumer_to_subscribe_whole(qq):
+    from multiprocessing import Manager
     from xtquant import xtdata
     xtdata.connect(port=58611)
     print ("consumer_to_subscribe_whole connect success")
     subscribe_ids = []
-    subscribe_codes = ['603966.SH']
-    whole_tick_info_dict= {}
+    subscribe_codes = []
+    manager = Manager()
+    whole_tick_info_dict = manager.dict()  # 使用 Manager 创建共享字典
     scribed = False
     while True:
         try:
@@ -428,7 +516,7 @@ def consumer_to_subscribe_whole(qq):
                         import json
                         file_path = "tick_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
                         with open(file_path, 'w', encoding='utf-8') as file:
-                            json.dump(whole_tick_info_dict, file, ensure_ascii=False, indent=4)
+                            json.dump(dict(whole_tick_info_dict), file, ensure_ascii=False, indent=4)
                     for id in subscribe_ids:
                         xtdata.unsubscribe_quote(id)
                     break
@@ -439,7 +527,7 @@ def consumer_to_subscribe_whole(qq):
                 break
             file_path = "tick_snapshot_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
             with open(file_path, 'w', encoding='utf-8') as file:
-                json.dump(whole_tick_info_dict, file, ensure_ascii=False, indent=4)
+                json.dump(dict(whole_tick_info_dict), file, ensure_ascii=False, indent=4)
         except Exception as e:
             logger.error(f"[subscribe] 执行任务出现错误: {e}")
 

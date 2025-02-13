@@ -22,6 +22,7 @@ global q
 global qq
 q = Queue(10)
 qq = Queue(10)
+
 end_subscribe = True
 start_subscribe = True
 
@@ -351,6 +352,7 @@ def strategy_schedule_job():
         if error_time > 20:
             end_task("code_schedule_job")
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
+
 
 def consumer_to_buy(q, orders_dict, orders):
     if not buy:

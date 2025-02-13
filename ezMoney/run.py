@@ -83,6 +83,9 @@ qmt_trader.callback.set_qmt(qmt_trader)
 #     "xiao_cao_dwyxdx": {}
 # }
 
+
+#####strategy configs #####################################
+
 budgets = {
     "ydx": {
         "name" : "ydx",
@@ -122,6 +125,8 @@ strategies = {
         "budget": "ydx"
     }
 }
+
+##########################strategy configs ################
 
 
 def set_strategy_codes_to_budgets(strategy_name, codes, strategies_dict = strategies, budgets_dict = budgets):

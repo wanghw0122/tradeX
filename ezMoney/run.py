@@ -39,9 +39,12 @@ cached_auction_infos = []
 global default_position
 default_position = 0.33
 
+#################### 测试配置 ########################
+
 do_test = False
 buy = True
 
+#################### 测试配置 ########################
 global final_results
 final_results = {}
 
@@ -461,7 +464,7 @@ def consumer_to_subscribe_whole(qq):
                         for stock in stocks:
                             if stock not in res:
                                 continue
-                            print (info_dict)
+                            
                             info = info_dict[stock]
                             times = info['times']
                             cost_diff = info['cost_diff']
@@ -496,12 +499,13 @@ def consumer_to_subscribe_whole(qq):
                             cur_avg_price = total_amount / total_volume
                             price_list.append(lastPrice)
                             avg_price_list.append(cur_avg_price)
-                            print(len(price_list))
+                            info_dict[stock] = info
+                            
                             logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{cur_avg_price}，总成交额：{total_amount}, 总成交量：{total_volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
 
                     for code in subscribe_codes:
                         whole_tick_info_dict[code] = {'total_amount': 0, 'total_volume': 0, 'price_list': [], 'avg_price_list': [], 'cost_diff': [], 'times': []}
-                    print(f"初始化 info dict {whole_tick_info_dict}")
+                    logger.info(f"初始化 info dict {whole_tick_info_dict}")
                     id = xtdata.subscribe_whole_quote(subscribe_codes, callback=on_data) # 设置count = -1来取到当天所有
                     if id < 0:
                         logger.error(f"[subscribe] subscribe_quote error: {subscribe_codes}")
@@ -523,8 +527,10 @@ def consumer_to_subscribe_whole(qq):
             else:
                 continue
         except KeyboardInterrupt:
+            import json
             if not whole_tick_info_dict:
                 break
+            logger.error(f"save info dict {whole_tick_info_dict}")
             file_path = "tick_snapshot_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
             with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump(dict(whole_tick_info_dict), file, ensure_ascii=False, indent=4)

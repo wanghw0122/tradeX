@@ -328,41 +328,41 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
             d['stock_name'] = stock_name
             if blockCategoryCodeList and len(blockCategoryCodeList) > 0:
                 d['block_category'] = ','.join(blockCategoryCodeList)
-                max_rank = -1
+                min_rank = 100
                 for category in blockCategoryCodeList:
                     if category not in category_dict:
                         continue
                     info = category_dict[category]
                     assert info['categoryCode'] == category
-                    rank = info['rank']
-                    max_rank = max(max_rank, rank)
-                d['max_block_category_rank'] = max_rank
+                    info_rank = info['rank']
+                    min_rank = min(min_rank, info_rank)
+                d['max_block_category_rank'] = min_rank
             if blockCodeList and len(blockCodeList) > 0:
                 d['block_codes'] = ','.join(blockCodeList)
-                max_rank = -1
+                min_rank = 100
                 for block in blockCodeList:
                     if block not in block_dict:
                         continue
                     info = block_dict[block]
                     assert info['blockCode'] == block
-                    rank = info['rank']
-                    max_rank = max(max_rank, rank)
-                d['max_block_code_rank'] = max_rank
+                    info_rank = info['rank']
+                    min_rank = min(min_rank, info_rank)
+                d['max_block_code_rank'] = min_rank
             if industryBlockCodeList and len(industryBlockCodeList) > 0:
                 d['industry_code'] = ','.join(industryBlockCodeList)
-                max_rank = -1
+                min_rank = 100
                 for code in industryBlockCodeList:
                     if code in category_dict:
                         info = category_dict[code]
                         assert info['categoryCode'] == code
-                        rank = info['rank']
-                        max_rank = max(max_rank, rank)
+                        info_rank = info['rank']
+                        min_rank = min(min_rank, info_rank)
                     if code in block_dict:
                         info = block_dict[code]
                         assert info['blockCode'] == code
-                        rank = info['rank']
-                        max_rank = max(max_rank, rank)
-                d['max_industry_code_rank'] = max_rank
+                        info_rank = info['rank']
+                        min_rank = min(min_rank, info_rank)
+                d['max_industry_code_rank'] = min_rank
             if category_dict:
                 d['block_category_info'] = json.dumps(category_dict, ensure_ascii=False)
             

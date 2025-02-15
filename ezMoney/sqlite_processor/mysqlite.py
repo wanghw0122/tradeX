@@ -193,10 +193,16 @@ class SQLiteManager:
                     data[key] = value
         try:
             self.conn.execute('BEGIN')
-            columns = ', '.join(data_list[0].keys())
+            keys = [k for k, _ in data_list[0].items()]
+            columns = ', '.join(keys)
             placeholders = ', '.join(['?' for _ in data_list[0]])
             insert_query = f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})"
-            values = [tuple(data.values()) for data in data_list]
+            values = []
+            for data in data_list:
+                data_values = []
+                for key in keys:
+                    data_values.append(data[key])
+                values.append(tuple(data_values))
             self.cursor.executemany(insert_query, values)
             # 提交事务
             self.conn.execute('COMMIT')

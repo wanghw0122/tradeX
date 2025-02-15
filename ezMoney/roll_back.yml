@@ -1,11 +1,37 @@
 configs:
-  - strategy_name: "lpdx_first"
-    start: "2025-01-13"
-    end: "2025-01-14"
+  - strategy_name: "xiao_cao_dwyxdx"
+    start: "2025-02-13"
+    end: "2025-02-14"
     sub_tasks: {}
     max_num: 120
-    valid: false
-    saved: false
+    valid: true
+    saved: true
+    save_type: "db"
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"
+    params:
+      returnNum: 10
+      returnFullInfo: true
+  - strategy_name: "xiao_cao_dwndx"
+    start: "2025-02-13"
+    end: "2025-02-14"
+    sub_tasks: {}
+    max_num: 120
+    valid: true
+    saved: true
+    save_type: "db"
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"
+    params:
+      returnNum: 10
+      returnFullInfo: true
+  - strategy_name: "xiao_cao_dwdx_a"
+    start: "2025-02-13"
+    end: "2025-02-14"
+    sub_tasks: {}
+    max_num: 120
+    valid: true
+    saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "w"
@@ -162,7 +188,7 @@ configs:
     start: "2025-02-14"
     end: "2025-02-14"
     max_num: 1
-    valid: true
+    valid: false
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"

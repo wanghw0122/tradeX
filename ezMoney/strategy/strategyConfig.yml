@@ -6,7 +6,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    maxReturnNum: 1
+    maxReturnNum: 15
     depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
@@ -104,7 +104,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    maxReturnNum: 1
+    maxReturnNum: 15
     depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
@@ -202,7 +202,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    maxReturnNum: 1
+    maxReturnNum: 15
     depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
@@ -437,7 +437,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    maxReturnNum: 3
+    maxReturnNum: 15
     depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
@@ -530,6 +530,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
+    maxReturnNum: 15
     depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
@@ -618,6 +619,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
+    maxReturnNum: 15
     depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"

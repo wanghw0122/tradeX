@@ -280,7 +280,7 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
             return
         if not arr:
             return
-        rank = 1
+        ranker = 1
         for item in arr:
             if item == None:
                 continue
@@ -318,7 +318,7 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
             open_pct_rate = item.openPctChangeRate
             d = {}
             d['date_key'] = date
-            d['stock_rank'] = rank
+            d['stock_rank'] = ranker
             d['strategy_name'] = strategy_name
             if sub_task:
                 d['sub_strategy_name'] = sub_task
@@ -442,9 +442,9 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                 d['close_price'] = close
                 d['next_day_open_price'] = next_open
                 d['next_day_close_price'] = next_close
-            logger.info(f"run strategy-{strategy_name} sub_task-{sub_task} date-{date} result: {r}")
+            logger.info(f"run strategy-{strategy_name} sub_task-{sub_task} date-{date} result: {d}")
             r.append(d)
-            rank = rank + 1
+            ranker = ranker + 1
     get_target_codes(strategy_names= [strategy_name], date = date, sub_task = sub_task, params = params, call_back=call_back)
 
 

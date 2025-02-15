@@ -152,3 +152,4 @@ data/*
 
 sqlite_db/
 sqlite_db/*
+ezMoney/sqlite_db/strategy_data.db

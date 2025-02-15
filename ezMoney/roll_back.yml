@@ -1,10 +1,11 @@
 configs:
   - strategy_name: "xiao_cao_dwyxdx"
-    start: "2025-02-13"
+    start: "2024-08-01"
     end: "2025-02-14"
     sub_tasks: {}
-    max_num: 120
+    max_num: 200
     valid: true
+    daily: true
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
@@ -13,11 +14,12 @@ configs:
       returnNum: 10
       returnFullInfo: true
   - strategy_name: "xiao_cao_dwndx"
-    start: "2025-02-13"
+    start: "2024-08-01"
     end: "2025-02-14"
     sub_tasks: {}
-    max_num: 120
+    max_num: 200
     valid: true
+    daily: true
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
@@ -26,11 +28,12 @@ configs:
       returnNum: 10
       returnFullInfo: true
   - strategy_name: "xiao_cao_dwdx_a"
-    start: "2025-02-13"
+    start: "2024-08-01"
     end: "2025-02-14"
     sub_tasks: {}
-    max_num: 120
+    max_num: 200
     valid: true
+    daily: true
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
@@ -185,10 +188,11 @@ configs:
           code: "9G0099"
           returnNum: 10
           returnFullInfo: true
-    start: "2025-02-14"
+    start: "2024-08-01"
     end: "2025-02-14"
-    max_num: 1
-    valid: false
+    max_num: 200
+    valid: true
+    daily: true
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
@@ -343,7 +347,8 @@ configs:
     start: "2024-08-01"
     end: "2025-01-26"
     max_num: 200
-    valid: false
+    valid: true
+    daily: true
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
@@ -460,10 +465,11 @@ configs:
           code: "9G0101"
           returnNum: 10
           returnFullInfo: true
-    start: "2025-01-23"
+    start: "2024-08-01"
     end: "2025-01-26"
     max_num: 200
-    valid: false
+    valid: true
+    daily: true
     saved: true
     save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"

@@ -158,6 +158,8 @@ def get_trade_dates(start_date, end_date, trade_days = 30):
         start_date_t = start_date_t + datetime.timedelta(days=1)
     start_date_index = trade_date_list.index(str(start_date_t))
     end_date_index = trade_date_list.index(str(end_date_t))
+    if end_date_index < start_date_index:
+        return []
     rslt =  trade_date_list[start_date_index:end_date_index + 1]
     if len(rslt) < trade_days:
         return rslt
@@ -167,7 +169,4 @@ def get_trade_dates(start_date, end_date, trade_days = 30):
 if __name__ == "__main__":
     
     print(trade_date_list)
-    print(is_trading_day("2025-01-17"))
-    print(is_trading_day("2025-01-18"))
-    print(is_trading_day("2025-01-19"))
-    print(is_trading_day("2025-01-20"))
+    print(is_trading_day("2025-02-15"))

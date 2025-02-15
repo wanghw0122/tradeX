@@ -3,6 +3,7 @@ import re
 from numpy import inner
 import yaml
 from data_class.xiao_cao_index_v2 import XiaoCaoIndexResult
+from data_class.category_rank_class import build_category_rank_sort_list
 from logger import logger, catch
 import os
 from http_request import http_context
@@ -299,8 +300,8 @@ class XiaoCaoDwdxA(Strategy):
             s_result = s_result[:self.max_return_num]
             if s_result is None or len(s_result) == 0:
                 return None
-        
-        rs = [x.code for x in s_result]
+        if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
+            rs = [x.code for x in s_result]
         if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs
@@ -324,8 +325,8 @@ class DxStrategy(Strategy):
             s_result = s_result[:self.max_return_num]
             if s_result is None or len(s_result) == 0:
                 return None
-        
-        rs = [x.code for x in s_result]
+        if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
+            rs = [x.code for x in s_result]
         if 'returnNum' in kwargs and kwargs['returnNum'] >= 0:
             return rs[:kwargs['returnNum']]
         return rs
@@ -344,7 +345,8 @@ class JwStrategy(Strategy):
             s_result = s_result[:self.max_return_num]
             if s_result is None or len(s_result) == 0:
                 return None
-        rs = [x.code for x in s_result]
+        if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
+            rs = [x.code for x in s_result]
         if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs
@@ -363,7 +365,8 @@ class QbStrategy(Strategy):
             s_result = s_result[:self.max_return_num]
             if s_result is None or len(s_result) == 0:
                 return None
-        rs = [x.code for x in s_result]
+        if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
+            rs = [x.code for x in s_result]
         if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs
@@ -606,6 +609,7 @@ sm.register_selector("xiao_cao_index_v2", http_context['xiao_cao_index_v2'])
 sm.register_selector("build_xiaocao_environment_second_line_v2_dict_simple", build_xiaocao_environment_second_line_v2_dict_simple)
 sm.register_selector("build_xiaocao_mod_dict_all", build_xiaocao_mod_dict_all)
 sm.register_selector("get_code_by_block_rank", get_code_by_block_rank)
+sm.register_selector("build_category_rank_sort_list", build_category_rank_sort_list)
 
 sm.register_filter("keys_10cm_filter", keys_10cm_filter)
 sm.register_filter("jw_filter", jw_filter)

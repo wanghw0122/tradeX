@@ -6,131 +6,165 @@ configs:
     max_num: 120
     valid: false
     saved: false
+    save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "w"
+    params:
+      returnNum: 10
+      returnFullInfo: true
   - strategy_name: "低吸"
     sub_tasks:
       - name: "绿盘低吸"
         params:
           code: "9G0002"
           returnNum: 10
+          returnFullInfo: true
       - name: "首红断低吸"
         params:
           code: "9G0008"
           returnNum: 10
+          returnFullInfo: true
       - name: "红断低吸"
         params:
           code: "9G0015"
           returnNum: 10
+          returnFullInfo: true
       - name: "绿断低吸"
         params:
           code: "9G0017"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位低吸"
         params:
           code: "9G0020"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位低吸"
         params:
           code: "9G0024"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位低吸"
         params:
           code: "9G0026"
           returnNum: 10
+          returnFullInfo: true
       - name: "下跌低吸"
         params:
           code: "9G0028"
           returnNum: 10
+          returnFullInfo: true
       - name: "断低吸"
         params:
           code: "9G0032"
           returnNum: 10
+          returnFullInfo: true
       - name: "连断低吸"
         params:
           code: "9G0033"
           returnNum: 10
+          returnFullInfo: true
       - name: "首断低吸"
         params:
           code: "9G0034"
           returnNum: 10
+          returnFullInfo: true
       - name: "绿盘低吸前3"
         params:
           code: "9G0040"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位断板低吸"
         params:
           code: "9G0041"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位断板低吸"
         params:
           code: "9G0042"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位断板低吸"
         params:
           code: "9G0043"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高低吸"
         params:
           code: "9G0046"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高断板低吸"
         params:
           code: "9G0048"
           returnNum: 10
+          returnFullInfo: true
       - name: "首绿断低吸"
         params:
           code: "9G0049"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高N字低吸"
         params:
           code: "9G0077"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位N字低吸"
         params:
           code: "9G0078"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位N字低吸"
         params:
           code: "9G0079"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位N字低吸"
         params:
           code: "9G0080"
           returnNum: 10
+          returnFullInfo: true
       - name: "下跌N字低吸"
         params:
           code: "9G0081"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高孕线低吸"
         params:
           code: "9G0083"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位孕线低吸"
         params:
           code: "9G0084"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位孕线低吸"
         params:
           code: "9G0085"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位孕线低吸"
         params:
           code: "9G0086"
           returnNum: 10
+          returnFullInfo: true
       - name: "下跌孕线低吸"
         params:
           code: "9G0087"
           returnNum: 10
+          returnFullInfo: true
       - name: "放宽低吸前3"
         params:
           code: "9G0099"
           returnNum: 10
+          returnFullInfo: true
     start: "2024-08-01"
     end: "2025-01-26"
     max_num: 200
-    valid: false
-    saved: false
+    valid: true
+    saved: true
+    save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"
   - strategy_name: "追涨"
@@ -139,123 +173,153 @@ configs:
         params:
           code: "9G0016"
           returnNum: 10
+          returnFullInfo: true
       - name: "长影追涨"
         params:
           code: "9G0018"
           returnNum: 10
+          returnFullInfo: true
       - name: "小高开追涨"
         params:
           code: "9G0019"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位追涨"
         params:
           code: "9G0021"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位追涨"
         params:
           code: "9G0025"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位追涨"
         params:
           code: "9G0027"
           returnNum: 10
+          returnFullInfo: true
       - name: "下跌追涨"
         params:
           code: "9G0030"
           returnNum: 10
+          returnFullInfo: true
       - name: "超跌追涨"
         params:
           code: "9G0031"
           returnNum: 10
+          returnFullInfo: true
       - name: "断追涨"
         params:
           code: "9G0035"
           returnNum: 10
+          returnFullInfo: true
       - name: "连断追涨"
         params:
           code: "9G0036"
           returnNum: 10
+          returnFullInfo: true
       - name: "首断追涨"
         params:
           code: "9G0037"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高追涨"
         params:
           code: "9G0047"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高断板追涨"
         params:
           code: "9G0050"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位断板追涨"
         params:
           code: "9G0051"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位断板追涨"
         params:
           code: "9G0052"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位断板追涨"
         params:
           code: "9G0053"
           returnNum: 10
+          returnFullInfo: true
       - name: "红断追涨"
         params:
           code: "9G0056"
           returnNum: 10
+          returnFullInfo: true
       - name: "绿断追涨"
         params:
           code: "9G0057"
           returnNum: 10
+          returnFullInfo: true
       - name: "首绿断追涨"
         params:
           code: "9G0058"
           returnNum: 10
+          returnFullInfo: true
       - name: "一进二追涨"
         params:
           code: "9G0095"
           returnNum: 10
+          returnFullInfo: true
       - name: "二板以上追涨"
         params:
           code: "9G0096"
           returnNum: 10
+          returnFullInfo: true
       - name: "放宽追涨前3"
         params:
           code: "9G0100"
           returnNum: 10
+          returnFullInfo: true
       - name: "红盘起爆"
         params:
           code: "9G0001"
           returnNum: 10
+          returnFullInfo: true
       - name: "红盘起爆前3"
         params:
           code: "9G0039"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高小高开起爆"
         params:
           code: "9G0089"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位小高开起爆"
         params:
           code: "9G0090"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位小高开起爆"
         params:
           code: "9G0091"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位小高开起爆"
         params:
           code: "9G0092"
           returnNum: 10
+          returnFullInfo: true
       - name: "下跌小高开起爆"
         params:
           code: "9G0093"
           returnNum: 10
+          returnFullInfo: true
     start: "2024-08-01"
     end: "2025-01-26"
     max_num: 200
     valid: false
-    saved: false
+    saved: true
+    save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"
   - strategy_name: "接力"
@@ -264,94 +328,117 @@ configs:
         params:
           code: "9G0003"
           returnNum: 10
+          returnFullInfo: true
       - name: "一进二中弱转强"
         params:
           code: "9G0004"
           returnNum: 10
+          returnFullInfo: true
       - name: "中高位弱转强"
         params:
           code: "9G0005"
           returnNum: 10
+          returnFullInfo: true
       - name: "中高位中弱转强"
         params:
           code: "9G0006"
           returnNum: 10
+          returnFullInfo: true
       - name: "倒接力"
         params:
           code: "9G0007"
           returnNum: 10
+          returnFullInfo: true
       - name: "中高位连板打板"
         params: 
           code: "9G0009"
           returnNum: 10
+          returnFullInfo: true
       - name: "一进二打板"
         params:
           code: "9G0010"
           returnNum: 10
+          returnFullInfo: true
       - name: "N半23"
         params:
           code: "9G0011"
           returnNum: 10
+          returnFullInfo: true
       - name: "N半"
         params:
           code: "9G0012"
           returnNum: 10
+          returnFullInfo: true
       - name: "N"
         params:
           code: "9G0013"
           returnNum: 10
+          returnFullInfo: true
       - name: "孕线"
         params:
           code: "9G0014"
           returnNum: 10
+          returnFullInfo: true
       - name: "首板打板"
         params:
           code: "9G0038"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高倒接力"
         params:
           code: "9G0065"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位倒接力"
         params:
           code: "9G0066"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位倒接力"
         params:
           code: "9G0067"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位倒接力"
         params:
           code: "9G0068"
           returnNum: 10
+          returnFullInfo: true
       - name: "下跌倒接力"
         params:
           code: "9G0069"
           returnNum: 10
+          returnFullInfo: true
       - name: "最高弱板倒接力"
         params:
           code: "9G0071"
           returnNum: 10
+          returnFullInfo: true
       - name: "高位弱板倒接力"
         params:
           code: "9G0072"
           returnNum: 10
+          returnFullInfo: true
       - name: "中位弱板倒接力"
         params:
           code: "9G0073"
           returnNum: 10
+          returnFullInfo: true
       - name: "低位弱板倒接力"
         params:
           code: "9G0074"
           returnNum: 10
+          returnFullInfo: true
       - name: "二进三以上弱转强"
         params:
           code: "9G0101"
           returnNum: 10
+          returnFullInfo: true
     start: "2025-01-23"
     end: "2025-01-26"
     max_num: 200
-    valid: true
-    saved: false
+    valid: false
+    saved: true
+    save_type: "db"
     save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
     save_mod: "a"

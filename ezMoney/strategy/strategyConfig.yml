@@ -7,7 +7,7 @@ Strategies:
     cached: true
     priority: 1
     maxReturnNum: 1
-    depends: "xiao_cao_env"
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
         step: 0
@@ -105,7 +105,7 @@ Strategies:
     cached: true
     priority: 1
     maxReturnNum: 1
-    depends: "xiao_cao_env"
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
         step: 0
@@ -203,7 +203,7 @@ Strategies:
     cached: true
     priority: 1
     maxReturnNum: 1
-    depends: "xiao_cao_env"
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
         step: 0
@@ -303,6 +303,25 @@ Strategies:
         lruCached: true
         params:
           date: "{{system_time}}"
+  - name: "xiaocao_category_info"
+    type: "小草板块数据"
+    status: 1
+    cached: true
+    priority: 5
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        params: {}
+      - name: "build_category_rank_sort_list"
+        step: 1
+        desc: "构建小草板块"
+        logged: true
+        cached: true
+        lruCached: true
+        params:
+          date: "{{system_time}}"
   - name: "xiao_cao_env"
     type: "小草环境数据"
     status: 1
@@ -334,7 +353,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    depends: "xiao_cao_env"
+    depends: "xiao_cao_env,xiaocao_category_info"
     maxReturnNum: 1
     selectors:
       - name: "check_user_alive"
@@ -419,7 +438,7 @@ Strategies:
     cached: true
     priority: 1
     maxReturnNum: 3
-    depends: "xiao_cao_env,xiao_mods_info"
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
         step: 0
@@ -511,7 +530,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    depends: "xiao_cao_env,xiao_mods_info"
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
         step: 0
@@ -599,7 +618,7 @@ Strategies:
     status: 1
     cached: true
     priority: 1
-    depends: "xiao_cao_env,xiao_mods_info"
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
     selectors:
       - name: "check_user_alive"
         step: 0

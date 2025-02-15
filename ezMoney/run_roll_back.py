@@ -27,6 +27,7 @@ import pandas_market_calendars as mcal
 import pandas as pd
 import datetime
 from common.constants import *
+from sqlite_processor.mysqlite import *
 
 import yaml
 
@@ -40,12 +41,12 @@ def get_target_codes(strategy_names, date=date.get_current_date(), sub_task = No
     position = 0.3
     try:
         items = sm.run_strategys(strategy_names, current_date=date, sub_task = sub_task, params = params)
-        if call_back:
-            call_back(items)
         if items == None:
             return None, 0.3
         if len(items) == 0:
             return None, 0.3
+        if call_back:
+            call_back(items)
         if 'xiao_cao_env' in items:
             xiaocao_envs = items['xiao_cao_env'][0]
             position = get_position(xiaocao_envs)
@@ -59,7 +60,10 @@ def get_target_codes(strategy_names, date=date.get_current_date(), sub_task = No
             for item in arr:
                 if item == None:
                     continue
-                auction_codes.append(item.split('.')[0])
+                if type(item) == str:
+                    auction_codes.append(item.split('.')[0])
+                else:
+                    auction_codes.append(item.code.split('.')[0])
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
         traceback.print_exc()
@@ -86,6 +90,26 @@ def compute_return(auction_code, date, next_date):
     result = (end_price - start_price) / start_price
     logger.info(f"股票{auction_code}在{date}的收益为{result}， 开始价格为{start_price}, 结束价格为{end_price}")
     return result
+
+def get_stock_open_close_price(auction_code, date, next_date):
+    if '-' in date or '-' in next_date:
+        n_date = date.replace('-', '')
+        n_next_date = next_date.replace('-', '')
+    xtdata.download_history_data(auction_code, period='1d', start_time=n_date, end_time=n_next_date, incrementally = None)
+    x1dpdata = xtdata.get_local_data(field_list=[], stock_list=[auction_code], period='1d', start_time=n_date, end_time=n_next_date, count=-1,
+               dividend_type='none', fill_data=True)
+    df = x1dpdata[auction_code]
+    length = len(df)
+    if length != 2:
+        logger.error(f"股票{auction_code}在{date}, {next_date}的历史数据长度不为2，长度为{length}")
+        return -1, -1, -1, -1
+    x_data = df.loc[n_date: n_next_date]['open'].astype(float)
+    x_data_close = df.loc[n_date: n_next_date]['close'].astype(float)
+    start_price = x_data[n_date]
+    end_price = x_data[n_next_date]
+    close_price = x_data_close[n_date]
+    n_close_price = x_data_close[n_next_date]
+    return start_price, close_price, end_price, n_close_price
 
 def get_position(xiaocao_envs):
     if xiaocao_envs == None or len(xiaocao_envs) == 0:
@@ -122,7 +146,311 @@ def get_position(xiaocao_envs):
     lift = lifts[0] * positions[0]  + lifts[1] * positions[1] + lifts[2] * positions[2]
     return max(min(0.3 + lift, 1.0), 0.3)
 
+
+def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, params = {}):
+    def call_back(items, r = rslt):
+        import json
+        if strategy_name not in items:
+            return
+        category_dict = {}
+        block_dict = {}
+        mods_dict = {}
+        env_info = {}
+        if 'xiaocao_category_info' in items:
+            xiaocao_category_infos = items['xiaocao_category_info']
+            if xiaocao_category_infos:
+                block_list = [] 
+                index = 1
+                for info in xiaocao_category_infos:
+                    if info == None:
+                        continue
+                    categoryCode= info.categoryCode
+                    if not categoryCode:
+                        continue
+                    categoryName = info.name
+                    num = info.num if info.num != None else -1000
+                    prePctChangeRate = info.prePctChangeRate
+                    numChange = info.numChange
+                    stockType = info.stockType
+                    blockRankList = info.blockRankList
+                    category_dict[categoryCode] = {}
+                    category_dict[categoryCode]['categoryCode'] = categoryCode
+                    category_dict[categoryCode]['categoryName'] = categoryName
+                    category_dict[categoryCode]['num'] = num
+                    category_dict[categoryCode]['prePctChangeRate'] = prePctChangeRate
+                    category_dict[categoryCode]['numChange'] = numChange
+                    category_dict[categoryCode]['blocks'] = []
+                    if stockType and stockType == 'industry':
+                        category_dict[categoryCode]['industry'] = 1
+                        block_list.append((categoryCode, num, prePctChangeRate, numChange))
+                        category_dict[categoryCode]['blocks'].append(categoryCode)
+                    else:
+                        category_dict[categoryCode]['industry'] = 0
+                    category_dict[categoryCode]['rank'] = index
+                    
+                    if blockRankList and len(blockRankList) > 0:
+                        for block in blockRankList:
+                            if block == None:
+                                continue
+                            blockCode = block.blockCode
+                            if not blockCode:
+                                continue
+                            category_dict[categoryCode]['blocks'].append(blockCode)
+                            num = block.num
+                            prePctChangeRate = block.prePctChangeRate
+                            numChange = block.numChange
+                            block_list.append((blockCode, num, prePctChangeRate, numChange))
+                    index = index + 1
+                block_list.sort(key=lambda x: x[1], reverse=True)
+                index = 1
+                for block in block_list:
+                    blockCode = block[0]
+                    num = block[1]
+                    prePctChangeRate = block[2]
+                    numChange = block[3]
+                    block_dict[blockCode] = {}
+                    block_dict[blockCode]['blockCode'] = blockCode
+                    block_dict[blockCode]['num'] = num
+                    block_dict[blockCode]['prePctChangeRate'] = prePctChangeRate
+                    block_dict[blockCode]['numChange'] = numChange
+                    block_dict[blockCode]['rank'] = index
+                    index = index + 1
+                for _, info in category_dict.items():
+                    if 'blocks' not in info:
+                        continue
+                    blocks = info['blocks']
+                    if not blocks:
+                        continue
+                    block_code_dict = {}
+                    for block in blocks:
+                        block_code_dict[block] = {}
+                        block_code_dict[block].update(block_dict[block])
+                    info['block_dict'] = block_code_dict
+        if 'xiao_mods_info' in items and 'code' in params:
+            code = params['code']
+            mod_dict, mod_name_dict = items['xiao_mods_info']
+            mods = []
+            for code, info in mod_dict.items():
+                if code not in mod_name_dict:
+                    continue
+                mod_name = mod_name_dict[code]
+                mods.append(info)
+                mods_dict[code] = {}
+                mods_dict[code]['mod_name'] = mod_name
+                mods_dict[code]['mod_code'] = code
+                mods_dict[code]['mod_short_line_score'] = info.shortLineScore
+                mods_dict[code]['mod_short_line_score_change'] = info.shortLineScoreChange
+                mods_dict[code]['mod_trend_score'] = info.trendScore
+                mods_dict[code]['mod_trend_score_change'] = info.trendScoreChange
+            mods.sort(key=lambda x: x.shortLineScore, reverse=True)
+            index = 1
+            for mod in mods: 
+                code = mod.code
+                if code not in mods_dict:
+                    continue
+                mods_dict[code]['mod_short_line_rank'] = index
+                index = index + 1
+            mods.sort(key=lambda x: x.trendScore, reverse=True)
+            index = 1
+            for mod in mods:
+                code = mod.code
+                if code not in mods_dict:
+                    continue
+                mods_dict[code]['mod_trend_rank'] = index
+                index = index + 1
+        if 'xiao_cao_env' in items:
+            xiaocao_envs = items['xiao_cao_env'][0]
+            if xiaocao_envs:
+                for code, info in xiaocao_envs.items():
+                    env_info[code] = {}
+                    env_info[code]['realShortLineScore'] = info.realShortLineScore
+                    env_info[code]['realTrendScore'] = info.realTrendScore
+                    env_info[code]['preRealShortLineScore'] = info.preRealShortLineScore
+                    env_info[code]['preRealTrendScore'] = info.preRealTrendScore
+                    env_info[code]['shortLineScore'] = info.shortLineScore
+                    env_info[code]['trendScore'] = info.trendScore
+                    env_info[code]['preShortLineScore'] = info.preShortLineScore
+                    env_info[code]['preTrendScore'] = info.preTrendScore
+                    env_info[code]['shortLineScoreChange'] = info.shortLineScoreChange
+                    env_info[code]['trendScoreChange'] = info.trendScoreChange
+                    env_info[code]['realShortLineScoreChange'] = info.realShortLineScoreChange
+                    env_info[code]['realTrendScoreChange'] = info.realTrendScoreChange
+        arr = items[strategy_name]
+        if type(arr)!= list:
+            return
+        if not arr:
+            return
+        rank = 1
+        for item in arr:
+            if item == None:
+                continue
+            stock_code = item.code
+            if not stock_code:
+                continue
+            stock_name = item.codeName
+            blockCategoryCodeList = item.blockCategoryCodeList
+            blockCodeList = item.blockCodeList
+            industryBlockCodeList = item.industryBlockCodeList
+            is_bottom = item.isBottom
+            is_broken_plate = item.isBrokenPlate
+            is_down_broken = item.isDownBroken
+            is_fall = item.isFall
+            is_first_down_broken = item.isFirstDownBroken
+            is_first_up_broken = item.isFirstUpBroken
+            is_gestation_line = item.isGestationLine
+            is_half = item.isHalf
+            is_high = item.isHigh
+            is_highest = item.isHighest
+            is_long_shadow = item.isLongShadow
+            is_low = item.isLow
+            is_medium = item.isMedium
+            is_meso = item.isMeso
+            is_plummet = item.isPlummet
+            is_pre_st = item.isPreST
+            is_small_high_open = item.isSmallHighOpen
+            is_up_broken = item.isUpBroken
+            is_weak = item.isWeak
+            first_limit_up_days = item.firstLimitUpDays
+            jsjl = item.jsjl
+            cjs = item.cjs
+            xcjw = item.xcjw
+            jssb = item.jssb
+            open_pct_rate = item.openPctChangeRate
+            d = {}
+            d['date_key'] = date
+            d['stock_rank'] = rank
+            d['strategy_name'] = strategy_name
+            if sub_task:
+                d['sub_strategy_name'] = sub_task
+            else:
+                d['sub_strategy_name'] = ''
+            d['stock_code'] = stock_code
+            d['stock_name'] = stock_name
+            if blockCategoryCodeList and len(blockCategoryCodeList) > 0:
+                d['block_category'] = ','.join(blockCategoryCodeList)
+                max_rank = -1
+                for category in blockCategoryCodeList:
+                    if category not in category_dict:
+                        continue
+                    info = category_dict[category]
+                    assert info['categoryCode'] == category
+                    rank = info['rank']
+                    max_rank = max(max_rank, rank)
+                d['max_block_category_rank'] = max_rank
+            if blockCodeList and len(blockCodeList) > 0:
+                d['block_codes'] = ','.join(blockCodeList)
+                max_rank = -1
+                for block in blockCodeList:
+                    if block not in block_dict:
+                        continue
+                    info = block_dict[block]
+                    assert info['blockCode'] == block
+                    rank = info['rank']
+                    max_rank = max(max_rank, rank)
+                d['max_block_code_rank'] = max_rank
+            if industryBlockCodeList and len(industryBlockCodeList) > 0:
+                d['industry_code'] = ','.join(industryBlockCodeList)
+                max_rank = -1
+                for code in industryBlockCodeList:
+                    if code in category_dict:
+                        info = category_dict[code]
+                        assert info['categoryCode'] == code
+                        rank = info['rank']
+                        max_rank = max(max_rank, rank)
+                    if code in block_dict:
+                        info = block_dict[code]
+                        assert info['blockCode'] == code
+                        rank = info['rank']
+                        max_rank = max(max_rank, rank)
+                d['max_industry_code_rank'] = max_rank
+            if category_dict:
+                d['block_category_info'] = json.dumps(category_dict)
+            
+            if is_bottom:
+                d['is_bottom'] = 1
+            if is_broken_plate:
+                d['is_broken_plate'] = 1
+            if is_down_broken:
+                d['is_down_broken'] = 1
+            if is_fall:
+                d['is_fall'] = 1
+            if is_first_down_broken:
+                d['is_first_down_broken'] = 1
+            if is_first_up_broken:
+                d['is_first_up_broken'] = 1
+            if is_gestation_line:
+                d['is_gestation_line'] = 1
+            if is_half:
+                d['is_half'] = 1
+            if is_high:
+                d['is_high'] = 1
+            if is_highest:
+                d['is_highest'] = 1
+            if is_long_shadow:
+                d['is_long_shadow'] = 1
+            if is_low:
+                d['is_low'] = 1
+            if is_medium:
+                d['is_medium'] = 1
+            if is_meso:
+                d['is_meso'] = 1
+            if is_plummet:
+                d['is_plummet'] = 1
+            if is_pre_st:
+                d['is_pre_st'] = 1
+            if is_small_high_open:
+                d['is_small_high_open'] = 1
+            if is_up_broken:
+                d['is_up_broken'] = 1
+            if is_weak:
+                d['is_weak'] = 1
+            if first_limit_up_days != None:
+                d['first_limit_up_days'] = first_limit_up_days
+            if jsjl != None:
+                d['jsjl'] = jsjl
+            if cjs!= None:
+                d['cjs'] = cjs
+            if xcjw!= None:
+                d['xcjw'] = xcjw
+            if jssb!= None:
+                d['jssb'] = jssb
+            if open_pct_rate != None:
+                d['open_pct_rate'] = open_pct_rate
+            if 'code' in params:
+                code = params['code']
+                if code in mods_dict:
+                    d['mod_code'] = mods_dict[code]['mod_code']
+                    d['mod_name'] = mods_dict[code]['mod_name']
+                    d['mod_short_line_score'] = mods_dict[code]['mod_short_line_score']
+                    d['mod_short_line_score_change'] = mods_dict[code]['mod_short_line_score_change']
+                    d['mod_short_line_rank'] = mods_dict[code]['mod_short_line_rank']
+                    d['mod_trend_score'] = mods_dict[code]['mod_trend_score']
+                    d['mod_trend_score_change'] = mods_dict[code]['mod_trend_score_change']
+                    d['mod_trend_rank'] = mods_dict[code]['mod_trend_rank']
+
+            if env_info:
+                d['env_json_info'] = json.dumps(env_info)
+            if next_date:
+                if '.' in stock_code:
+                    real_code = stock_code.split('.')[0]
+                else:
+                    real_code = stock_code
+                if real_code in code_map:
+                    real_code = code_map[real_code]
+                open,close,next_open,next_close = get_stock_open_close_price(real_code, date, next_date)
+                d['open_price'] = open
+                d['close_price'] = close
+                d['next_day_open_price'] = next_open
+                d['next_day_close_price'] = next_close
+            logger.info(f"run strategy-{strategy_name} sub_task-{sub_task} date-{date} result: {r}")
+            r.append(d)
+            rank = rank + 1
+    get_target_codes(strategy_names= [strategy_name], date = date, sub_task = sub_task, params = params, call_back=call_back)
+
+
 def run(strategy_name, date, next_date, rslt, code_map, sub_task = None, params = {}):
+    if not next_date:
+        return
     def call_back(items):
         if 'code' not in params:
             return
@@ -244,9 +572,28 @@ def save_rslt(rslt, save_path, save_mod, nums = 300):
     for k, _ in rslt.items():
         rslt[k].clear()
 
-def run_roll_back(once_daily = False):
-    file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
+def save_rslt_to_db(datekey, rslt,  strategy_name, pre = False, sub_task = None):
+    if not rslt:
+        return
+    logger.info(f"开始保存{strategy_name} - {sub_task}回测结果到数据库... 数量为{len(rslt)} 日期为{datekey}")
+    n_datekey = datekey
+    if '-' in n_datekey:
+        n_datekey = n_datekey.replace('-', '')
+    n_datekey = n_datekey[:6]
+    if sub_task:
+        strategy = strategy_name + '-' + sub_task
+    else:
+        strategy = strategy_name
+    if pre:
+        prefix = 'strategy_data_premarket_'
+    else:
+        prefix = 'strategy_data_aftermarket_'
+    with SQLiteManager(db_name) as manager: 
+        create_strategy_table(prefix = prefix, specified_date = n_datekey)
+        manager.batch_insert_data_by_date(datekey, rslt, prefix=prefix, strategy=strategy)
 
+def run_roll_back(once_daily = False, pre = False):
+    file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
     with open(file_name, 'r',  encoding='utf-8') as file:
         config = yaml.safe_load(file)
         if config is None or 'configs' not in config:
@@ -276,6 +623,7 @@ def run_roll_back(once_daily = False):
         saved = cfg['saved']
         valid = cfg['valid']
         sub_tasks = cfg['sub_tasks']
+        save_type = cfg['save_type']
 
         if not strategy_name or len(strategy_name) == 0:
             logger.error(f"策略名称为空...")
@@ -295,7 +643,24 @@ def run_roll_back(once_daily = False):
                 code_map[code] = stock
         logger.info(f"构建全市场股票字典完毕。 共{len(code_map)}个")
 
-        trade_days = date.get_trade_dates(start_date=start, end_date=end, trade_days=max_num)
+
+        if once_daily:
+            today = date.get_current_date()
+            is_trade, pre_date = date.is_trading_day(today)
+            if is_trade:
+                if pre:
+                    trade_days = [today]
+                else:
+                    trade_days = [pre_date, today]
+            else:
+                logger.info("today is not trading day. daily task end.")
+                return
+        else:
+            trade_days = date.get_trade_dates(start_date=start, end_date=end, trade_days=max_num)
+
+        if not trade_days:
+            logger.error(f"trade_days error {trade_days}")
+            continue
 
         rslt = {}
         dates = []
@@ -316,7 +681,8 @@ def run_roll_back(once_daily = False):
 
         
         roll_back_dates = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
-        dates.pop(-1)
+
+        roll_back_dates.append((dates[-1], ""))
         if len(roll_back_dates) != len(dates):
             logger.error(f"回测日期生成失败， 回测日期长度为{len(roll_back_dates)}, 应该为{len(dates)-1}")
             raise
@@ -333,9 +699,9 @@ def run_roll_back(once_daily = False):
         rslt['top3_return'] = top3_returns
         rslt['position'] = positions
         rslt['codes_num'] = codes_nums
-
+        db_list = []
         for current_date, next_date in roll_back_dates:
-            logger.info(f"开始回测日期：{current_date}...")
+            logger.info(f"开始回测日期：{current_date}... next-{next_date}")
             task_count = 1
             if sub_tasks and len(sub_tasks) > 0:
                 for sub_task in sub_tasks:
@@ -353,21 +719,42 @@ def run_roll_back(once_daily = False):
                         raise
                     logger.info(f"开始回测 {strategy_name} 的子任务{task_count}：{sub_task_name}...")
                     task_count = task_count + 1
-                    run(strategy_name, current_date, next_date, rslt, code_map, sub_task = sub_task_name, params = sub_task_params)
-                    if saved:
+                    if save_type == 'csv':
+                        run(strategy_name, current_date, next_date, rslt, code_map, sub_task = sub_task_name, params = sub_task_params)
+                    elif save_type == 'db':
+                        run_once(strategy_name, current_date, next_date, db_list, code_map, sub_task = sub_task_name, params = sub_task_params)
+                        
+                    if saved and save_type == 'csv':
                         save_rslt(rslt, save_path, save_mod)
+                    elif saved and save_type == 'db':
+                        save_rslt_to_db(current_date, db_list, strategy_name, pre = pre, sub_task = sub_task_name)
+                        db_list.clear()
             else:
-                run(strategy_name, current_date, next_date, rslt, code_map)
-
+                if 'params' in cfg:
+                    params = cfg['params']
+                    if save_type == 'csv':
+                        run(strategy_name, current_date, next_date, rslt, code_map, params=params)
+                    elif save_type == 'db':
+                        run_once(strategy_name, current_date, next_date, db_list, code_map, params=params)
+                else:
+                    if save_type == 'csv':
+                        run(strategy_name, current_date, next_date, rslt, code_map)
+                    elif save_type == 'db':
+                        run_once(strategy_name, current_date, next_date, db_list, code_map)
+                if saved and save_type == 'db':
+                    save_rslt_to_db(current_date, db_list, strategy_name, pre = pre)
+                    db_list.clear()
             # time.sleep(1)
         i = i + 1
         df = pd.DataFrame(rslt)
-        if saved:
-            df.to_csv(save_path, index=False, mode=save_mod, header=not os.path.exists(save_path))
-            logger.info(f"回测完毕， 结果已保存到{save_path}")
+        if save_type == 'csv':
+            if saved:
+                df.to_csv(save_path, index=False, mode=save_mod, header=not os.path.exists(save_path))
+                logger.info(f"回测完毕， 结果已保存到{save_path}")
+            else:
+                logger.info(f"回测完毕， 结果未保存")
         else:
-            logger.info(f"回测完毕， 结果未保存")
-
+            logger.info(f"回测完毕.")
 if __name__ == "__main__":
     run_roll_back()
     

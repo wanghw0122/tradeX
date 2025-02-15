@@ -119,6 +119,93 @@ class SQLiteManager:
         self.conn.commit()
         logger.info("Batch data inserted successfully.")
     
+    def batch_insert_data_by_date(self, datekey, data_list, prefix = "strategy_data_premarket_", strategy = None):
+        """
+        批量插入数据
+        :param table_name: 要插入数据的表名
+        :param data_list: 数据列表，每个元素为一个字典，代表一行数据
+        """
+        n_datekey = datekey
+        if '-' in n_datekey:
+            n_datekey = n_datekey.replace('-', '')
+        n_datekey = n_datekey[:6]
+        table_name = prefix + n_datekey
+        if not data_list:
+            return
+        default_values = {
+            'block_category': '',
+            'block_codes': '',
+            'industry_code': '',
+            'max_block_category_rank': -1,
+            'max_block_code_rank': -1,
+            'max_industry_code_rank': -1,
+            'is_bottom': 0,
+            'is_broken_plate': 0,
+            'is_down_broken': 0,
+            'is_fall': 0,
+            'is_first_down_broken': 0,
+            'is_first_up_broken': 0,
+            'is_gestation_line': 0,
+            'is_half': 0,
+            'is_high': 0,
+            'is_highest': 0,
+            'is_long_shadow': 0,
+            'is_low': 0,
+            'is_medium': 0,
+            'is_meso': 0,
+            'is_plummet': 0,
+            'is_pre_st': 0,
+            'is_small_high_open': 0,
+            'is_up_broken': 0,
+            'is_weak': 0,
+            'first_limit_up_days': 0,
+            'jsjl': 0.0,
+            'cjs': 0.0,
+            'xcjw': 0.0,
+            'jssb': 0.0,
+            'open_pct_rate': -100.0,
+            'open_price': -1,
+            'close_price': -1,
+            'pre_close_price': -1,
+            'next_day_open_price': -1,
+            'next_day_close_price': -1,
+            'next_day_high_price_open_10mins': -1,
+            'next_day_low_price_open_10mins': -1,
+            'next_day_high_price': -1,
+            'next_day_low_price': -1,
+            'in_premarket': 0,
+            'in_premarket_match': 0,
+            'mod_code': '',
+            'mod_name': '',
+            'mod_short_line_score': -100,
+            'mod_short_line_score_change': -100,
+            'mod_short_line_rank': -1,
+            'mod_trend_score': -100,
+            'mod_trend_score_change': -100,
+            'mod_trend_rank': -1,
+            'env_json_info': '',
+            'block_category_info': ''
+        }
+
+        for data in data_list:
+            for key, value in default_values.items():
+                if key not in data:
+                    data[key] = value
+        try:
+            self.conn.execute('BEGIN')
+            columns = ', '.join(data_list[0].keys())
+            placeholders = ', '.join(['?' for _ in data_list[0]])
+            insert_query = f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})"
+            values = [tuple(data.values()) for data in data_list]
+            self.cursor.executemany(insert_query, values)
+            # 提交事务
+            self.conn.execute('COMMIT')
+            logger.info(f"Batch data inserted or update successfully. strategy-{strategy}. date-{datekey}")
+        except Exception as e:
+            # 回滚事务
+            self.conn.execute('ROLLBACK')
+            logger.error(f"Batch data insertion or update failed: {e}, stretegy-{strategy}. date-{datekey}")
+
     def batch_delete_data(self, table_name, condition_list):
         """
         批量删除数据
@@ -191,6 +278,7 @@ def create_strategy_table(prefix = "strategy_data_premarket_", specified_date = 
         "sub_strategy_name": "TEXT DEFAULT ''",
         "stock_code": "TEXT NOT NULL",
         "stock_name": "TEXT DEFAULT ''",
+        "stock_rank": "INTEGER DEFAULT -1",
         "block_category": "TEXT DEFAULT ''",
         "block_codes": "TEXT DEFAULT ''",
         "industry_code": "TEXT DEFAULT ''",

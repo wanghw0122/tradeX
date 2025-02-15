@@ -53,6 +53,7 @@ if __name__ == '__main__':
         {"date_key": "20250210", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600003", "stock_name": "SampleStock3"}
     ]
 
+
     with SQLiteManager(db_name) as manager:
         manager.batch_delete_data("strategy_data_premarket_202502", delete_list)
 

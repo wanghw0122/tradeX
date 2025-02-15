@@ -149,3 +149,6 @@ cython_debug/
 
 data/
 data/*
+
+sqlite_db/
+sqlite_db/*

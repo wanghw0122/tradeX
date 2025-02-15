@@ -159,9 +159,9 @@ configs:
           code: "9G0099"
           returnNum: 10
           returnFullInfo: true
-    start: "2024-08-01"
-    end: "2025-01-26"
-    max_num: 200
+    start: "2025-02-14"
+    end: "2025-02-14"
+    max_num: 1
     valid: true
     saved: true
     save_type: "db"

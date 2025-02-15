@@ -302,6 +302,8 @@ class XiaoCaoDwdxA(Strategy):
                 return None
         if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
             rs = [x.code for x in s_result]
+        else:
+            rs = s_result
         if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs
@@ -327,6 +329,8 @@ class DxStrategy(Strategy):
                 return None
         if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
             rs = [x.code for x in s_result]
+        else:
+            rs = s_result
         if 'returnNum' in kwargs and kwargs['returnNum'] >= 0:
             return rs[:kwargs['returnNum']]
         return rs
@@ -347,6 +351,8 @@ class JwStrategy(Strategy):
                 return None
         if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
             rs = [x.code for x in s_result]
+        else:
+            rs = s_result
         if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs
@@ -367,6 +373,8 @@ class QbStrategy(Strategy):
                 return None
         if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
             rs = [x.code for x in s_result]
+        else:
+            rs = s_result
         if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs

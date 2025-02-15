@@ -192,13 +192,13 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                         for block in blockRankList:
                             if block == None:
                                 continue
-                            blockCode = block.blockCode
+                            blockCode = block['blockCode']
                             if not blockCode:
                                 continue
                             category_dict[categoryCode]['blocks'].append(blockCode)
-                            num = block.num
-                            prePctChangeRate = block.prePctChangeRate
-                            numChange = block.numChange
+                            num = block['num']
+                            prePctChangeRate = block['prePctChangeRate']
+                            numChange = block['numChange']
                             block_list.append((blockCode, num, prePctChangeRate, numChange))
                     index = index + 1
                 block_list.sort(key=lambda x: x[1], reverse=True)
@@ -306,7 +306,7 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
             is_medium = item.isMedium
             is_meso = item.isMeso
             is_plummet = item.isPlummet
-            is_pre_st = item.isPreST
+            is_pre_st = item.isPreSt
             is_small_high_open = item.isSmallHighOpen
             is_up_broken = item.isUpBroken
             is_weak = item.isWeak
@@ -364,7 +364,7 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                         max_rank = max(max_rank, rank)
                 d['max_industry_code_rank'] = max_rank
             if category_dict:
-                d['block_category_info'] = json.dumps(category_dict)
+                d['block_category_info'] = json.dumps(category_dict, ensure_ascii=False)
             
             if is_bottom:
                 d['is_bottom'] = 1
@@ -429,7 +429,7 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                     d['mod_trend_rank'] = mods_dict[code]['mod_trend_rank']
 
             if env_info:
-                d['env_json_info'] = json.dumps(env_info)
+                d['env_json_info'] = json.dumps(env_info, ensure_ascii=False)
             if next_date:
                 if '.' in stock_code:
                     real_code = stock_code.split('.')[0]
@@ -599,7 +599,7 @@ def run_roll_back(once_daily = False, pre = False):
         if config is None or 'configs' not in config:
             logger.error("Config No data Error.")
 
-    current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime('%Y-%m-%d')
     configs = config['configs']
 
     if configs is None or len(configs) == 0:

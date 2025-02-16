@@ -89,13 +89,13 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.5,
+        "value": 0.7,
         "codes": [],
         "total_position": default_position
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.5,
+        "value": 0.3,
         "codes": [],
         "total_position": default_position
     }
@@ -105,7 +105,7 @@ strategies = {
     "低吸": {
         "sub_strategies": {
             "低位孕线低吸": {
-                "code": "9G0086",
+                "code": "9G0086",   
                 "returnNum": 1,
                 "budget": "ydx"
             },
@@ -321,7 +321,7 @@ def strategy_schedule_job():
             logger.info("[producer] 已过交易时间，结束执行策略.")
             end_task("code_schedule_job")
             return
-        rslt, position = get_target_codes_by_all_strategies()
+        rslt, position = get_target_codes_by_all_strategies() 
         if not rslt or len(rslt) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             cached_auction_infos.append({})
@@ -385,6 +385,12 @@ def consumer_to_buy(q, orders_dict, orders):
                 raise
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
+
+
+def consumer_to_rebuy(q, orders_dict, orders):
+
+    if not buy:
+        return
 
 def consumer_to_subscribe(qq):
     from xtquant import xtdata
@@ -545,10 +551,94 @@ def consumer_to_subscribe_whole(qq):
             logger.error(f"[subscribe] 执行任务出现错误: {e}")
 
 
+def consumer_to_get_full_tik(qq, full_tick_info_dict):
+    from xtquant import xtdata
+    xtdata.connect(port=58611)
+    subscribe_codes = []
+    ticking = False
+    while True:
+        if ticking:
+            def calculate_seconds_difference(specified_time):
+                current_time = datetime.datetime.now().timestamp()
+                time_difference =  current_time - (specified_time / 1000)
+                return time_difference
+            full_ticks = xtdata.get_full_tick(subscribe_codes)
+            if full_ticks:
+                for code, tick in full_ticks.items():
+                    m = {}
+                    tm = tick['time']
+                    lastPrice = tick['lastPrice']
+                    amount = tick['amount']
+                    volume = tick['volume']
+                    pvolume = tick['pvolume']
+                    askPrice = tick['askPrice']
+                    bidPrice = tick['bidPrice']
+                    askVol = tick['askVol']
+                    bidVol = tick['bidVol']
+                    transactionNum = tick['transactionNum']
+                    need_set = True
+                    info = None
+                    if code in full_tick_info_dict:
+                        info_list = full_tick_info_dict[code]
+                        if info_list:
+                            info = info_list[-1]
+                            if info['time'] == tm:
+                                need_set = False
+                    if need_set:
+                        m['time'] = tm
+                        dff = calculate_seconds_difference(tm)
+                        m['lastPrice'] = lastPrice
+                        m['amount'] = amount
+                        m['volume'] = volume
+                        m['pvolume'] = pvolume
+                        if info:
+                            m['totalAmount'] = info['totalAmount'] + amount
+                            m['totalVolume'] = info['totalVolume'] + pvolume
+                        else:
+                            m['totalAmount'] = amount
+                            m['totalVolume'] = pvolume
+                        m['costDiff'] = dff
+                        m['avgPrice'] = m['totalAmount'] / m['totalVolume']
+                        m['askPrice'] = askPrice
+                        m['bidPrice'] = bidPrice
+                        m['askVol'] = askVol
+                        m['bidVol'] = bidVol
+                        m['transactionNum'] = transactionNum
+                        if code in full_tick_info_dict:
+                            full_tick_info_dict[code].append(m)
+                        else:
+                            full_tick_info_dict[code] = [m]
+                        logger.info(f'时间戳：{tm}, 股票代码：{code}, 当前价格：{lastPrice}, 延迟：{dff},  平均价格：{m["avgPrice"]}, 总成交额：{m["totalAmount"]}, 
+                                    总成交量：{m["totalVolume"]}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}, transactionNum - {transactionNum}')
+            time.sleep(0.5)
+            continue
+        try:
+            data = qq.get()
+            logger.info(f"[subscribe] Consumed: {data}")
+            if (type(data) == tuple):
+                code = data[0]
+                code = qmt_trader.all_stocks[code]
+                if not code:
+                    logger.error(f"[subscribe] 股票代码不存在: {data}")
+                    continue
+                if code in subscribe_codes:
+                    continue
+                subscribe_codes.append(code)
+            elif type(data) == str:
+                if data == 'start':
+                    if len(subscribe_codes) == 0:
+                        logger.error(f"[subscribe] 没有股票代码需要订阅，跳出: {subscribe_codes}")
+                        break
+                    ticking = True
+            else:
+                continue
+        except Exception as e:
+            logger.error(f"[subscribe] 执行任务出现错误: {e}")
+
 
 def is_before_930_30():
     now = datetime.datetime.now()
-    target_time = now.replace(hour=9, minute=30, second=30, microsecond=0)
+    target_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
     return now < target_time
 
 def is_after_932():
@@ -624,7 +714,7 @@ if __name__ == "__main__":
     # 每隔5秒执行一次 job_func 方法
     scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
 
-    # scheduler.add_job(cancel_orders, 'interval', seconds=4, id="code_cancel_job")
+    scheduler.add_job(cancel_orders, 'interval', seconds=0.5, id="code_cancel_job")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

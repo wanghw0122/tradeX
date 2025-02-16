@@ -11,11 +11,11 @@ from xtquant import xtdata
 from xtquant import xtconstant
 from date_utils import date
 
-import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 from run_roll_back import *
 
+import datetime
 # 设置环境变量
 from multiprocessing import Queue
 global q
@@ -645,8 +645,7 @@ def consumer_to_get_full_tik(qq, full_tick_info_dict):
                             full_tick_info_dict[code].append(m)
                         else:
                             full_tick_info_dict[code] = [m]
-                        logger.info(f'时间戳：{tm}, 股票代码：{code}, 当前价格：{lastPrice}, 延迟：{dff},  平均价格：{m["avgPrice"]}, 总成交额：{m["totalAmount"]}, 
-                                    总成交量：{m["totalVolume"]}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}, transactionNum - {transactionNum}')
+                        logger.info(f'时间戳：{tm}, 股票代码：{code}, 当前价格：{lastPrice}, 延迟：{dff},  平均价格：{m["avgPrice"]}, 总成交额：{m["totalAmount"]}, 总成交量：{m["totalVolume"]}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}, transactionNum - {transactionNum}')
             end_time = time.time()
             execu_time = end_time - start_time
             if execu_time < 0.5:
@@ -690,6 +689,7 @@ def is_after_940():
     now = datetime.datetime.now()
     target_time = now.replace(hour=9, minute=40, second=0, microsecond=0)
     return now > target_time
+
 
 def cancel_orders():
     global cancel_time

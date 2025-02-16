@@ -82,7 +82,8 @@ def build_category_rank_sort_list(date = get_current_date()):
         return categoryRankList
     if 'localCategoryRankList' in rslt['result']:
         localCategoryRankList = rslt['result']['localCategoryRankList']
-
+    if localCategoryRankList == None:
+        return categoryRankList
     for item in localCategoryRankList:
         curItem = CategoryRank(**item)
         categoryRankList.append(curItem)

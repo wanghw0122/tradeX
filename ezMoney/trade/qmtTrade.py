@@ -295,8 +295,9 @@ class QMTTrader:
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
         if buy_vol > 200 and buffer > 0:
             half_vol = buy_vol // 100 // 2 * 100
-            half_id = self.buy(stock_code, bid_price, half_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
-            order_logger.info(f"下单买入股票无buffer {stock_code} 买入股数 {half_vol} 买入金额 {half_vol * bid_price} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {half_id}")
+            buy_price = min(price1, bid_price * (1 + buffer))
+            half_id = self.buy(stock_code, buy_price, half_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
+            order_logger.info(f"下单买入股票无buffer {stock_code} 买入股数 {half_vol} 买入金额 {half_vol * buy_price} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {half_id}")
 
             buy_vol = buy_vol - half_vol
             buy_amount = buy_vol * bid_price * (1 + buffer)
@@ -453,7 +454,7 @@ class QMTTrader:
         """
         cancel_results = []
         active_orders = self.get_all_orders(cancelable_only  = True)
-        for order in active_orders:
+        for order in active_orders.values():
             order_id = order['order_id']
             cancel_result = self.cancel_order(order_id, sync=True)
             cancel_results.append({
@@ -471,23 +472,26 @@ class QMTTrader:
         :param account: 资金账号
         :return: 满足条件的委托信息列表，每个元素为一个字典，包含股票代码、委托数量、委托价格等信息
         """
-        active_orders = []
+        active_orders = {}
 
         # 获取账户委托信息
         orders = self.trader.query_stock_orders(self.acc, cancelable_only=cancelable_only)
 
         for order in orders:
-            active_orders.append({
+            active_orders[order.order_id] = {
                 'stock_code': order.stock_code,
                 'order_id': order.order_id,
+                'order_time': order.order_time,
                 'order_volume': order.order_volume,
                 'order_type': order.order_type,
                 'price': order.price,
                 'order_status': order.order_status,
                 'strategy_name': order.strategy_name,
                 'traded_volume': order.traded_volume,
+                'traded_price': order.traded_price,
+                'order_status': order.order_status,
                 'status_msg': order.status_msg
-            })
+            }
 
         return active_orders
 

@@ -386,11 +386,47 @@ def consumer_to_buy(q, orders_dict, orders):
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 
-
-def consumer_to_rebuy(q, orders_dict, orders):
-
-    if not buy:
+def consumer_to_rebuy(orders_dict, orders):
+    if not orders_dict or len(orders_dict) == 0:
         return
+    all_orders = orders_dict.keys()
+    while True:
+        orders = qmt_trader.get_all_orders()
+        if not orders or len(orders) == 0:
+            break
+        i = 0
+        need_sleep = False
+        while i < len(all_orders):
+            order_id = all_orders[i]
+            if order_id not in orders:
+                all_orders.remove(order_id)
+                continue
+            stock_code, price, volume, order_type, order_remark, _ = orders_dict[order_id]
+            order_info = orders[order_id]
+            order_time = order_info['order_time']
+            order_status = order_info['order_status']
+            order_volume = order_info['order_volume']
+            traded_volume = order_info['traded_volume']
+            if order_status == xtconstant.ORDER_SUCCEEDED or order_status == xtconstant.ORDER_JUNK or order_status == xtconstant.ORDER_UNREPORTED or order_status == xtconstant.ORDER_WAIT_REPORTING or order_status == xtconstant.ORDER_UNKNOWN:
+                all_orders.remove(order_id)
+                continue
+            elif order_status == xtconstant.ORDER_REPORTED or order_status == xtconstant.ORDER_PART_SUCC:
+                if time.time() - order_time > 3:
+                    qmt_trader.cancel_order(order_id)
+                continue
+            elif order_status == xtconstant.ORDER_REPORTED_CANCEL or order_status == xtconstant.ORDER_PARTSUCC_CANCEL:
+                continue
+            elif order_status == xtconstant.ORDER_PART_CANCEL or order_status == xtconstant.ORDER_CANCELED:
+                buy_volume = order_volume - traded_volume
+                n_order_id = qmt_trader.buy(stock_code, price, buy_volume, xtconstant.MARKET_PEER_PRICE_FIRST, order_remark, sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
+                if n_order_id > 0:
+                    all_orders.replace(order_id, n_order_id)
+                    order_logger.info(f"撤单成功，重新发单，order_id - {order_id}, n_order_id - {n_order_id}")
+                else:
+                    order_logger.info(f"撤单成功，重新发单失败，order_id - {order_id}, n_order_id - {n_order_id}")
+            i = i + 1
+        time.sleep(1)
+
 
 def consumer_to_subscribe(qq):
     from xtquant import xtdata
@@ -558,6 +594,7 @@ def consumer_to_get_full_tik(qq, full_tick_info_dict):
     ticking = False
     while True:
         if ticking:
+            start_time = time.time()
             def calculate_seconds_difference(specified_time):
                 current_time = datetime.datetime.now().timestamp()
                 time_difference =  current_time - (specified_time / 1000)
@@ -610,7 +647,10 @@ def consumer_to_get_full_tik(qq, full_tick_info_dict):
                             full_tick_info_dict[code] = [m]
                         logger.info(f'时间戳：{tm}, 股票代码：{code}, 当前价格：{lastPrice}, 延迟：{dff},  平均价格：{m["avgPrice"]}, 总成交额：{m["totalAmount"]}, 
                                     总成交量：{m["totalVolume"]}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}, transactionNum - {transactionNum}')
-            time.sleep(0.5)
+            end_time = time.time()
+            execu_time = end_time - start_time
+            if execu_time < 0.5:
+                time.sleep(0.5 - execu_time)
             continue
         try:
             data = qq.get()

@@ -714,7 +714,7 @@ if __name__ == "__main__":
     # 每隔5秒执行一次 job_func 方法
     scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
 
-    scheduler.add_job(cancel_orders, 'interval', seconds=0.5, id="code_cancel_job")
+    # scheduler.add_job(cancel_orders, 'interval', seconds=0.5, id="code_cancel_job")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

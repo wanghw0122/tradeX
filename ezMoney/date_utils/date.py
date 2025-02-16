@@ -119,7 +119,7 @@ def is_between_925_and_930():
 
 def is_after_929():
     now = datetime.now()
-    start_time = now.replace(hour=9, minute=29, second=10, microsecond=0)
+    start_time = now.replace(hour=9, minute=28, second=0, microsecond=0)
     return now > start_time
 
 def get_trade_dates_by_end(end_date, trade_days = 30):

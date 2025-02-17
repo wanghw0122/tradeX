@@ -188,7 +188,8 @@ class QMTTrader:
             for order_id in self.cancel_orders:
                 if order_id not in order_ids:
                     order_ids.append(order_id)
-            self.cancel_orders.clear()
+            while self.cancel_orders:
+                del self.cancel_orders[0]
         return self.get_all_orders(filter_order_ids=order_ids)
 
 

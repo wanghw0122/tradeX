@@ -45,9 +45,9 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
-subscribe = False
+subscribe = True
 
 #################### 测试配置 ########################
 global final_results
@@ -407,7 +407,7 @@ def get_cancel_budgets(orders_dict, budgets_dict):
     return budgets_dict
 
 
-def consumer_to_rebuy(orders_dict=qmt_trader.orders_dict, tick_queue = tick_q):
+def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
 
     if not orders_dict or len(orders_dict) == 0:
         logger.error(f"[consumer_to_rebuy] 无订单 {orders_dict}")
@@ -856,6 +856,7 @@ def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q):
                                 info_dict[stock] = bf
                             else:
                                 info_dict[stock] = [m]
+                            m['stock'] = stock
                             tick_q.put(m)
                             logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{m["avgPrice"]}，总成交额：{amount}, 总成交量：{volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
 
@@ -1081,7 +1082,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy")
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

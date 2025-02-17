@@ -8,6 +8,7 @@ from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 from xtquant import xtconstant
 from multiprocessing import Manager
+import multiprocessing
 
 from logger import logger, order_logger
 
@@ -34,8 +35,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param order: XtOrder对象
         :return:
         """
-        order_id = order.order_id
-        logger.info(f"委托回调 投资备注 {order.order_remark}")
+        logger.info(f"委托回调 投资备注 {order_id}")
 
     def on_stock_trade(self, trade):
         """
@@ -57,7 +57,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
             if traded_volume > 0:
                 order_logger.info(f"成交回调后实际：订单号 {order_id} 投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount} 成交时间 {traded_time}")
                 order_logger.info(f"成交前订单申报：订单号 {order_id} 投资备注 {order_remark} 股票代码 {stock_code} 委托类型 {order_type} 委托价格 {price} 委托数量 {volume}  委托时间 {time_stemp} 价格差异 {traded_price - price} 滑点比例 {(traded_price - price) / price} 数量差异 {traded_volume - volume}")
-        logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
+        order_logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
 
     def on_order_error(self, order_error):
         """
@@ -103,8 +103,14 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         :param response: XtCancelOrderResponse 对象
         :return:
         """
-        order_logger.info(sys._getframe().f_code.co_name)
-        logger.info(sys._getframe().f_code.co_name)
+        order_id = response.order_id
+        cancel_result = response.cancel_result
+        orders_dict = self.qmt.orders_dict
+        cancel_orders = self.qmt.cancel_orders
+        if cancel_result == 0:
+            self.qmt.add_cancel_order(order_id)
+            order_logger.info(f" order_id {order_id} cancelled result {cancel_result} order_info {orders_dict[order_id]} cancel_orders: {cancel_orders}")
+
 
     def on_account_status(self, status):
         """
@@ -167,6 +173,24 @@ class QMTTrader:
         self.orders = manager.list()
         self.seq_ids_dict = manager.dict()
         self.orders_dict = manager.dict()
+        self.cancel_orders = manager.list()
+        self.lock = multiprocessing.Lock()
+    
+    def add_cancel_order(self, order_id):
+        with self.lock:
+            if order_id not in self.cancel_orders:
+                self.cancel_orders.append(order_id)
+    
+
+    def get_all_cancel_order_infos(self):
+        order_ids = []
+        with self.lock:
+            for order_id in self.cancel_orders:
+                if order_id not in order_ids:
+                    order_ids.append(order_id)
+            self.cancel_orders.clear()
+        return self.get_all_orders(filter_order_ids=order_ids)
+
 
     def build_all_stocks(self):
         all_stocks = xtdata.get_stock_list_in_sector('沪深A股')
@@ -196,7 +220,7 @@ class QMTTrader:
         logger.info('所有id都尝试后仍失败，放弃连接')
         return None
 
-    def buy(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, orders_dict = None, orders = None):
+    def buy(self, stock_code, price, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, orders_dict = None, orders = None, buffered=False):
         """
         买入股票
 
@@ -220,7 +244,7 @@ class QMTTrader:
                 logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
                 order_logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
                 if orders_dict != None:
-                    orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time())
+                    orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time(), buffered)
                 if orders != None:
                     orders.append(order_id)
             return order_id
@@ -295,13 +319,13 @@ class QMTTrader:
         logger.info(f"当前可用资金 {account_cash} 目标买入金额 {cash} 买入股数 {buy_vol}股")
         if buy_vol > 200 and buffer > 0:
             half_vol = buy_vol // 100 // 2 * 100
-            buy_price = min(price1, bid_price * (1 + buffer))
-            half_id = self.buy(stock_code, buy_price, half_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
-            order_logger.info(f"下单买入股票无buffer {stock_code} 买入股数 {half_vol} 买入金额 {half_vol * buy_price} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {half_id}")
+            # buy_price = min(price1, bid_price * (1 + buffer))
+            half_id = self.buy(stock_code, bid_price, half_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
+            order_logger.info(f"下单买入股票无buffer {stock_code} 买入股数 {half_vol} 买入金额 {half_vol * bid_price} 买入价格 {bid_price} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {half_id}")
 
             buy_vol = buy_vol - half_vol
             buy_amount = buy_vol * bid_price * (1 + buffer)
-            buy_id = self.buy(stock_code, bid_price * (1 + buffer), buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders)
+            buy_id = self.buy(stock_code, bid_price * (1 + buffer), buy_vol, order_type, order_remark, sync, orders_dict=orders_dict, orders=orders, buffered=True)
             order_logger.info(f"下单买入股票有buffer {buffer} {stock_code} 买入股数 {buy_vol} 买入金额 {buy_amount} 买入价格 {bid_price * (1 + buffer)} 买入一价 {price1} 买入二价 {price2} 买入三价{price3} 委托ID {buy_id}")
             return half_id
         else:
@@ -456,7 +480,7 @@ class QMTTrader:
         active_orders = self.get_all_orders(cancelable_only  = True)
         for order in active_orders.values():
             order_id = order['order_id']
-            cancel_result = self.cancel_order(order_id, sync=True)
+            cancel_result = self.cancel_order(order_id, sync=False)
             cancel_results.append({
                 'order_id': order_id,
                 'cancel_result': cancel_result
@@ -465,7 +489,7 @@ class QMTTrader:
         return cancel_results
     
 
-    def get_all_orders(self, cancelable_only = False):
+    def get_all_orders(self, cancelable_only = False, filter_order_ids = None):
         """
         获取当前委托、未成交且可撤单的股票
 
@@ -476,8 +500,9 @@ class QMTTrader:
 
         # 获取账户委托信息
         orders = self.trader.query_stock_orders(self.acc, cancelable_only=cancelable_only)
-
         for order in orders:
+            if filter_order_ids != None and order.order_id not in filter_order_ids:
+                continue
             active_orders[order.order_id] = {
                 'stock_code': order.stock_code,
                 'order_id': order.order_id,
@@ -489,11 +514,11 @@ class QMTTrader:
                 'strategy_name': order.strategy_name,
                 'traded_volume': order.traded_volume,
                 'traded_price': order.traded_price,
-                'order_status': order.order_status,
                 'status_msg': order.status_msg
             }
 
         return active_orders
+
 
 
 

@@ -22,6 +22,9 @@ global q
 global qq
 q = Queue(10)
 qq = Queue(10)
+global tick_q
+
+tick_q = Queue(10)
 
 end_subscribe = True
 start_subscribe = True
@@ -42,8 +45,9 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
+subscribe = False
 
 #################### 测试配置 ########################
 global final_results
@@ -89,13 +93,13 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.7,
+        "value": 0.666,
         "codes": [],
         "total_position": default_position
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.3,
+        "value": 0.333,
         "codes": [],
         "total_position": default_position
     }
@@ -386,49 +390,340 @@ def consumer_to_buy(q, orders_dict, orders):
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 
-def consumer_to_rebuy(orders_dict, orders):
-    if not orders_dict or len(orders_dict) == 0:
-        return
-    all_orders = orders_dict.keys()
-    while True:
-        orders = qmt_trader.get_all_orders()
-        if not orders or len(orders) == 0:
-            break
-        i = 0
-        need_sleep = False
-        while i < len(all_orders):
-            order_id = all_orders[i]
-            if order_id not in orders:
-                all_orders.remove(order_id)
-                continue
-            stock_code, price, volume, order_type, order_remark, _ = orders_dict[order_id]
-            order_info = orders[order_id]
-            order_time = order_info['order_time']
-            order_status = order_info['order_status']
+def get_cancel_budgets(orders_dict, budgets_dict):
+    cancel_order_infos_dict = qmt_trader.get_all_cancel_order_infos()
+    for order_id, order_info in cancel_order_infos_dict.items():
+        if order_id in orders_dict:
+            stock_code = order_info['stock_code']
             order_volume = order_info['order_volume']
             traded_volume = order_info['traded_volume']
-            if order_status == xtconstant.ORDER_SUCCEEDED or order_status == xtconstant.ORDER_JUNK or order_status == xtconstant.ORDER_UNREPORTED or order_status == xtconstant.ORDER_WAIT_REPORTING or order_status == xtconstant.ORDER_UNKNOWN:
-                all_orders.remove(order_id)
-                continue
-            elif order_status == xtconstant.ORDER_REPORTED or order_status == xtconstant.ORDER_PART_SUCC:
-                if time.time() - order_time > 3:
-                    qmt_trader.cancel_order(order_id)
-                continue
-            elif order_status == xtconstant.ORDER_REPORTED_CANCEL or order_status == xtconstant.ORDER_PARTSUCC_CANCEL:
-                continue
-            elif order_status == xtconstant.ORDER_PART_CANCEL or order_status == xtconstant.ORDER_CANCELED:
-                buy_volume = order_volume - traded_volume
-                n_order_id = qmt_trader.buy(stock_code, price, buy_volume, xtconstant.MARKET_PEER_PRICE_FIRST, order_remark, sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
-                if n_order_id > 0:
-                    all_orders.replace(order_id, n_order_id)
-                    order_logger.info(f"撤单成功，重新发单，order_id - {order_id}, n_order_id - {n_order_id}")
+            price = order_info['price']
+            left_volume = order_volume - traded_volume
+            left_budget = left_volume * price
+            if stock_code in budgets_dict:
+                budgets_dict[stock_code] = (budgets_dict[stock_code][0] + left_volume, budgets_dict[stock_code][1] + left_budget)
+            else:
+                budgets_dict[stock_code] = (left_volume, left_budget)
+    return budgets_dict
+
+
+def consumer_to_rebuy(orders_dict=qmt_trader.orders_dict, tick_queue = tick_q):
+
+    if not orders_dict or len(orders_dict) == 0:
+        logger.error(f"[consumer_to_rebuy] 无订单 {orders_dict}")
+        return
+    else:
+        logger.info(f"[consumer_to_rebuy] 有订单 {orders_dict}")
+    
+    stock_statistics = {}
+    # 股票对应的订单，不会动态更新
+    stock_to_orders = {}
+    # 股票对应未完成订单，会动态更新
+    uncomplete_orders = {}
+    budgets_dict = {}
+    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+
+    for order_id , order_info in orders_dict.items():
+        stock_code = order_info[0]
+        price = order_info[1]
+        volume = order_info[2]
+        order_type = order_info[3]
+        order_remark = order_info[4]
+        time_stamp = order_info[5]
+        buffered = order_info[6]
+
+        if stock_code in uncomplete_orders:
+            uncomplete_orders[stock_code].append(order_id)
+        else:
+            uncomplete_orders[stock_code] = [order_id]
+        
+        if stock_code in stock_to_orders:
+            stock_to_orders[stock_code].append(order_id)
+        else:
+            stock_to_orders[stock_code] = [order_id]
+    
+    # 需要监听的股票，会动态更新
+    need_listen_stocks = list(stock_to_orders.keys())
+    if not need_listen_stocks or len(need_listen_stocks) == 0:
+        logger.error(f"[consumer_to_rebuy] 无需要监听的股票")
+        return
+    while True:
+        try:
+            data = tick_queue.get()
+            logger.info(f"[consumer] Consumed: {data}")
+            # update 撤单dict
+            budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+
+            if (type(data) == dict):
+                tick_time = data['time']
+                diff = data['diff']
+
+                lastPrice = data['lastPrice']
+                open = data['open']
+                high = data['high']
+                low = data['low']
+                lastClose = data['lastClose']
+                totalVolume = data['totalVolume']
+                totalAmount = data['totalAmount']
+                askPrice = data['askPrice']
+                bidPrice = data['bidPrice']
+                askVol = data['askVol']
+                bidVol = data['bidVol']
+                avgPrice = data['avgPrice']
+                volume = data['volume']
+                amount = data['amount']
+                stock_code = data['stock']
+                
+                if stock_code not in stock_statistics:
+                    stock_statistics[stock_code] = {}
+                    stock_statistics[stock_code]['open'] = open
+                    stock_statistics[stock_code]['high'] = high
+                    stock_statistics[stock_code]['low'] = low
+                    stock_statistics[stock_code]['lastClose'] = lastClose
+                    stock_statistics[stock_code]['avgPrice'] = [avgPrice]
+                    stock_statistics[stock_code]['lastPrice'] = [lastPrice]
+                    stock_statistics[stock_code]['volume'] = [volume]
+                    stock_statistics[stock_code]['amount'] = [amount]
+                    stock_statistics[stock_code]['price_diff_pct'] = [lastPrice / open - 1]
+                    stock_statistics[stock_code]['price_diff'] = [lastPrice - open]
+                    stock_statistics[stock_code]['volume_diff'] = [0]
                 else:
-                    order_logger.info(f"撤单成功，重新发单失败，order_id - {order_id}, n_order_id - {n_order_id}")
-            i = i + 1
-        time.sleep(1)
+                    stock_statistics[stock_code]['open'] = open
+                    stock_statistics[stock_code]['high'] = high
+                    stock_statistics[stock_code]['low'] = low
+                    stock_statistics[stock_code]['lastClose'] = lastClose
+                    stock_statistics[stock_code]['avgPrice'].append(avgPrice)
+                    stock_statistics[stock_code]['lastPrice'].append(lastPrice)
+                    stock_statistics[stock_code]['volume'].append(volume)
+                    stock_statistics[stock_code]['amount'].append(amount)
+
+                    stock_statistics[stock_code]['price_diff_pct'].append(lastPrice / stock_statistics[stock_code]['lastPrice'][-2] - 1)
+                    stock_statistics[stock_code]['price_diff'].append(lastPrice - stock_statistics[stock_code]['lastPrice'][-2])
+                    stock_statistics[stock_code]['volume_diff'].append(volume - stock_statistics[stock_code]['volume'][-2])
+
+                cur_uncomplete_orders =  uncomplete_orders[stock_code] if stock_code in uncomplete_orders else []
+                if stock_code in budgets_dict:
+                    buy_vol, buy_amount = budgets_dict[stock_code]
+                else:
+                    buy_vol, buy_amount = 0, 0
+
+                if not cur_uncomplete_orders and buy_vol <= 0:
+                    order_logger.info(f"[consumer_to_rebuy] 无未完成订单，且无买入需求，跳过 {stock_code}.")
+                    continue
+                
+                price_diff_pcts = stock_statistics[stock_code]['price_diff_pct']
+                avgPrices = stock_statistics[stock_code]['avgPrice']
+                lastPrices = stock_statistics[stock_code]['lastPrice']
+
+                if stock_code not in stock_to_orders or not stock_to_orders[stock_code]:
+                    continue
+
+                is_over_fall = False
+                is_fall = False
+                is_over_up = False
+                is_up = False
+                is_cross_avg_up = False
+                is_cross_avg_down = False
+                is_v = False
+                is_a = False
+                fall_steps = 0
+                up_steps = 0
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] < 1.1 * price_diff_pcts[-2] and price_diff_pcts[-2] < -0.0012:
+                    is_over_fall = True
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] < 0 and price_diff_pcts[-2] < 0:
+                    is_fall = True
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] > 1.1 * price_diff_pcts[-2] and price_diff_pcts[-2] > 0.0012:
+                    is_over_up = True
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] > 0 and  price_diff_pcts[-2] > 0:
+                    is_up = True
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] > 0 and  price_diff_pcts[-2] < 0:
+                    is_v = False
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] < 0 and  price_diff_pcts[-2] > 0:
+                    is_a = True
+                if len(lastPrices) > 1 and lastPrices[-1] > avgPrices[-1] and lastPrices[-2] < avgPrices[-2]:
+                    is_cross_avg_up = True
+                if len(lastPrices) > 1 and lastPrices[-1] < avgPrices[-1] and lastPrices[-2] > avgPrices[-2]:
+                    is_cross_avg_down = True
+
+                for pct in price_diff_pcts[::-1]:
+                    if pct < 0:
+                        fall_steps = fall_steps + 1
+                    else:
+                        break
+                
+                for pct in price_diff_pcts[::-1]:
+                    if pct > 0:
+                        up_steps = up_steps + 1
+                    else:
+                        break
+
+                orders_status = qmt_trader.get_all_orders(filter_order_ids=list(orders_dict.keys()))
+                stock_order_statuses = {}
+                
+                for order_id in stock_to_orders[stock_code]:
+                    if order_id not in orders_status:
+                        logger.error(f"[consumer_to_rebuy] 订单不存在: {order_id}")
+                        continue
+                    stock_order_statuses[order_id] = orders_status[order_id]
+                
+                for order_id, order_status_info in stock_order_statuses.items():
+                    order_status_p = order_status_info['order_status']
+                    if order_status_p == xtconstant.ORDER_SUCCEEDED or order_status_p == xtconstant.ORDER_PART_CANCEL or order_status_p == xtconstant.ORDER_CANCELED or order_status_p ==  xtconstant.ORDER_JUNK:
+                        if order_id not in uncomplete_orders[stock_code]:
+                            continue
+                        uncomplete_orders[stock_code].remove(order_id)
+                
+                cur_uncomplete_orders = uncomplete_orders[stock_code]
+                if not cur_uncomplete_orders and buy_vol <= 0:
+                    order_logger.info(f"[consumer_to_rebuy] 无未完成订单，且无买入需求，跳过 {stock_code}.")
+                    continue
+                current_time = datetime.datetime.now().timestamp()
+                time_difference =  current_time - (tick_time / 1000)
+                if time_difference > 1.5 or diff > 1.5:
+                    logger.error(f"[consumer_to_rebuy] 股票代码超时: {stock_code} curdiff - {time_difference} diff - {diff}")
+                    continue
+                
+                price_diff = lastPrice / open - 1
+                if -0.004 < price_diff and price_diff < 0.003:
+                    if stock_code in budgets_dict:
+                        buy_vol, buy_amount = budgets_dict[stock_code]
+                    if buy_vol > 0:
+                        if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
+                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
+                            continue
+                        c_order_id = -1
+                        if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                            if 'SH' in stock_code:
+                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                            else:
+                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                        else:
+                            c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
+                        if c_order_id > 0 and stock_code in budgets_dict:
+                            buy_vol = 0
+                            budgets_dict.pop(stock_code)
+                    continue
+                elif -0.007 < price_diff and price_diff <= -0.004:
+                    for order_id in cur_uncomplete_orders:
+                        order_info = orders_dict[order_id]
+                        buffered_t = order_info[6]
+                        if buffered_t and not is_up and not is_over_up and not is_cross_avg_up and up_steps < 2:
+                            status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
+                            if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED):
+                                cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                                if cancel_result > 0:
+                                    time.sleep(0.05)
+                    if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
+                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
+                        continue
+                    c_order_id = -1
+                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+                    if stock_code in budgets_dict:
+                        buy_vol, buy_amount = budgets_dict[stock_code]
+                    
+                    if buy_vol > 0:
+                        c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
+                        if c_order_id > 0 and stock_code in budgets_dict:
+                            budgets_dict.pop(stock_code)
+                            buy_vol = 0
+                elif -0.007 >= price_diff and -0.01 < price_diff:
+                    for order_id in cur_uncomplete_orders:
+                        if not is_over_up and up_steps < 3 and not (is_cross_avg_up and up_steps > 1):
+                            status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
+                            if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED):
+                                cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                                if cancel_result > 0:
+                                    time.sleep(0.05)
+                    if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 1:
+                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
+                        continue
+                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+                    if stock_code in budgets_dict:
+                        buy_vol,buy_amount = budgets_dict[stock_code]
+                    c_order_id = -1
+                    if buy_vol > 0:
+                        c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
+                        if c_order_id > 0 and stock_code in budgets_dict:
+                            budgets_dict.pop(stock_code)
+                            buy_vol = 0
+                elif price_diff <= -0.01:
+                    for order_id in cur_uncomplete_orders:
+                        status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
+                        if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED):
+                            cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                            if cancel_result > 0:
+                                time.sleep(0.05)
+                    if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2) :
+                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
+                        continue
+                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+                    if stock_code in budgets_dict:
+                        buy_vol,buy_amount = budgets_dict[stock_code]
+                    c_order_id = -1
+                    if buy_vol > 0:
+                        c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
+                        if c_order_id > 0 and stock_code in budgets_dict:
+                            budgets_dict.pop(stock_code)
+                            buy_vol = 0
+                elif price_diff >= 0.003 and price_diff < 0.006:
+                    for order_id in cur_uncomplete_orders:
+                        order_info = orders_dict[order_id]
+                        buffered_t = order_info[6]
+                        if not buffered_t and not (is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps < 2):
+                            status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
+                            if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED):
+                                cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                                if cancel_result > 0:
+                                    time.sleep(0.05)
+                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+                    if stock_code in budgets_dict:
+                        buy_vol,buy_amount = budgets_dict[stock_code]
+                    c_order_id = -1
+                    if buy_vol > 0:
+                        if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                            if 'SH' in stock_code:
+                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                            else:
+                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                        else:
+                            c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
+                        if c_order_id > 0 and stock_code in budgets_dict:
+                            budgets_dict.pop(stock_code)
+                            buy_vol = 0
+                elif price_diff >= 0.006 and price_diff < 0.03:
+                    for order_id in cur_uncomplete_orders:
+                        status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
+                        if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED):
+                            cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                            if cancel_result > 0:
+                                time.sleep(0.05)
+                    if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2):
+                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍高 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
+                        continue
+                    c_order_id = -1
+                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+                    if stock_code in budgets_dict:
+                        buy_vol,buy_amount = budgets_dict[stock_code]
+                    if buy_vol > 0:
+                        if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                            if 'SH' in stock_code:
+                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                            else:
+                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                        else:
+                            c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
+                        if c_order_id > 0 and stock_code in budgets_dict:
+                            budgets_dict.pop(stock_code)
+                            buy_vol = 0
+                elif price_diff >= 0.03:
+                    continue
+        except Exception as e:
+            logger.error(f"[consumer] 执行任务出现错误: {e}")
 
 
 def consumer_to_subscribe(qq):
+    if not subscribe:
+        return
     from xtquant import xtdata
     xtdata.connect(port=58611)
     subscribe_ids = []
@@ -473,15 +768,15 @@ def consumer_to_subscribe(qq):
 
 
 
-def consumer_to_subscribe_whole(qq):
+def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q):
+    if not subscribe:
+        return
     from multiprocessing import Manager
     from xtquant import xtdata
     xtdata.connect(port=58611)
     print ("consumer_to_subscribe_whole connect success")
     subscribe_ids = []
     subscribe_codes = []
-    manager = Manager()
-    whole_tick_info_dict = manager.dict()  # 使用 Manager 创建共享字典
     scribed = False
     while True:
         try:
@@ -508,20 +803,11 @@ def consumer_to_subscribe_whole(qq):
                         current_time = datetime.datetime.now().timestamp()
                         time_difference =  current_time - (specified_time / 1000)
                         return time_difference
-                    def on_data(res, stocks=subscribe_codes, info_dict = whole_tick_info_dict):
-                        logger.info(f"[subscribe] codes: {subscribe_codes}")
+                    def on_data(res, stocks=subscribe_codes, info_dict = full_tick_info_dict, tick_q = tick_q):
                         for stock in stocks:
                             if stock not in res:
                                 continue
-                            
-                            info = info_dict[stock]
-                            times = info['times']
-                            cost_diff = info['cost_diff']
-                            price_list = info['price_list']
-                            avg_price_list = info['avg_price_list']
-                            total_amount = info['total_amount']
-                            total_volume = info['total_volume']
-
+                            m = {}
                             data = res[stock]
                             time = data['time']
                             diff = calculate_seconds_difference(time)
@@ -538,23 +824,44 @@ def consumer_to_subscribe_whole(qq):
                             askVol = data['askVol']
                             bidVol = data['bidVol']
 
-                            total_amount = total_amount + amount
-                            total_volume = total_volume + pvolume
-
-                            info['total_amount'] = total_amount
-                            info['total_volume'] = total_volume
-                            times.append(time)
-                            cost_diff.append(diff)
-                            cur_avg_price = total_amount / total_volume
-                            price_list.append(lastPrice)
-                            avg_price_list.append(cur_avg_price)
-                            info_dict[stock] = info
                             
-                            logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{cur_avg_price}，总成交额：{total_amount}, 总成交量：{total_volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
+                            m['time'] = time
+                            m['diff'] = diff
+                            m['lastPrice'] = lastPrice
+                            m['open'] = open
+                            m['high'] = high
+                            m['low'] = low
+                            m['lastClose'] = lastClose
+                            m['totalVolume'] = volume
+                            m['totalAmount'] = amount
+                            m['askPrice'] = askPrice
+                            m['bidPrice'] = bidPrice
+                            m['askVol'] = askVol
+                            m['bidVol'] = bidVol
+                            m['avgPrice'] = amount / pvolume
+
+                            if stock in info_dict:
+                                bf = info_dict[stock]
+                                if bf:
+                                    info  = bf[-1]
+                                    info_volume = info['totalVolume']
+                                    info_amount = info['totalAmount']
+                                    if volume >= info_volume:
+                                        m['volume'] = volume - info_volume
+                                        m['amount'] = amount - info_amount
+                                else:
+                                    m['volume'] = volume
+                                    m['amount'] = amount
+                                bf.append(m)
+                                info_dict[stock] = bf
+                            else:
+                                info_dict[stock] = [m]
+                            tick_q.put(m)
+                            logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{m["avgPrice"]}，总成交额：{amount}, 总成交量：{volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
 
                     for code in subscribe_codes:
-                        whole_tick_info_dict[code] = {'total_amount': 0, 'total_volume': 0, 'price_list': [], 'avg_price_list': [], 'cost_diff': [], 'times': []}
-                    logger.info(f"初始化 info dict {whole_tick_info_dict}")
+                        full_tick_info_dict[code] = []
+                    logger.info(f"初始化 info dict {full_tick_info_dict}")
                     id = xtdata.subscribe_whole_quote(subscribe_codes, callback=on_data) # 设置count = -1来取到当天所有
                     if id < 0:
                         logger.error(f"[subscribe] subscribe_quote error: {subscribe_codes}")
@@ -565,11 +872,11 @@ def consumer_to_subscribe_whole(qq):
                         subscribe_ids.append(id)
                         
                 elif data == 'end':
-                    if whole_tick_info_dict:
+                    if full_tick_info_dict:
                         import json
                         file_path = "tick_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
                         with open(file_path, 'w', encoding='utf-8') as file:
-                            json.dump(dict(whole_tick_info_dict), file, ensure_ascii=False, indent=4)
+                            json.dump(dict(full_tick_info_dict), file, ensure_ascii=False, indent=4)
                     for id in subscribe_ids:
                         xtdata.unsubscribe_quote(id)
                     break
@@ -577,17 +884,21 @@ def consumer_to_subscribe_whole(qq):
                 continue
         except KeyboardInterrupt:
             import json
-            if not whole_tick_info_dict:
+            if not full_tick_info_dict:
                 break
-            logger.error(f"save info dict {whole_tick_info_dict}")
+            logger.error(f"save info dict {full_tick_info_dict}")
             file_path = "tick_snapshot_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
             with open(file_path, 'w', encoding='utf-8') as file:
-                json.dump(dict(whole_tick_info_dict), file, ensure_ascii=False, indent=4)
+                json.dump(dict(full_tick_info_dict), file, ensure_ascii=False, indent=4)
+            break
         except Exception as e:
             logger.error(f"[subscribe] 执行任务出现错误: {e}")
+            break
 
 
 def consumer_to_get_full_tik(qq, full_tick_info_dict):
+    if not subscribe:
+        return
     from xtquant import xtdata
     xtdata.connect(port=58611)
     subscribe_codes = []
@@ -599,6 +910,7 @@ def consumer_to_get_full_tik(qq, full_tick_info_dict):
                 current_time = datetime.datetime.now().timestamp()
                 time_difference =  current_time - (specified_time / 1000)
                 return time_difference
+            
             full_ticks = xtdata.get_full_tick(subscribe_codes)
             if full_ticks:
                 for code, tick in full_ticks.items():
@@ -642,14 +954,16 @@ def consumer_to_get_full_tik(qq, full_tick_info_dict):
                         m['bidVol'] = bidVol
                         m['transactionNum'] = transactionNum
                         if code in full_tick_info_dict:
-                            full_tick_info_dict[code].append(m)
+                            bf = full_tick_info_dict[code]
+                            bf.append(m)
+                            full_tick_info_dict[code] = bf
                         else:
                             full_tick_info_dict[code] = [m]
                         logger.info(f'时间戳：{tm}, 股票代码：{code}, 当前价格：{lastPrice}, 延迟：{dff},  平均价格：{m["avgPrice"]}, 总成交额：{m["totalAmount"]}, 总成交量：{m["totalVolume"]}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}, transactionNum - {transactionNum}')
             end_time = time.time()
             execu_time = end_time - start_time
-            if execu_time < 0.5:
-                time.sleep(0.5 - execu_time)
+            if execu_time < 0.2:
+                time.sleep(0.2 - execu_time)
             continue
         try:
             data = qq.get()
@@ -694,11 +1008,11 @@ def is_after_940():
 def cancel_orders():
     global cancel_time
     is_trade, _ = date.is_trading_day()
-    if not is_trade:
+    if not is_trade and not do_test:
         logger.info("[cancel_orders] 非交易日，不执行策略.")
         remove_job("code_cancel_job")
         return
-    if is_before_930_30():
+    if is_before_930_30() and not do_test:
         logger.info("未到取消时间，不取消订单")
         return
     cancel_result = qmt_trader.cancel_active_orders()
@@ -706,7 +1020,7 @@ def cancel_orders():
         order_logger.info(f"取消所有未成交的订单: {cancel_result}")
     logger.info(f"取消所有未成交的订单 {cancel_result}")
     cancel_time = cancel_time + 1
-    if cancel_time > 5:
+    if cancel_time > 20:
         remove_job("code_cancel_job")
 
 
@@ -728,6 +1042,14 @@ def end_task(name):
         qq.put('start')
 
 
+def print_latest_tick(full_tick_info_dict):
+    x = {}
+    for code, info_list in full_tick_info_dict.items():
+        if info_list:
+            x[code] = info_list[-1]
+            logger.info(f"最新的tick数据: {x}")
+            x = {}
+
 
 if __name__ == "__main__":
 
@@ -741,11 +1063,14 @@ if __name__ == "__main__":
     print('xtdc.listen')
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
+    full_tick_info_dict = Manager().dict()
 
     qmt_trader.init_order_context()
     consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
     # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
-    subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq,))
+    # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
+
+    subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q))
     consumer_thread.start()
     subscribe_thread.start()
     cached_auction_infos.clear()
@@ -754,7 +1079,9 @@ if __name__ == "__main__":
     # 每隔5秒执行一次 job_func 方法
     scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
 
-    # scheduler.add_job(cancel_orders, 'interval', seconds=0.5, id="code_cancel_job")
+    # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
+
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])
@@ -772,11 +1099,13 @@ if __name__ == "__main__":
                     qq.put('end')
                 scheduler.shutdown()
                 break
-            time.sleep(1)
+            time.sleep(3)
+            print_latest_tick(full_tick_info_dict)
     except (KeyboardInterrupt, SystemExit):
         # 关闭调度器
         scheduler.shutdown()
     
+    print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
     q.close()
     q.join_thread()
     if end_subscribe:

@@ -1,59 +1,67 @@
-from multiprocessing import Process
-from multiprocessing.managers import BaseManager
 from trade.qmtTrade import *
 from sqlite_processor.mysqlite import *
+import multiprocessing
+from multiprocessing import Queue
+q = Queue()
 
-class MyClass:
-    def __init__(self):
-        self.orders_dict = {}
-    def get_value(self):
-        return self.orders_dict
-    def set_value(self, key, value):
-        self.orders_dict[key] = value
+# class MyClass:
+#     def __init__(self):
+#         self.orders_dict = {}
+#     def get_value(self):
+#         return self.orders_dict
+#     def set_value(self, key, value):
+#         self.orders_dict[key] = value
 
-class MyManager(BaseManager):
-    pass
+# class MyManager(BaseManager):
+#     pass
 
-class V():
-    def __init__(self, obj):
-        self.obj = obj
-MyManager.register('MyClass', MyClass)
+# class V():
+#     def __init__(self, obj):
+#         self.obj = obj
+# MyManager.register('MyClass', MyClass)
 
-def worker(obj):
-    obj.set_value("1", 1)
-    print(f"子进程值: {obj.get_value()}")
+# def worker(obj):
+#     obj.set_value("1", 1)
+#     print(f"子进程值: {obj.get_value()}")
+    # ... 已有代码 ...
 
-if __name__ == '__main__':
-    # with MyManager() as manager:
-    #     shared_obj = manager.MyClass()
-    #     print(f"主进程值: {shared_obj.get_value()}")
-    #     v = V(shared_obj)
-    #     p = Process(target=worker, args=(shared_obj,))
-    #     p.start()
-    #     p.join()
-    #     print(f"主进程值: {v.obj.get_value()}")
-    
-    create_strategy_table("202502")
-    # with SQLiteManager(db_name) as manager:
-    #    manager.insert_data("strategy_data_premarket_202502", insert_dict)
+def get_cancelled_orders(qmt_trader):
+    """
+    查询已撤回的订单
+    :param qmt_trader: QMTTrader 实例
+    :return: 已撤回订单列表
+    """
+    # 获取所有订单
+    all_orders = qmt_trader.get_all_orders()
+    # 筛选出已撤回的订单
+   
+    return all_orders
 
-    # with SQLiteManager(db_name) as manager:
-    #    manager.update_data("strategy_data_premarket_202502", update_dict, condition_dict)
-    # with SQLiteManager(db_name) as manager:
-    #    manager.delete_data("strategy_data_premarket_202502", delete_dict)
-    insert_list = [
-        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600004", "stock_name": "SampleStock"},
-        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600002", "stock_name": "SampleStock2"},
-        {"date_key": "20250210", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600003", "stock_name": "SampleStock3"}
-    ]
+# ... 已有代码 ...
 
-    delete_list = [
-        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600004", "stock_name": "SampleStock"},
-        {"date_key": "20250209", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600002", "stock_name": "SampleStock2"},
-        {"date_key": "20250210", "strategy_name": "SampleStrategy", "sub_strategy_name": "SubSample", "stock_code": "600003", "stock_name": "SampleStock3"}
-    ]
+if __name__ == "__main__":
+    path = r'D:\qmt\userdata_mini'  # QMT客户端路径
+    acc_id = '8886660057'
+    # 创建QMTTrader实例
+    logger.info("开始初始化QMT....")
+
+    qmt_trader = QMTTrader(path, acc_id)
+    qmt_trader.callback.set_qmt(qmt_trader)
+    # ... 已有代码 ...
+
+    cancel_orders = []
+    success_orders = []
+    # 查询已撤回的订单
+    cancelled_orders = get_cancelled_orders(qmt_trader)
+    for order, order_info in cancelled_orders.items():
+        if order_info['order_status'] == xtconstant.ORDER_CANCELED:
+            cancel_orders.append(order_info)
+        elif order_info['order_status'] == xtconstant.ORDER_SUCCEEDED:
+            success_orders.append(order_info)
+        else:
+            print(f"unknown {order_info}")
+
+    print(f"已撤回的订单: {cancel_orders}")
 
 
-    with SQLiteManager(db_name) as manager:
-        manager.batch_delete_data("strategy_data_premarket_202502", delete_list)
-
+    # ... 已有代码 ...

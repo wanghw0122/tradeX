@@ -1,0 +1,6 @@
+@echo off
+REM... existing code...
+REM Check if Python is running
+tasklist | findstr python
+for /f "tokens=2 delims= " %%a in ('tasklist ^| findstr python') do taskkill /F /PID %%a
+REM ... existing code ...

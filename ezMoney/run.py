@@ -99,7 +99,7 @@ budgets = {
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.167,
+        "value": 0.333,
         "codes": [],
         "total_position": default_position
     }

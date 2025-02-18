@@ -580,7 +580,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 current_time = datetime.datetime.now().timestamp()
                 time_difference =  current_time - (tick_time / 1000)
                 if time_difference > 1.5 or diff > 1.5:
-                    logger.error(f"[consumer_to_rebuy] 股票代码超时: {stock_code} curdiff - {time_difference} diff - {diff}")
+                    order_logger.error(f"[consumer_to_rebuy] 股票代码超时: {stock_code} curdiff - {time_difference} diff - {diff}")
                     continue
                 
                 price_diff = lastPrice / open - 1
@@ -669,7 +669,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     for order_id in cur_uncomplete_orders:
                         order_info = orders_dict[order_id]
                         buffered_t = order_info[6]
-                        if not buffered_t and not (is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps < 2):
+                        if not buffered_t and not (is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2):
                             status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED):
                                 cancel_result = qmt_trader.cancel_order(order_id, sync=False)

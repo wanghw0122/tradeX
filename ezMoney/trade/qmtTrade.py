@@ -356,6 +356,7 @@ class QMTTrader:
         :param order_id: 委托ID
         :return: 撤单结果
         """
+        order_logger.info(f"准备撤单 订单号 - {order_id}")
         if sync:
             return self.trader.cancel_order_stock(self.acc, order_id)
         return self.trader.cancel_order_stock_async(self.acc, order_id)

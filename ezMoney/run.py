@@ -93,13 +93,13 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.666,
+        "value": 0.75,
         "codes": [],
         "total_position": default_position
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.333,
+        "value": 0.25,
         "codes": [],
         "total_position": default_position
     }

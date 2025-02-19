@@ -213,7 +213,7 @@ class StrategyManager:
                     jw = JwStrategy(config, self)
                     self.strategy_list.append(jw)
                     self.strategy_dict[name] = jw
-                elif name == 'xiao_cao_1j2db':
+                elif name == 'xiao_cao_1j2db' or name == 'xiao_cao_1j2db_1':
                     db = DbOne(config, self)
                     self.strategy_list.append(db)
                     self.strategy_dict[name] = db
@@ -526,6 +526,17 @@ def dx_filter(xcdxScore = 100):
     return inner_filter
 
 
+
+
+@count_filtered_items
+@catch
+def openPctChangeRate_filter(openPctChangeRate = 0):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.openPctChangeRate != None and item.openPctChangeRate >= openPctChangeRate]
+    inner_filter.__name__ = "openPctChangeRate_filter"
+    return inner_filter
+
 @count_filtered_items
 @catch
 def qb_filter(xcqbScore = 100):
@@ -664,6 +675,7 @@ sm.register_filter("stock_type_filter", stock_type_filter)
 sm.register_filter("change_item_filter", change_item_filter)
 sm.register_filter("item_code_filter", item_code_filter)
 sm.register_filter("limiter_filter", limiter_filter)
+sm.register_filter("openPctChangeRate_filter", openPctChangeRate_filter)
 sm.init_strategys(get_current_config())
 
 

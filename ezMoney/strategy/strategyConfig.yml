@@ -1,6 +1,95 @@
 common:
   Host: "p-xcapi.topxlc.com"
 Strategies:
+  - name: "xiao_cao_1j2db_1"
+    type: "小草全盘1进2打板_1"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 15
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: true
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: true
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 37
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "keys_10cm_filter"
+            desc: "过滤key为10cm"
+            logged: true
+            index: 1
+            params: {}
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 100
+      - name: "xiao_cao_index_v2"
+        step: 3
+        desc: "获取明细数据"
+        logged: true
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: true
+            params: {}
+          - name: "stock_type_filter"
+            index: 1
+            desc: "过滤弱"
+            logged: true
+            params:
+              isWeak: 1
+          - name: "stock_type_filter"
+            index: 2
+            desc: "过滤首板"
+            logged: true
+            params:
+              ylimitupdays: 1
+          - name: "openPctChangeRate_filter"
+            index: 3
+            desc: "过滤开盘涨幅"
+            params:
+              openPctChangeRate: 1
+          - name: "jw_filter"
+            index: 4
+            desc: "过滤竞王分"
+            logged: true
+            params:
+              xcjwScore: 200
+          - name: "jl_filter"
+            index: 5
+            desc: "过滤接力分"
+            logged: true
+            params:
+              xcjlScore: 0
   - name: "xiao_cao_1j2db"
     type: "小草全盘1进2打板"
     status: 1

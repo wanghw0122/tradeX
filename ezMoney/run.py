@@ -35,7 +35,7 @@ error_time = 0
 cancel_time = 0
 
 global back_cash
-back_cash = 200000
+back_cash = 150000
 
 global cached_auction_infos
 cached_auction_infos = []
@@ -93,13 +93,19 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.75,
+        "value": 0.555,
         "codes": [],
         "total_position": default_position
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.25,
+        "value": 0.222,
+        "codes": [],
+        "total_position": default_position
+    },
+    "db": {
+        "name" : "db",
+        "value": 0.222,
         "codes": [],
         "total_position": default_position
     }
@@ -127,6 +133,10 @@ strategies = {
     "xiao_cao_dwyxdx": {
         "sub_strategies": {},
         "budget": "ydx"
+    },
+    "xiao_cao_1j2db": {
+        "sub_strategies": {},
+        "budget": "db"
     }
 }
 

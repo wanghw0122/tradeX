@@ -1,4 +1,18 @@
 configs:
+  - strategy_name: "xiao_cao_1j2db"
+    start: "2024-08-01"
+    end: "2025-02-19"
+    sub_tasks: {}
+    max_num: 200
+    valid: true
+    daily: true
+    saved: true
+    save_type: "db"
+    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+    save_mod: "w"
+    params:
+      returnNum: 10
+      returnFullInfo: true
   - strategy_name: "xiao_cao_dwyxdx"
     start: "2024-08-01"
     end: "2025-02-14"

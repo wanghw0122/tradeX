@@ -213,6 +213,10 @@ class StrategyManager:
                     jw = JwStrategy(config, self)
                     self.strategy_list.append(jw)
                     self.strategy_dict[name] = jw
+                elif name == 'xiao_cao_1j2db':
+                    db = DbOne(config, self)
+                    self.strategy_list.append(db)
+                    self.strategy_dict[name] = db
                 else:
                     stg = Strategy(config, self)
                     self.strategy_list.append(stg)
@@ -332,6 +336,32 @@ class DxStrategy(Strategy):
         else:
             rs = s_result
         if 'returnNum' in kwargs and kwargs['returnNum'] >= 0:
+            return rs[:kwargs['returnNum']]
+        return rs
+
+class DbOne(Strategy):
+    def __init__(self, config, strategy_manager):
+        super().__init__(config, strategy_manager)
+        pass
+
+    def run(self, current_date=date.get_current_date(), **kwargs):
+        s_result = super().run(current_date, **kwargs)
+        if s_result is None or len(s_result) == 0:
+            return None
+        s_result.sort(key=lambda x: x.jsjl, reverse=True)
+        if self.max_return_num:
+            s_result = s_result[:self.max_return_num]
+            if s_result is None or len(s_result) == 0:
+                return None
+        rs = []
+        rs.append(s_result[0])
+        s_result.sort(key=lambda x: x.xcjw, reverse=True)
+        x = s_result[0]
+        if x.code != rs[0].code:
+            rs.append(x)
+        if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
+            rs = [x.code for x in rs]
+        if 'returnNum' in kwargs and kwargs['returnNum']:
             return rs[:kwargs['returnNum']]
         return rs
 
@@ -511,7 +541,7 @@ def qb_filter(xcqbScore = 100):
 def jl_filter(xcjlScore = 1):
     def inner_filter(*args, **kwargs):
         arr = args[0]
-        return [item for item in arr if item.jsjl and item.jsjl >= xcjlScore]
+        return [item for item in arr if item.jsjl and item.jsjl > xcjlScore]
     inner_filter.__name__ = "jl_filter"
     return inner_filter
 
@@ -561,6 +591,8 @@ def stock_type_filter(**args):
             if 'isPlummet' in args and item.isPlummet!= args['isPlummet']:
                 continue
             if 'isHighest' in args and item.isHighest!= args['isHighest']:
+                continue
+            if 'ylimitupdays' in args and item.ylimitupdays!= args['ylimitupdays']:
                 continue
             rtn.append(item)
         return rtn

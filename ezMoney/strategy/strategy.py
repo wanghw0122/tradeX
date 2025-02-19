@@ -281,7 +281,7 @@ class StrategyManager:
                     return_rslt[strategy_name + '-' + sub_task] = rslt
             
             else:
-                rslt = self.run_strategys([strategy_name], current_date)
+                rslt = self.run_strategys([strategy_name], current_date, params=sub_task_dict)
                 return_rslt[strategy_name] = rslt
         return return_rslt
 

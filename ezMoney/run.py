@@ -48,6 +48,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
+test_date = "2025-02-19"
 
 #################### 测试配置 ########################
 global final_results
@@ -105,7 +106,7 @@ budgets = {
     },
     "db": {
         "name" : "db",
-        "value": 0.222,
+        "value": 0.111,
         "codes": [],
         "total_position": default_position
     }
@@ -128,10 +129,12 @@ strategies = {
     },
     "xiao_cao_dwndx": {
         "sub_strategies": {},
+        "returnNum": 1,
         "budget": "ndx"
     },
     "xiao_cao_dwyxdx": {
         "sub_strategies": {},
+        "returnNum": 1,
         "budget": "ydx"
     },
     "xiao_cao_1j2db": {
@@ -140,7 +143,15 @@ strategies = {
     }
 }
 
+strategies_to_buffer = {
+    "xiao_cao_1j2db": [0.003],
+    "低吸-低位孕线低吸": [0, 0.003],
+    "低吸-低位N字低吸": [0, 0.003]
+}
+
 ##########################strategy configs ################
+
+codes_to_strategies = {}
 
 
 def set_strategy_codes_to_budgets(strategy_name, codes, strategies_dict = strategies, budgets_dict = budgets):
@@ -214,7 +225,7 @@ def get_position_from_budgets(budgets_dict = budgets):
 def get_target_return_keys_dict(starategies_dict = strategies):
     target_return_keys_dict = {}
     for strategy_name, strategy_dict in starategies_dict.items():
-        if 'sub_strategies' not in strategy_dict:
+        if 'sub_strategies' not in strategy_dict or len(strategy_dict['sub_strategies']) == 0:
             target_return_keys_dict[strategy_name] = strategy_name
         else:
             sub_task_dict = strategy_dict['sub_strategies']
@@ -227,7 +238,10 @@ def get_target_codes_by_all_strategies(retry_times=3):
     if retry_times <= 0:
         return None, 0
     try:
-        items = sm.run_all_strategys(strategies_dict=strategies)
+        if do_test:
+            items = sm.run_all_strategys(strategies_dict=strategies, current_date=test_date)
+        else:
+            items = sm.run_all_strategys(strategies_dict=strategies)
         rkeys = get_target_return_keys_dict(strategies)
         if rkeys == None or len(rkeys) == 0:
             return None, 0
@@ -256,6 +270,12 @@ def get_target_codes_by_all_strategies(retry_times=3):
                     auction_codes.append(code.split('.')[0])
             if len(auction_codes):
                 rslt_dct[key] = auction_codes
+                for code in auction_codes:
+                    if code in codes_to_strategies:
+                        if key not in codes_to_strategies[code]:
+                            codes_to_strategies[code].append(key)
+                    else:
+                        codes_to_strategies[code] = [key]
             else:
                 rslt_dct[key] = []
         return rslt_dct, position
@@ -362,7 +382,18 @@ def strategy_schedule_job():
                     if code in final_results:
                         continue
                     position = max(min_position, position)
-                    q.put((code, position))
+                    if code in codes_to_strategies:
+                        code_strategies = codes_to_strategies[code]
+                    else:
+                        code_strategies = []
+                    buffers = []
+                    if code_strategies and len(code_strategies) > 0:
+                        for code_strategy in code_strategies:
+                            if code_strategy in strategies_to_buffer and len(strategies_to_buffer[code_strategy]) > 0:
+                                logger.info(f"[producer] 股票 {code} 有策略{code_strategy} 有buffer {strategies_to_buffer[code_strategy]} code_strategies {code_strategies} codes_to_strategies {codes_to_strategies}")
+                                buffers.extend(strategies_to_buffer[code_strategy])
+                    buffers.sort()
+                    q.put((code, position, buffers))
                     qq.put((code, position))
                     final_results[code] = position
                     order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
@@ -388,11 +419,12 @@ def consumer_to_buy(q, orders_dict, orders):
             total_assert = total_assert - back_cash
             if (type(data) == tuple):
                 c_cash = min(total_assert * data[1], cash)
-                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
+                buffers = data[2]
+                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffers=buffers)
                 if order_id < 0:
-                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
+                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
                      if order_id < 0:
-                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=0.003)
+                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
             elif type(data) == str and data == 'end':
                 break
             else:

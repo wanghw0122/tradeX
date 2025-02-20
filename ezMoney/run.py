@@ -48,7 +48,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-02-19"
+test_date = "2025-02-20"
 
 #################### 测试配置 ########################
 global final_results

@@ -620,14 +620,18 @@ def get_current_config(config_file = 'strategyConfig.yml'):
 @count_filtered_items
 @catch
 def change_item_filter(*args, **kwargs):
+    import inspect
     arr = args[0]
     if arr == None:
         return []
-    
+    init_params = inspect.signature(XiaoCaoIndexResult.__init__).parameters
+    valid_keys = set(init_params.keys()) - {'self'}
+    def filter_extra_fields(item):
+        return {key: value for key, value in item.items() if key in valid_keys}
     if type(arr) == list:
-        return [XiaoCaoIndexResult(**item) for item in arr]
+        return [XiaoCaoIndexResult(**filter_extra_fields(item)) for item in arr]
     elif type(arr) == dict:
-        return [XiaoCaoIndexResult(**item) for _, item in arr.items()]
+        return [XiaoCaoIndexResult(**filter_extra_fields(item)) for _, item in arr.items()]
     else:
         return []
 

@@ -35,7 +35,7 @@ error_time = 0
 cancel_time = 0
 
 global back_cash
-back_cash = 150000
+back_cash = 370000
 
 global cached_auction_infos
 cached_auction_infos = []
@@ -48,7 +48,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-02-20"
+test_date = "2025-02-24"
 
 #################### 测试配置 ########################
 global final_results
@@ -94,19 +94,19 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.555,
+        "value": 0.5,
         "codes": [],
         "total_position": default_position
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.222,
+        "value": 0.25,
         "codes": [],
         "total_position": default_position
     },
     "db": {
         "name" : "db",
-        "value": 0.111,
+        "value": 0.25,
         "codes": [],
         "total_position": default_position
     }
@@ -144,9 +144,9 @@ strategies = {
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.003],
-    "低吸-低位孕线低吸": [0, 0.003],
-    "低吸-低位N字低吸": [0, 0.003]
+    "xiao_cao_1j2db": [0.005],
+    "低吸-低位孕线低吸": [0.003],
+    "低吸-低位N字低吸": [0.003]
 }
 
 ##########################strategy configs ################
@@ -1160,7 +1160,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    # scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

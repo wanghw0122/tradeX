@@ -57,5 +57,6 @@ class XiaoCaoIndexResult:
     cjsTest: float
     isHighest: bool
     ybreakLimitUpDays: int
+    isDownLongShadow: bool
 
 

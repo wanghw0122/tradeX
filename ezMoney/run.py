@@ -630,7 +630,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 
                 for order_id, order_status_info in stock_order_statuses.items():
                     order_status_p = order_status_info['order_status']
-                    if order_status_p == xtconstant.ORDER_SUCCEEDED or order_status_p == xtconstant.ORDER_PART_CANCEL or order_status_p == xtconstant.ORDER_CANCELED or order_status_p ==  xtconstant.ORDER_JUNK:
+                    if order_status_p == xtconstant.ORDER_SUCCEEDED or order_status_p == xtconstant.ORDER_PART_CANCEL or order_status_p == xtconstant.ORDER_CANCELED or order_status_p ==  xtconstant.ORDER_JUNK or order_status_p == xtconstant.ORDER_REPORTED_CANCEL or order_status_p == xtconstant.ORDER_PARTSUCC_CANCEL:
                         if order_id not in uncomplete_orders[stock_code]:
                             continue
                         uncomplete_orders[stock_code].remove(order_id)
@@ -1181,7 +1181,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    # scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

@@ -52,7 +52,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
 test_date = "2025-02-27"
@@ -154,8 +154,8 @@ strategies = {
 
 strategies_to_buffer = {
     "xiao_cao_1j2db": [0.005],
-    "低吸-低位孕线低吸": [0.0035],
-    "低吸-低位N字低吸": [0.0035]
+    "低吸-低位孕线低吸": [0.0033],
+    "低吸-低位N字低吸": [0.0033]
 }
 
 ##########################strategy configs ################
@@ -1177,7 +1177,7 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
+    scheduler.add_job(strategy_schedule_job, 'interval', seconds=3, id="code_schedule_job")
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
@@ -1209,8 +1209,9 @@ if __name__ == "__main__":
         scheduler.shutdown()
     
     print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
-    q.close()
-    q.join_thread()
+    if not use_threading_buyer:
+        q.close()
+        q.join_thread()
     if end_subscribe:
         qq.close()
         qq.join_thread()

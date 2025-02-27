@@ -45,7 +45,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
         """
         order_id = trade.order_id
         if order_id in self.qmt.orders_dict:
-            (stock_code, price, volume, order_type, order_remark, time_stemp) = self.qmt.orders_dict[order_id]
+            (stock_code, price, volume, order_type, order_remark, time_stemp, buffered) = self.qmt.orders_dict[order_id]
             traded_amount = trade.traded_amount
             traded_volume = trade.traded_volume
             trade_order_remark = trade.order_remark
@@ -56,7 +56,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
 
             if traded_volume > 0:
                 order_logger.info(f"成交回调后实际：订单号 {order_id} 投资备注 {trade_order_remark} 股票代码 {trade_stock_code} 委托方向 {trade_order_type} 成交价格 {traded_price} 成交数量 {traded_volume} 成交金额 {traded_amount} 成交时间 {traded_time}")
-                order_logger.info(f"成交前订单申报：订单号 {order_id} 投资备注 {order_remark} 股票代码 {stock_code} 委托类型 {order_type} 委托价格 {price} 委托数量 {volume}  委托时间 {time_stemp} 价格差异 {traded_price - price} 滑点比例 {(traded_price - price) / price} 数量差异 {traded_volume - volume}")
+                order_logger.info(f"成交前订单申报：订单号 {order_id} 投资备注 {order_remark} 股票代码 {stock_code} 委托类型 {order_type} 委托价格 {price} 委托数量 {volume}  委托时间 {time_stemp} 价格差异 {traded_price - price} 滑点比例 {(traded_price - price) / price} 成交数量 {traded_volume}")
         order_logger.info(f"成交回调: {trade.order_remark}, {trade.stock_code} 委托方向(48买 49卖) {trade.offset_flag} 成交价格 {trade.traded_price} 成交数量 {trade.traded_volume}")
 
     def on_order_error(self, order_error):
@@ -94,7 +94,7 @@ class MyXtQuantTraderCallback(XtQuantTraderCallback):
             order_logger.info(f"异步委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
             logger.info(f"异步委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托数量: {volume}")
             self.qmt.orders.append(order_id)
-            self.qmt.orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time())
+            self.qmt.orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time(), False)
         logger.info(f"异步委托回调 投资备注: {response.order_remark}")
 
 
@@ -168,18 +168,36 @@ class QMTTrader:
         self.all_stocks = {}
         self.build_all_stocks()
 
-    def init_order_context(self):
+    def init_order_context(self, flag= True):
         manager = Manager()
-        self.orders = manager.list()
-        self.seq_ids_dict = manager.dict()
-        self.orders_dict = manager.dict()
+        if flag:
+            self.orders_dict = {}
+            self.orders = []
+            self.seq_ids_dict = {}
+        else:
+            self.orders = manager.list()
+            self.seq_ids_dict = manager.dict()
+            self.orders_dict = manager.dict()
         self.cancel_orders = manager.list()
         self.lock = multiprocessing.Lock()
+        self.canceled_orders = []
     
+    def get_orders_dict(self):
+        return self.orders_dict
+
     def add_cancel_order(self, order_id):
+        if order_id in self.canceled_orders:
+            return
         with self.lock:
             if order_id not in self.cancel_orders:
                 self.cancel_orders.append(order_id)
+                self.add_canceled_order(order_id)
+    
+    def add_canceled_order(self, order_id):
+        if order_id in self.canceled_orders:
+            logger.error(f"order_id {order_id} already in canceled_orders")
+            return
+        self.canceled_orders.append(order_id)
     
 
     def get_all_cancel_order_infos(self):

@@ -18,6 +18,13 @@ from run_roll_back import *
 import datetime
 # 设置环境变量
 from multiprocessing import Queue
+
+import threading
+import queue
+
+threading_q = queue.Queue(20)
+
+
 global q
 global qq
 q = Queue(10)
@@ -45,10 +52,12 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-02-24"
+test_date = "2025-02-27"
+
+use_threading_buyer = True
 
 #################### 测试配置 ########################
 global final_results
@@ -393,7 +402,11 @@ def strategy_schedule_job():
                                 logger.info(f"[producer] 股票 {code} 有策略{code_strategy} 有buffer {strategies_to_buffer[code_strategy]} code_strategies {code_strategies} codes_to_strategies {codes_to_strategies}")
                                 buffers.extend(strategies_to_buffer[code_strategy])
                     buffers.sort()
-                    q.put((code, position, buffers))
+                    
+                    if use_threading_buyer:
+                        threading_q.put((code, position, buffers))
+                    else:
+                        q.put((code, position, buffers))
                     qq.put((code, position))
                     final_results[code] = position
                     order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
@@ -666,9 +679,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                                 order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                                cancel_result = qmt_trader.cancel_order(order_id, sync=True)
                                 if cancel_result > 0:
-                                    time.sleep(0.05)
+                                    qmt_trader.add_cancel_order(order_id)
                     if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
@@ -691,9 +704,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                                 order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                                cancel_result = qmt_trader.cancel_order(order_id, sync=True)
                                 if cancel_result > 0:
-                                    time.sleep(0.05)
+                                    qmt_trader.add_cancel_order(order_id)
                     if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 1:
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
@@ -714,9 +727,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                         status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                         if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                             order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                            cancel_result = qmt_trader.cancel_order(order_id, sync=True)
                             if cancel_result > 0:
-                                time.sleep(0.05)
+                                qmt_trader.add_cancel_order(order_id)
                     if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2) :
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
@@ -740,9 +753,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                                 order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                                cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                                cancel_result = qmt_trader.cancel_order(order_id, sync=True)
                                 if cancel_result > 0:
-                                    time.sleep(0.05)
+                                    qmt_trader.add_cancel_order(order_id)
                     budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
                     if stock_code in budgets_dict:
                         buy_vol,buy_amount = budgets_dict[stock_code]
@@ -767,9 +780,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                         status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                         if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                             order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                            cancel_result = qmt_trader.cancel_order(order_id, sync=False)
+                            cancel_result = qmt_trader.cancel_order(order_id, sync=True)
                             if cancel_result > 0:
-                                time.sleep(0.05)
+                                qmt_trader.add_cancel_order(order_id)
                     if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2):
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
@@ -1116,7 +1129,10 @@ def remove_job(name):
 def end_task(name):
     logger.info(f"任务 {name} 执行结束")
     remove_job(name)
-    q.put('end')
+    if use_threading_buyer:
+        threading_q.put('end')
+    else:
+        q.put('end')
     if start_subscribe:
         qq.put('start')
 
@@ -1140,12 +1156,17 @@ if __name__ == "__main__":
     print('done')
 
     print('xtdc.listen')
+    
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
     full_tick_info_dict = Manager().dict()
 
-    qmt_trader.init_order_context()
-    consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
+    qmt_trader.init_order_context(flag = use_threading_buyer)
+    if use_threading_buyer:
+        consumer_thread = threading.Thread(target=consumer_to_buy, args=(threading_q, qmt_trader.orders_dict, qmt_trader.orders,))
+    else:
+        consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
+
     # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
     # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
 
@@ -1173,7 +1194,10 @@ if __name__ == "__main__":
         while True:
             if is_after_940() and not do_test:
                 logger.info("达到最大执行时间，退出程序")
-                q.put('end')
+                if use_threading_buyer:
+                    threading_q.put('end')
+                else:
+                    q.put('end')
                 if end_subscribe:
                     qq.put('end')
                 scheduler.shutdown()

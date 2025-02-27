@@ -35,7 +35,7 @@ error_time = 0
 cancel_time = 0
 
 global back_cash
-back_cash = 370000
+back_cash = 270000
 
 global cached_auction_infos
 cached_auction_infos = []
@@ -100,7 +100,7 @@ budgets = {
     },
     "ndx": {
         "name" : "ndx",
-        "value": 0.25,
+        "value": 0.05,
         "codes": [],
         "total_position": default_position
     },
@@ -145,8 +145,8 @@ strategies = {
 
 strategies_to_buffer = {
     "xiao_cao_1j2db": [0.005],
-    "低吸-低位孕线低吸": [0.003],
-    "低吸-低位N字低吸": [0.003]
+    "低吸-低位孕线低吸": [0.0035],
+    "低吸-低位N字低吸": [0.0035]
 }
 
 ##########################strategy configs ################

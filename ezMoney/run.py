@@ -680,7 +680,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                                 order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
                                 cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                                if cancel_result > 0:
+                                if cancel_result == 0:
                                     qmt_trader.add_cancel_order(order_id)
                     if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
@@ -705,7 +705,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                                 order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
                                 cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                                if cancel_result > 0:
+                                if cancel_result == 0:
                                     qmt_trader.add_cancel_order(order_id)
                     if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 1:
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
@@ -728,7 +728,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                         if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                             order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
                             cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                            if cancel_result > 0:
+                            if cancel_result == 0:
                                 qmt_trader.add_cancel_order(order_id)
                     if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2) :
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
@@ -754,7 +754,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                                 order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                                 cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                                if cancel_result > 0:
+                                if cancel_result == 0:
                                     qmt_trader.add_cancel_order(order_id)
                     budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
                     if stock_code in budgets_dict:
@@ -781,7 +781,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                         if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
                             order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                             cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                            if cancel_result > 0:
+                            if cancel_result == 0:
                                 qmt_trader.add_cancel_order(order_id)
                     if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2):
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")

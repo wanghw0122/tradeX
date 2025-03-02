@@ -353,12 +353,12 @@ class DbOne(Strategy):
             s_result = s_result[:self.max_return_num]
             if s_result is None or len(s_result) == 0:
                 return None
-        rs = []
-        rs.append(s_result[0])
-        s_result.sort(key=lambda x: x.xcjw, reverse=True)
-        x = s_result[0]
-        if x.code != rs[0].code:
-            rs.append(x)
+        rs = s_result
+        # rs.append(s_result[0])
+        # s_result.sort(key=lambda x: x.xcjw, reverse=True)
+        # x = s_result[0]
+        # if x.code != rs[0].code:
+        #     rs.append(x)
         if 'returnFullInfo' not in kwargs or not kwargs['returnFullInfo']:
             rs = [x.code for x in rs]
         if 'returnNum' in kwargs and kwargs['returnNum']:

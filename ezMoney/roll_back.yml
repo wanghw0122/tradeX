@@ -1,7 +1,7 @@
 configs:
   - strategy_name: "xiao_cao_1j2db_1"
-    start: "2024-08-01"
-    end: "2025-02-19"
+    start: "2024-09-01"
+    end: "2025-03-01"
     sub_tasks: {}
     max_num: 200
     valid: true
@@ -14,8 +14,8 @@ configs:
       returnNum: 10
       returnFullInfo: true
   - strategy_name: "xiao_cao_1j2db"
-    start: "2024-08-01"
-    end: "2025-02-19"
+    start: "2024-09-01"
+    end: "2025-03-01"
     sub_tasks: {}
     max_num: 200
     valid: true
@@ -28,8 +28,8 @@ configs:
       returnNum: 10
       returnFullInfo: true
   - strategy_name: "xiao_cao_dwyxdx"
-    start: "2024-08-01"
-    end: "2025-02-14"
+    start: "2025-02-01"
+    end: "2025-02-28"
     sub_tasks: {}
     max_num: 200
     valid: true
@@ -42,8 +42,8 @@ configs:
       returnNum: 10
       returnFullInfo: true
   - strategy_name: "xiao_cao_dwndx"
-    start: "2024-08-01"
-    end: "2025-02-14"
+    start: "2025-02-01"
+    end: "2025-02-28"
     sub_tasks: {}
     max_num: 200
     valid: true
@@ -56,8 +56,8 @@ configs:
       returnNum: 10
       returnFullInfo: true
   - strategy_name: "xiao_cao_dwdx_a"
-    start: "2024-08-01"
-    end: "2025-02-14"
+    start: "2025-02-01"
+    end: "2025-02-28"
     sub_tasks: {}
     max_num: 200
     valid: true
@@ -216,8 +216,8 @@ configs:
           code: "9G0099"
           returnNum: 10
           returnFullInfo: true
-    start: "2024-08-01"
-    end: "2025-02-14"
+    start: "2025-02-01"
+    end: "2025-02-28"
     max_num: 200
     valid: true
     daily: true
@@ -372,8 +372,8 @@ configs:
           code: "9G0093"
           returnNum: 10
           returnFullInfo: true
-    start: "2024-08-01"
-    end: "2025-01-26"
+    start: "2025-02-01"
+    end: "2025-02-28"
     max_num: 200
     valid: true
     daily: true
@@ -493,8 +493,8 @@ configs:
           code: "9G0101"
           returnNum: 10
           returnFullInfo: true
-    start: "2024-08-01"
-    end: "2025-01-26"
+    start: "2025-02-01"
+    end: "2025-02-28"
     max_num: 200
     valid: true
     daily: true

@@ -170,3 +170,4 @@ if __name__ == "__main__":
     
     print(trade_date_list)
     print(is_trading_day("2025-02-15"))
+    print(get_trade_dates_by_end("2025-03-01"))

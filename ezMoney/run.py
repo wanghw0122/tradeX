@@ -126,29 +126,52 @@ strategies = {
         "sub_strategies": {
             "低位孕线低吸": {
                 "code": "9G0086",   
-                "returnNum": 1,
-                "budget": "ydx"
+                "returnNum": 12,
+                "budget": "ydx",
+                'returnFullInfo': True,
+                'filter_params': {
+
+                }
             },
             "低位N字低吸": {
                 "code": "9G0080",
-                "returnNum": 1,
-                "budget": "ndx"
+                "returnNum": 12,
+                "budget": "ndx",
+                'returnFullInfo': True,
+                'filter_params': {
+                    
+                }
             }
         }
     },
     "xiao_cao_dwndx": {
         "sub_strategies": {},
-        "returnNum": 1,
-        "budget": "ndx"
+        "returnNum": 12,
+        "budget": "ndx",
+        'returnFullInfo': True,
+        'filter_params': {
+
+        }
     },
     "xiao_cao_dwyxdx": {
         "sub_strategies": {},
-        "returnNum": 1,
-        "budget": "ydx"
+        "returnNum": 12,
+        "budget": "ydx",
+        'returnFullInfo': True,
+        'filter_params': {
+            
+        }
     },
     "xiao_cao_1j2db": {
         "sub_strategies": {},
-        "budget": "db"
+        "budget": "db",
+        'returnFullInfo': True,
+        'filter_params': {
+            'fx_filtered': True,
+            'top_fx': 2,
+            'only_fx': False,
+            'top_cx': 2
+        }
     }
 }
 
@@ -161,6 +184,418 @@ strategies_to_buffer = {
 ##########################strategy configs ################
 
 codes_to_strategies = {}
+
+
+def get_filter_params(strategy_name, strategies= strategies):
+    if '-' in strategy_name:
+        sub_strategy_name = strategy_name.split('-')[1]
+        strategy_name = strategy_name.split('-')[0]
+        sub_strategies = strategies[strategy_name]['sub_strategies']
+        if sub_strategy_name in sub_strategies:
+            return sub_strategies[sub_strategy_name]['filter_params']
+        else:
+            return {}
+    else:
+        return strategies[strategy_name]['filter_params']
+    
+
+
+def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered = False, topn = 2, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False, empty_priority = False):
+    res = []
+    codes = [candicate.code for candicate in candicates]
+    logger.info("group_filter_fuc codes:{}".format(codes))
+    if not filtered:
+        return codes[:topn]
+    if fx_filtered:
+        min_category_rank = get_max_block_category_rank(code_to_index_dict)
+        if enbale_industry:
+            max_industry_code_rank_items = get_max_industry_code_rank_items_by_rank(code_to_index_dict, rank=1)
+            if len(max_industry_code_rank_items) == 1:
+                return max_industry_code_rank_items
+            if len(max_industry_code_rank_items) > 1:
+                for code in codes:
+                    if code in max_industry_code_rank_items:
+                        return [code]
+                return codes[:1]
+        if min_category_rank > top_fx:
+            if only_fx:
+                return []
+            else:
+                return codes[:1]
+        elif min_category_rank < 0:
+            if empty_priority:
+                filter_category_codes = get_max_block_category_rank_rang(code_to_index_dict, rmax=top_fx)
+                filter_block_codes = get_max_block_code_rank_rang(code_to_index_dict, rmax=top_cx)
+                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmax=top_cx)
+                union_codes = set(filter_industry_codes).union(set(filter_block_codes))
+                filter_codes = list(set(filter_category_codes).intersection(union_codes))
+                if len(filter_codes) > 1:
+                    filter_codes = get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes)
+                    for code in codes:
+                        if code in filter_codes:
+                            return [code]
+                    return filter_codes[:1]
+                elif len(filter_codes) == 1:
+                    return filter_codes
+                else:
+                    if only_fx:
+                        return []
+                    return codes[:1]
+            else:
+                filter_category_codes = get_max_block_category_rank_rang(code_to_index_dict,rmin=0, rmax=top_fx)
+                filter_block_codes = get_max_block_code_rank_rang(code_to_index_dict,rmin=0, rmax=top_cx)
+                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmin=0, rmax=top_cx)
+                union_codes = set(filter_industry_codes).union(set(filter_block_codes))
+                filter_codes = list(set(filter_category_codes).intersection(union_codes))
+                if len(filter_codes) >= 1:
+                    
+                    for code in codes:
+                        if code in filter_codes:
+                            return [code]
+                    return filter_codes[:1]
+                else:
+                    block_category_rank_codes = get_max_block_category_rank_items_by_rank(code_to_index_dict, rank = min_category_rank)
+                    if len(block_category_rank_codes) > 0:
+                        for code in codes:
+                            if code in block_category_rank_codes:
+                                return [code]
+                        return block_category_rank_codes[:1]
+                    if only_fx:
+                        return []
+                    return codes[:1]
+        else:
+            if empty_priority:
+                filter_category_codes = get_max_block_category_rank_rang(code_to_index_dict, rmax=top_fx)
+                filter_block_codes = get_max_block_code_rank_rang(code_to_index_dict, rmax=top_cx)
+                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmax=top_cx)
+                union_codes = set(filter_industry_codes).union(set(filter_block_codes))
+                filter_codes = list(set(filter_category_codes).intersection(union_codes))
+                if len(filter_codes) > 1:
+                    filter_codes = get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes)
+                    for code in codes:
+                        if code in filter_codes:
+                            return [code]
+                    return filter_codes[:1]
+                elif len(filter_codes) == 1:
+                    return filter_codes
+                else:
+                    if only_fx:
+                        return []
+                    return codes[:1]
+            else:
+                filter_category_codes = get_max_block_category_rank_rang(code_to_index_dict,rmin=0, rmax=top_fx)
+                filter_block_codes = get_max_block_code_rank_rang(code_to_index_dict,rmin=0, rmax=top_cx)
+                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmin=0, rmax=top_cx)
+                union_codes = set(filter_industry_codes).union(set(filter_block_codes))
+                filter_codes = list(set(filter_category_codes).intersection(union_codes))
+                if len(filter_codes) >= 1:
+
+                    for code in codes:
+                        if code in filter_codes:
+                            return [code]
+                    return filter_codes[:1]
+                else:
+                    if only_fx:
+                        return []
+                    else:
+                        return codes[:1]
+    else:
+        return codes[:1]
+            
+def get_max_block_category_rank_rang(code_to_index_dict, rmin = None, rmax = None):
+    res = []
+    for code, info in code_to_index_dict.items():
+        if'max_block_category_rank' not in info:
+            continue
+        if rmin != None and info['max_block_category_rank'] < rmin:
+            continue
+        if rmax != None and info['max_block_category_rank'] > rmax:
+            continue
+        res.append(code)
+    return res
+
+
+def get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes):
+    res = []
+    min_block_code = filter_codes[0]
+    min_block_code_rank = code_to_index_dict[min_block_code]['max_block_code_rank']
+    for code, info in code_to_index_dict.items():
+        if'max_block_code_rank' not in info:
+            continue
+        if code not in filter_codes:
+            continue
+        if info['max_block_code_rank'] < min_block_code_rank:
+            min_block_code_rank = info['max_block_code_rank']
+    for code, info in code_to_index_dict.items():
+        if'max_block_code_rank' not in info:
+            continue
+        if code not in filter_codes:
+            continue
+        if info['max_block_code_rank'] == min_block_code_rank:
+            res.append(code)
+    return res
+
+def get_max_block_code_rank_rang(code_to_index_dict, rmin = None, rmax = None):
+    res = []
+    for code, info in code_to_index_dict.items():
+        if'max_block_code_rank' not in info:
+            continue
+        if rmin!= None and info['max_block_code_rank'] < rmin:
+            continue
+        if rmax!= None and info['max_block_code_rank'] > rmax:
+            continue
+        res.append(code)
+    return res
+
+
+def get_max_industry_code_rank_rang(code_to_index_dict, rmin = None, rmax = None):
+    res = []
+    for code, info in code_to_index_dict.items():
+        if'max_industry_code_rank' not in info:
+            continue
+        if rmin!= None and info['max_industry_code_rank'] < rmin:
+            continue
+        if rmax!= None and info['max_industry_code_rank'] > rmax:
+            continue
+        res.append(code)
+    return res
+
+def get_max_block_category_rank(code_to_index_dict):
+    min_category_rank = 101
+    for _, info in code_to_index_dict.items():
+        if 'max_block_category_rank' not in info:
+            continue
+        min_category_rank = min(min_category_rank, info['max_block_category_rank'])
+    return min_category_rank
+
+def get_max_block_code_rank(code_to_index_dict):
+    min_block_code_rank = 101
+    for _, info in code_to_index_dict.items():
+        if'max_block_code_rank' not in info:
+            continue
+        min_block_code_rank = min(min_block_code_rank, info['max_block_code_rank'])
+    return min_block_code_rank
+
+def get_max_industry_code_rank(code_to_index_dict):
+    min_industry_code_rank = 101
+    for _, info in code_to_index_dict.items():
+        if'max_industry_code_rank' not in info:
+            continue
+        min_industry_code_rank = min(min_industry_code_rank, info['max_industry_code_rank'])
+    return min_industry_code_rank
+
+
+def get_max_block_category_rank_items_by_rank(code_to_index_dict, rank=1):
+    res = []
+    for code, info in code_to_index_dict.items():
+        if'max_block_category_rank' not in info:
+            continue
+        if info['max_block_category_rank'] == rank:
+            res.append(code)
+    return res
+
+def get_max_industry_code_rank_items_by_rank(code_to_index_dict, rank=1):
+    res = []
+    for code, info in code_to_index_dict.items():
+        if'max_industry_code_rank' not in info:
+            continue
+        if info['max_industry_code_rank'] == rank:
+            res.append(code)
+    return res
+
+
+
+def direction_filter_fuc(candicates, category_infos, params):
+    res = []
+    if not candicates:
+        return res
+    if len(candicates) == 1:
+        return [candicates[0].code]
+    
+    # if not params:
+    #     logger.info("direction_filter_fuc params is empty")
+    #     return [candicates[0].code]
+    
+    fuc_params = {
+    }
+    
+    if 'filtered' in params:
+        filtered = params['filtered']
+        fuc_params['filtered'] = filtered
+    else:
+        filtered = None
+    if 'fx_filtered' in params:
+        fx_filtered = params['fx_filtered']
+        fuc_params['fx_filtered'] = fx_filtered
+    else:
+        fx_filtered = None
+    if 'topn' in params:
+        topn = params['topn']
+        fuc_params['topn'] = topn
+    else:
+        topn = None
+    if 'top_fx' in params:
+        top_fx = params['top_fx']
+        fuc_params['top_fx'] = top_fx
+    else:
+        top_fx = None
+    if 'top_cx' in params:
+        top_cx = params['top_cx']
+        fuc_params['top_cx'] = top_cx
+    else:
+        top_cx = None
+    if 'only_fx' in params:
+        only_fx = params['only_fx']
+        fuc_params['only_fx'] = only_fx
+    else:
+        only_fx = None
+    if 'enbale_industry' in params:
+        enbale_industry = params['enbale_industry']
+        fuc_params['enbale_industry'] = enbale_industry
+    else:
+        enbale_industry = None
+    if 'empty_priority' in params:
+        empty_priority = params['empty_priority']
+        fuc_params['empty_priority'] = empty_priority
+    else:
+        empty_priority = None
+
+    
+
+    if not category_infos or len(category_infos) == 0:
+        return [candicates[0].code]
+    
+    code_to_index_dict = {}
+
+    category_dict = {}
+    block_dict = {}    
+    block_list = [] 
+    index = 1
+    for info in category_infos:
+        if info == None:
+            continue
+        categoryCode= info.categoryCode
+        if not categoryCode:
+            continue
+        categoryName = info.name
+        num = info.num if info.num != None else -1000
+        prePctChangeRate = info.prePctChangeRate
+        numChange = info.numChange
+        stockType = info.stockType
+        blockRankList = info.blockRankList
+        category_dict[categoryCode] = {}
+        category_dict[categoryCode]['categoryCode'] = categoryCode
+        category_dict[categoryCode]['categoryName'] = categoryName
+        category_dict[categoryCode]['num'] = num
+        category_dict[categoryCode]['prePctChangeRate'] = prePctChangeRate
+        category_dict[categoryCode]['numChange'] = numChange
+        category_dict[categoryCode]['blocks'] = []
+        if stockType and stockType == 'industry':
+            category_dict[categoryCode]['industry'] = 1
+            block_list.append((categoryCode, num, prePctChangeRate, numChange))
+            category_dict[categoryCode]['blocks'].append(categoryCode)
+        else:
+            category_dict[categoryCode]['industry'] = 0
+        category_dict[categoryCode]['rank'] = index
+        
+        if blockRankList and len(blockRankList) > 0:
+            for block in blockRankList:
+                if block == None:
+                    continue
+                blockCode = block['blockCode']
+                if not blockCode:
+                    continue
+                category_dict[categoryCode]['blocks'].append(blockCode)
+                num = block['num']
+                prePctChangeRate = block['prePctChangeRate']
+                numChange = block['numChange']
+                block_list.append((blockCode, num, prePctChangeRate, numChange))
+        index = index + 1
+    block_list.sort(key=lambda x: x[1], reverse=True)
+    index = 1
+    for block in block_list:
+        blockCode = block[0]
+        num = block[1]
+        prePctChangeRate = block[2]
+        numChange = block[3]
+        block_dict[blockCode] = {}
+        block_dict[blockCode]['blockCode'] = blockCode
+        block_dict[blockCode]['num'] = num
+        block_dict[blockCode]['prePctChangeRate'] = prePctChangeRate
+        block_dict[blockCode]['numChange'] = numChange
+        block_dict[blockCode]['rank'] = index
+        index = index + 1
+    for _, info in category_dict.items():
+        if 'blocks' not in info:
+            continue
+        blocks = info['blocks']
+        if not blocks:
+            continue
+        block_code_dict = {}
+        for block in blocks:
+            block_code_dict[block] = {}
+            block_code_dict[block].update(block_dict[block])
+        info['block_dict'] = block_code_dict
+
+    index = 0
+    for item in candicates:
+        code = item.code
+        if not code:
+            continue
+        index = index + 1
+        if code not in code_to_index_dict:
+            logger.info("direction_filter_fuc code:{} not in code_to_index_dict".format(code))
+            code_to_index_dict[code] = {}
+            code_to_index_dict[code]['index'] = index
+            code_to_index_dict[code]['max_block_category_rank'] = -1
+            code_to_index_dict[code]['max_block_code_rank'] = -1
+            code_to_index_dict[code]['max_industry_code_rank'] = -1
+        else:
+            raise
+        
+        blockCategoryCodeList = item.blockCategoryCodeList
+        blockCodeList = item.blockCodeList
+        industryBlockCodeList = item.industryBlockCodeList
+        if blockCategoryCodeList and len(blockCategoryCodeList) > 0:
+            min_rank = 100
+            for category in blockCategoryCodeList:
+                if category not in category_dict:
+                    continue
+                info = category_dict[category]
+                assert info['categoryCode'] == category
+                info_rank = info['rank']
+                min_rank = min(min_rank, info_rank)
+            code_to_index_dict[code]['max_block_category_rank'] = min_rank
+
+
+        if blockCodeList and len(blockCodeList) > 0:
+            min_rank = 100
+            for block in blockCodeList:
+                if block not in block_dict:
+                    continue
+                info = block_dict[block]
+                assert info['blockCode'] == block
+                info_rank = info['rank']
+                min_rank = min(min_rank, info_rank)
+            code_to_index_dict[code]['max_block_code_rank'] = min_rank
+        
+        if industryBlockCodeList and len(industryBlockCodeList) > 0:
+            min_rank = 100
+            for icode in industryBlockCodeList:
+                if icode in category_dict:
+                    info = category_dict[icode]
+                    assert info['categoryCode'] == icode
+                    info_rank = info['rank']
+                    min_rank = min(min_rank, info_rank)
+                if icode in block_dict:
+                    info = block_dict[icode]
+                    assert info['blockCode'] == icode
+                    info_rank = info['rank']
+                    min_rank = min(min_rank, info_rank)
+            code_to_index_dict[code]['max_industry_code_rank'] = min_rank
+
+    res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
+    return res
 
 
 def set_strategy_codes_to_budgets(strategy_name, codes, strategies_dict = strategies, budgets_dict = budgets):
@@ -269,10 +704,17 @@ def get_target_codes_by_all_strategies(retry_times=3):
             if 'xiao_cao_env' in item:
                 xiaocao_envs = item['xiao_cao_env'][0]
                 position = get_position(xiaocao_envs)
+            
             if name in item:
                 real_item_list = item[name]
                 if real_item_list == None:
                     continue
+                if 'xiaocao_category_info' in item:
+                    xiaocao_category_infos = item['xiaocao_category_info']
+                    real_item_list = direction_filter_fuc(real_item_list, xiaocao_category_infos, params=get_filter_params(key))
+                else:
+                    if type(real_item_list[0]) != str:
+                        real_item_list = [t.code for t in real_item_list]
                 for code in real_item_list:
                     if not code or len(code) == 0:
                         continue
@@ -1181,7 +1623,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=1, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

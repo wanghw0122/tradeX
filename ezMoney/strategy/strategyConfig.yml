@@ -497,7 +497,7 @@ Strategies:
         desc: "构建小草板块"
         logged: true
         cached: true
-        lruCached: true
+        lruCached: false
         params:
           date: "{{system_time}}"
   - name: "xiao_cao_env"

@@ -103,19 +103,37 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.5,
+        "value": 0.21,
         "codes": [],
         "total_position": default_position
     },
-    "ndx": {
-        "name" : "ndx",
-        "value": 0.05,
+    "sddx": {
+        "name" : "sddx",
+        "value": 0.16,
+        "codes": [],
+        "total_position": default_position
+    },
+    "zwdx": {
+        "name" : "zwdx",
+        "value": 0.21,
+        "codes": [],
+        "total_position": default_position
+    },
+    "zwdbdx": {
+        "name" : "zwdbdx",
+        "value": 0.19,
+        "codes": [],
+        "total_position": default_position
+    },
+    "ddx": {
+        "name" : "ddx",
+        "value": 0.138,
         "codes": [],
         "total_position": default_position
     },
     "db": {
         "name" : "db",
-        "value": 0.25,
+        "value": 0.07,
         "codes": [],
         "total_position": default_position
     }
@@ -126,59 +144,206 @@ strategies = {
         "sub_strategies": {
             "低位孕线低吸": {
                 "code": "9G0086",   
-                "returnNum": 12,
+                "returnNum": 3,
                 "budget": "ydx",
                 'returnFullInfo': True,
-                'filter_params': {
-
-                }
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 2,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': True,
+                    'empty_priority': True
+                    },
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 4,
+                    'only_fx': False,
+                    'enbale_industry': True,
+                    'empty_priority': True
+                    }
+                ]
             },
-            "低位N字低吸": {
-                "code": "9G0080",
-                "returnNum": 12,
-                "budget": "ndx",
+            "首断低吸": {
+                # 开盘直接卖
+                "code": "9G0034",
+                "returnNum": 5,
+                "budget": "sddx",
                 'returnFullInfo': True,
-                'filter_params': {
-                    
-                }
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 1,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True
+                    }
+                ]
+            },
+            "中位低吸": {
+                # 收盘卖
+                "code": "9G0026",
+                "returnNum": 3,
+                "budget": "zwdx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': False
+                    },
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False
+                    },
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 4,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': True,
+                    'empty_priority': False
+                    }
+                ]
+            },
+            "中位断板低吸": {
+                # 可结束可开盘卖
+                "code": "9G0042",
+                "returnNum": 2,
+                "budget": "zwdbdx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': True,
+                    'empty_priority': True
+                    },
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': True,
+                    'empty_priority': True
+                    },
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 2,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True
+                    }
+                ]
+            },
+            "断低吸": {
+                # 开盘卖
+                "code": "9G0032",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'top_n': 1,
+                    'top_fx': 1,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': True,
+                    'empty_priority': True
+                    }
+                ]
             }
-        }
-    },
-    "xiao_cao_dwndx": {
-        "sub_strategies": {},
-        "returnNum": 12,
-        "budget": "ndx",
-        'returnFullInfo': True,
-        'filter_params': {
-
         }
     },
     "xiao_cao_dwyxdx": {
         "sub_strategies": {},
-        "returnNum": 12,
+        "returnNum": 3,
         "budget": "ydx",
         'returnFullInfo': True,
-        'filter_params': {
-            
-        }
+        'filter_params': [
+            {
+            'filtered': True,
+            'fx_filtered': True,
+            'top_n': 1,
+            'top_fx': 2,
+            'top_cx': 3,
+            'only_fx': False,
+            'enbale_industry': True,
+            'empty_priority': True
+            },
+            {
+            'filtered': True,
+            'fx_filtered': True,
+            'top_n': 1,
+            'top_fx': 1,
+            'top_cx': 4,
+            'only_fx': False,
+            'enbale_industry': True,
+            'empty_priority': True
+            }
+        ]
     },
     "xiao_cao_1j2db": {
         "sub_strategies": {},
+        "returnNum": 3,
         "budget": "db",
         'returnFullInfo': True,
-        'filter_params': {
+        'filter_params': [
+            {
+            'filtered': True,
             'fx_filtered': True,
-            'top_fx': 2,
+            'top_n': 1,
+            'top_fx': 3,
+            'top_cx': 2,
             'only_fx': False,
-            'top_cx': 2
-        }
+            'enbale_industry': False,
+            'empty_priority': False
+            }
+        ]
     }
 }
 
 strategies_to_buffer = {
     "xiao_cao_1j2db": [0.005],
-    "低吸-低位孕线低吸": [0.0033],
-    "低吸-低位N字低吸": [0.0033]
+    "xiao_cao_dwyxdx": [0.005],
+    "低吸-低位孕线低吸": [0.005],
+    "低吸-首断低吸": [0.005],
+    "低吸-中位低吸": [0.005],
+    "低吸-中位断板低吸": [0.005],
+    "低吸-断低吸": [0.005]
 }
 
 ##########################strategy configs ################
@@ -415,186 +580,191 @@ def direction_filter_fuc(candicates, category_infos, params):
     # if not params:
     #     logger.info("direction_filter_fuc params is empty")
     #     return [candicates[0].code]
-    
-    fuc_params = {
-    }
-    
-    if 'filtered' in params:
-        filtered = params['filtered']
-        fuc_params['filtered'] = filtered
-    else:
-        filtered = None
-    if 'fx_filtered' in params:
-        fx_filtered = params['fx_filtered']
-        fuc_params['fx_filtered'] = fx_filtered
-    else:
-        fx_filtered = None
-    if 'topn' in params:
-        topn = params['topn']
-        fuc_params['topn'] = topn
-    else:
-        topn = None
-    if 'top_fx' in params:
-        top_fx = params['top_fx']
-        fuc_params['top_fx'] = top_fx
-    else:
-        top_fx = None
-    if 'top_cx' in params:
-        top_cx = params['top_cx']
-        fuc_params['top_cx'] = top_cx
-    else:
-        top_cx = None
-    if 'only_fx' in params:
-        only_fx = params['only_fx']
-        fuc_params['only_fx'] = only_fx
-    else:
-        only_fx = None
-    if 'enbale_industry' in params:
-        enbale_industry = params['enbale_industry']
-        fuc_params['enbale_industry'] = enbale_industry
-    else:
-        enbale_industry = None
-    if 'empty_priority' in params:
-        empty_priority = params['empty_priority']
-        fuc_params['empty_priority'] = empty_priority
-    else:
-        empty_priority = None
-
-    
-
-    if not category_infos or len(category_infos) == 0:
-        return [candicates[0].code]
-    
-    code_to_index_dict = {}
-
-    category_dict = {}
-    block_dict = {}    
-    block_list = [] 
-    index = 1
-    for info in category_infos:
-        if info == None:
-            continue
-        categoryCode= info.categoryCode
-        if not categoryCode:
-            continue
-        categoryName = info.name
-        num = info.num if info.num != None else -1000
-        prePctChangeRate = info.prePctChangeRate
-        numChange = info.numChange
-        stockType = info.stockType
-        blockRankList = info.blockRankList
-        category_dict[categoryCode] = {}
-        category_dict[categoryCode]['categoryCode'] = categoryCode
-        category_dict[categoryCode]['categoryName'] = categoryName
-        category_dict[categoryCode]['num'] = num
-        category_dict[categoryCode]['prePctChangeRate'] = prePctChangeRate
-        category_dict[categoryCode]['numChange'] = numChange
-        category_dict[categoryCode]['blocks'] = []
-        if stockType and stockType == 'industry':
-            category_dict[categoryCode]['industry'] = 1
-            block_list.append((categoryCode, num, prePctChangeRate, numChange))
-            category_dict[categoryCode]['blocks'].append(categoryCode)
+    for c_param in params:
+        fuc_params = {
+        }
+        
+        if 'filtered' in c_param:
+            filtered = c_param['filtered']
+            fuc_params['filtered'] = filtered
         else:
-            category_dict[categoryCode]['industry'] = 0
-        category_dict[categoryCode]['rank'] = index
-        
-        if blockRankList and len(blockRankList) > 0:
-            for block in blockRankList:
-                if block == None:
-                    continue
-                blockCode = block['blockCode']
-                if not blockCode:
-                    continue
-                category_dict[categoryCode]['blocks'].append(blockCode)
-                num = block['num']
-                prePctChangeRate = block['prePctChangeRate']
-                numChange = block['numChange']
-                block_list.append((blockCode, num, prePctChangeRate, numChange))
-        index = index + 1
-    block_list.sort(key=lambda x: x[1], reverse=True)
-    index = 1
-    for block in block_list:
-        blockCode = block[0]
-        num = block[1]
-        prePctChangeRate = block[2]
-        numChange = block[3]
-        block_dict[blockCode] = {}
-        block_dict[blockCode]['blockCode'] = blockCode
-        block_dict[blockCode]['num'] = num
-        block_dict[blockCode]['prePctChangeRate'] = prePctChangeRate
-        block_dict[blockCode]['numChange'] = numChange
-        block_dict[blockCode]['rank'] = index
-        index = index + 1
-    for _, info in category_dict.items():
-        if 'blocks' not in info:
-            continue
-        blocks = info['blocks']
-        if not blocks:
-            continue
-        block_code_dict = {}
-        for block in blocks:
-            block_code_dict[block] = {}
-            block_code_dict[block].update(block_dict[block])
-        info['block_dict'] = block_code_dict
-
-    index = 0
-    for item in candicates:
-        code = item.code
-        if not code:
-            continue
-        index = index + 1
-        if code not in code_to_index_dict:
-            logger.info("direction_filter_fuc code:{} not in code_to_index_dict".format(code))
-            code_to_index_dict[code] = {}
-            code_to_index_dict[code]['index'] = index
-            code_to_index_dict[code]['max_block_category_rank'] = -1
-            code_to_index_dict[code]['max_block_code_rank'] = -1
-            code_to_index_dict[code]['max_industry_code_rank'] = -1
+            filtered = None
+        if 'fx_filtered' in c_param:
+            fx_filtered = c_param['fx_filtered']
+            fuc_params['fx_filtered'] = fx_filtered
         else:
-            raise
-        
-        blockCategoryCodeList = item.blockCategoryCodeList
-        blockCodeList = item.blockCodeList
-        industryBlockCodeList = item.industryBlockCodeList
-        if blockCategoryCodeList and len(blockCategoryCodeList) > 0:
-            min_rank = 100
-            for category in blockCategoryCodeList:
-                if category not in category_dict:
-                    continue
-                info = category_dict[category]
-                assert info['categoryCode'] == category
-                info_rank = info['rank']
-                min_rank = min(min_rank, info_rank)
-            code_to_index_dict[code]['max_block_category_rank'] = min_rank
+            fx_filtered = None
+        if 'topn' in c_param:
+            topn = c_param['topn']
+            fuc_params['topn'] = topn
+        else:
+            topn = None
+        if 'top_fx' in c_param:
+            top_fx = c_param['top_fx']
+            fuc_params['top_fx'] = top_fx
+        else:
+            top_fx = None
+        if 'top_cx' in c_param:
+            top_cx = c_param['top_cx']
+            fuc_params['top_cx'] = top_cx
+        else:
+            top_cx = None
+        if 'only_fx' in c_param:
+            only_fx = c_param['only_fx']
+            fuc_params['only_fx'] = only_fx
+        else:
+            only_fx = None
+        if 'enbale_industry' in c_param:
+            enbale_industry = c_param['enbale_industry']
+            fuc_params['enbale_industry'] = enbale_industry
+        else:
+            enbale_industry = None
+        if 'empty_priority' in c_param:
+            empty_priority = c_param['empty_priority']
+            fuc_params['empty_priority'] = empty_priority
+        else:
+            empty_priority = None
 
-
-        if blockCodeList and len(blockCodeList) > 0:
-            min_rank = 100
-            for block in blockCodeList:
-                if block not in block_dict:
-                    continue
-                info = block_dict[block]
-                assert info['blockCode'] == block
-                info_rank = info['rank']
-                min_rank = min(min_rank, info_rank)
-            code_to_index_dict[code]['max_block_code_rank'] = min_rank
         
-        if industryBlockCodeList and len(industryBlockCodeList) > 0:
-            min_rank = 100
-            for icode in industryBlockCodeList:
-                if icode in category_dict:
-                    info = category_dict[icode]
-                    assert info['categoryCode'] == icode
+
+        if not category_infos or len(category_infos) == 0:
+            return [candicates[0].code]
+        
+        code_to_index_dict = {}
+
+        category_dict = {}
+        block_dict = {}    
+        block_list = [] 
+        index = 1
+        for info in category_infos:
+            if info == None:
+                continue
+            categoryCode= info.categoryCode
+            if not categoryCode:
+                continue
+            categoryName = info.name
+            num = info.num if info.num != None else -1000
+            prePctChangeRate = info.prePctChangeRate
+            numChange = info.numChange
+            stockType = info.stockType
+            blockRankList = info.blockRankList
+            category_dict[categoryCode] = {}
+            category_dict[categoryCode]['categoryCode'] = categoryCode
+            category_dict[categoryCode]['categoryName'] = categoryName
+            category_dict[categoryCode]['num'] = num
+            category_dict[categoryCode]['prePctChangeRate'] = prePctChangeRate
+            category_dict[categoryCode]['numChange'] = numChange
+            category_dict[categoryCode]['blocks'] = []
+            if stockType and stockType == 'industry':
+                category_dict[categoryCode]['industry'] = 1
+                block_list.append((categoryCode, num, prePctChangeRate, numChange))
+                category_dict[categoryCode]['blocks'].append(categoryCode)
+            else:
+                category_dict[categoryCode]['industry'] = 0
+            category_dict[categoryCode]['rank'] = index
+            
+            if blockRankList and len(blockRankList) > 0:
+                for block in blockRankList:
+                    if block == None:
+                        continue
+                    blockCode = block['blockCode']
+                    if not blockCode:
+                        continue
+                    category_dict[categoryCode]['blocks'].append(blockCode)
+                    num = block['num']
+                    prePctChangeRate = block['prePctChangeRate']
+                    numChange = block['numChange']
+                    block_list.append((blockCode, num, prePctChangeRate, numChange))
+            index = index + 1
+        block_list.sort(key=lambda x: x[1], reverse=True)
+        index = 1
+        for block in block_list:
+            blockCode = block[0]
+            num = block[1]
+            prePctChangeRate = block[2]
+            numChange = block[3]
+            block_dict[blockCode] = {}
+            block_dict[blockCode]['blockCode'] = blockCode
+            block_dict[blockCode]['num'] = num
+            block_dict[blockCode]['prePctChangeRate'] = prePctChangeRate
+            block_dict[blockCode]['numChange'] = numChange
+            block_dict[blockCode]['rank'] = index
+            index = index + 1
+        for _, info in category_dict.items():
+            if 'blocks' not in info:
+                continue
+            blocks = info['blocks']
+            if not blocks:
+                continue
+            block_code_dict = {}
+            for block in blocks:
+                block_code_dict[block] = {}
+                block_code_dict[block].update(block_dict[block])
+            info['block_dict'] = block_code_dict
+
+        index = 0
+        for item in candicates:
+            code = item.code
+            if not code:
+                continue
+            index = index + 1
+            if code not in code_to_index_dict:
+                logger.info("direction_filter_fuc code:{} not in code_to_index_dict".format(code))
+                code_to_index_dict[code] = {}
+                code_to_index_dict[code]['index'] = index
+                code_to_index_dict[code]['max_block_category_rank'] = -1
+                code_to_index_dict[code]['max_block_code_rank'] = -1
+                code_to_index_dict[code]['max_industry_code_rank'] = -1
+            else:
+                raise
+            
+            blockCategoryCodeList = item.blockCategoryCodeList
+            blockCodeList = item.blockCodeList
+            industryBlockCodeList = item.industryBlockCodeList
+            if blockCategoryCodeList and len(blockCategoryCodeList) > 0:
+                min_rank = 100
+                for category in blockCategoryCodeList:
+                    if category not in category_dict:
+                        continue
+                    info = category_dict[category]
+                    assert info['categoryCode'] == category
                     info_rank = info['rank']
                     min_rank = min(min_rank, info_rank)
-                if icode in block_dict:
-                    info = block_dict[icode]
-                    assert info['blockCode'] == icode
+                code_to_index_dict[code]['max_block_category_rank'] = min_rank
+
+
+            if blockCodeList and len(blockCodeList) > 0:
+                min_rank = 100
+                for block in blockCodeList:
+                    if block not in block_dict:
+                        continue
+                    info = block_dict[block]
+                    assert info['blockCode'] == block
                     info_rank = info['rank']
                     min_rank = min(min_rank, info_rank)
-            code_to_index_dict[code]['max_industry_code_rank'] = min_rank
+                code_to_index_dict[code]['max_block_code_rank'] = min_rank
+            
+            if industryBlockCodeList and len(industryBlockCodeList) > 0:
+                min_rank = 100
+                for icode in industryBlockCodeList:
+                    if icode in category_dict:
+                        info = category_dict[icode]
+                        assert info['categoryCode'] == icode
+                        info_rank = info['rank']
+                        min_rank = min(min_rank, info_rank)
+                    if icode in block_dict:
+                        info = block_dict[icode]
+                        assert info['blockCode'] == icode
+                        info_rank = info['rank']
+                        min_rank = min(min_rank, info_rank)
+                code_to_index_dict[code]['max_industry_code_rank'] = min_rank
 
-    res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
+        c_res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
+        if c_res and len(c_res) > 0:
+            for c in c_res:
+                if c and c not in res:
+                    res.append(c)
+
     return res
 
 
@@ -654,7 +824,8 @@ def set_position_to_budgets(position = default_position, budgets_dict = budgets)
 
 def get_position_from_budgets(budgets_dict = budgets):
     rslt = {}
-    for _, budget in budgets_dict.items():
+    r_rslt = {}
+    for key, budget in budgets_dict.items():
         if not budget or len(budget) == 0:
             continue
         codes = budget['codes']
@@ -663,8 +834,23 @@ def get_position_from_budgets(budgets_dict = budgets):
             continue
         position = budget['total_position'] / len(codes)
         for code in codes:
-            rslt[code] = position * value
-    return rslt
+            if code in rslt:
+                v, arr = rslt[code]
+                v = v + position * value
+                if key not in arr:
+                    arr.append(key)
+                rslt[code] = (v, arr)
+            else:
+                rslt[code] = (position * value, [key])
+    if rslt:
+        for code, (v, arr) in rslt.items():
+            if arr:
+                arr.sort()
+                r_rslt[code] = (v, ','.join(arr))
+            else:
+                r_rslt[code] = (v, 'unknown')
+
+    return r_rslt
 
 def get_target_return_keys_dict(starategies_dict = strategies):
     target_return_keys_dict = {}
@@ -704,7 +890,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
             if 'xiao_cao_env' in item:
                 xiaocao_envs = item['xiao_cao_env'][0]
                 position = get_position(xiaocao_envs)
-            
+                logger.info(f"xiaocao_envs_position: {position}")
             if name in item:
                 real_item_list = item[name]
                 if real_item_list == None:
@@ -829,7 +1015,7 @@ def strategy_schedule_job():
                     for _, v in final_results.items():
                         total_position = total_position + v
                     min_position = total_position / l
-                for code, position in m_rslt.items():
+                for code, (position, mark_info) in m_rslt.items():
                     if code in final_results:
                         continue
                     position = max(min_position, position)
@@ -846,9 +1032,9 @@ def strategy_schedule_job():
                     buffers.sort()
                     
                     if use_threading_buyer:
-                        threading_q.put((code, position, buffers))
+                        threading_q.put((code, position, buffers, mark_info))
                     else:
-                        q.put((code, position, buffers))
+                        q.put((code, position, buffers, mark_info))
                     qq.put((code, position))
                     final_results[code] = position
                     order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
@@ -875,11 +1061,12 @@ def consumer_to_buy(q, orders_dict, orders):
             if (type(data) == tuple):
                 c_cash = min(total_assert * data[1], cash)
                 buffers = data[2]
-                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffers=buffers)
+                mark_info = data[3]
+                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark=mark_info, sync=True, orders_dict=orders_dict, orders=orders, buffers=buffers)
                 if order_id < 0:
-                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
+                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark=mark_info, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
                      if order_id < 0:
-                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark='fixed', sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
+                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark=mark_info, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
             elif type(data) == str and data == 'end':
                 break
             else:

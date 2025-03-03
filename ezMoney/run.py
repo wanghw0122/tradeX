@@ -42,7 +42,7 @@ error_time = 0
 cancel_time = 0
 
 global back_cash
-back_cash = 270000
+back_cash = 100000
 
 global cached_auction_infos
 cached_auction_infos = []

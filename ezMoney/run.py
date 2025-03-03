@@ -55,7 +55,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-02-27"
+test_date = "2025-03-03"
 
 use_threading_buyer = True
 
@@ -103,37 +103,49 @@ qmt_trader.callback.set_qmt(qmt_trader)
 budgets = {
     "ydx": {
         "name" : "ydx",
-        "value": 0.21,
+        "value": 0.22,
         "codes": [],
         "total_position": default_position
     },
     "sddx": {
         "name" : "sddx",
-        "value": 0.16,
+        "value": 0.0,
         "codes": [],
         "total_position": default_position
     },
     "zwdx": {
         "name" : "zwdx",
-        "value": 0.21,
+        "value": 0.0,
         "codes": [],
         "total_position": default_position
     },
     "zwdbdx": {
         "name" : "zwdbdx",
-        "value": 0.19,
+        "value": 0.0,
         "codes": [],
         "total_position": default_position
     },
     "ddx": {
         "name" : "ddx",
-        "value": 0.138,
+        "value": 0.22,
         "codes": [],
         "total_position": default_position
     },
     "db": {
         "name" : "db",
-        "value": 0.07,
+        "value": 0.11,
+        "codes": [],
+        "total_position": default_position
+    },
+     "ndx": {
+        "name" : "ndx",
+        "value": 0.22,
+        "codes": [],
+        "total_position": default_position
+    },
+    "zydx": {
+        "name" : "zydx",
+        "value": 0.22,
         "codes": [],
         "total_position": default_position
     }
@@ -151,17 +163,7 @@ strategies = {
                     {
                     'filtered': True,
                     'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 2,
-                    'top_cx': 3,
-                    'only_fx': False,
-                    'enbale_industry': True,
-                    'empty_priority': True
-                    },
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
+                    'topn': 1,
                     'top_fx': 1,
                     'top_cx': 4,
                     'only_fx': False,
@@ -170,105 +172,124 @@ strategies = {
                     }
                 ]
             },
-            "首断低吸": {
-                # 开盘直接卖
-                "code": "9G0034",
-                "returnNum": 5,
-                "budget": "sddx",
+            "中位孕线低吸": {
+                # 近期很强，不是每天都有标的.大盘上升时弱
+                "code": "9G0085",   
+                "returnNum": 10,
+                "budget": "zydx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 1,
-                    'top_cx': 1,
-                    'only_fx': False,
-                    'enbale_industry': False,
-                    'empty_priority': True
+                    "filtered": True,
+                    "fx_filtered": True,
+                    "topn": 1,
+                    "top_fx": 1,
+                    "top_cx": 2,
+                    "only_fx": True,
+                    "enbale_industry": False,
+                    "empty_priority": True
                     }
                 ]
             },
-            "中位低吸": {
-                # 收盘卖
-                "code": "9G0026",
+
+            "低位N字低吸": {
+                # 近期表现强于低位孕线，回撤小点，不是每天都有标的.大概2-3天内一个吧
+                "code": "9G0080",   
                 "returnNum": 3,
-                "budget": "zwdx",
+                "budget": "ndx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 1,
-                    'top_cx': 3,
-                    'only_fx': False,
-                    'enbale_industry': False,
-                    'empty_priority': False
-                    },
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 2,
-                    'top_cx': 2,
-                    'only_fx': True,
-                    'enbale_industry': False,
-                    'empty_priority': False
-                    },
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 4,
-                    'top_cx': 3,
-                    'only_fx': False,
-                    'enbale_industry': True,
-                    'empty_priority': False
+                    "filtered": True,
+                    "fx_filtered": True,
+                    "topn": 1,
+                    "top_fx": 4,
+                    "top_cx": 2,
+                    "only_fx": True,
+                    "enbale_industry": False,
+                    "empty_priority": False
                     }
                 ]
             },
-            "中位断板低吸": {
-                # 可结束可开盘卖
-                "code": "9G0042",
-                "returnNum": 2,
-                "budget": "zwdbdx",
-                'returnFullInfo': True,
-                'filter_params': [
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 1,
-                    'top_cx': 3,
-                    'only_fx': False,
-                    'enbale_industry': True,
-                    'empty_priority': True
-                    },
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 1,
-                    'top_cx': 2,
-                    'only_fx': True,
-                    'enbale_industry': True,
-                    'empty_priority': True
-                    },
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'top_n': 1,
-                    'top_fx': 1,
-                    'top_cx': 2,
-                    'only_fx': False,
-                    'enbale_industry': False,
-                    'empty_priority': True
-                    }
-                ]
-            },
+            # "首断低吸": {
+            #     # 开盘直接卖 pass 太弱
+            #     "code": "9G0034",
+            #     "returnNum": 5,
+            #     "budget": "sddx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 1,
+            #         'top_cx': 1,
+            #         'only_fx': False,
+            #         'enbale_industry': False,
+            #         'empty_priority': True
+            #         }
+            #     ]
+            # },
+            # "中位低吸": {
+            #     # 收盘卖 大盘上升时收益较高，大盘下降回调过猛
+            #     "code": "9G0026",
+            #     "returnNum": 3,
+            #     "budget": "zwdx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 1,
+            #         'top_cx': 3,
+            #         'only_fx': False,
+            #         'enbale_industry': False,
+            #         'empty_priority': False
+            #         },
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 2,
+            #         'top_cx': 2,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': False
+            #         },
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 4,
+            #         'top_cx': 3,
+            #         'only_fx': False,
+            #         'enbale_industry': True,
+            #         'empty_priority': False
+            #         }
+            #     ]
+            # },
+            # "中位断板低吸": {
+            #     # 可结束可开盘卖 回撤太大 强势上涨阶段收益很高 看趋势再玩
+            #     "code": "9G0042",
+            #     "returnNum": 2,
+            #     "budget": "zwdbdx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 1,
+            #         'top_cx': 3,
+            #         'only_fx': False,
+            #         'enbale_industry': True,
+            #         'empty_priority': True
+            #         }
+            #     ]
+            # },
             "断低吸": {
-                # 开盘卖
+                # 开盘卖 还可以 挺强的
                 "code": "9G0032",
                 "returnNum": 10,
                 "budget": "ddx",
@@ -277,7 +298,7 @@ strategies = {
                     {
                     'filtered': True,
                     'fx_filtered': True,
-                    'top_n': 1,
+                    'topn': 1,
                     'top_fx': 1,
                     'top_cx': 2,
                     'only_fx': True,
@@ -297,17 +318,7 @@ strategies = {
             {
             'filtered': True,
             'fx_filtered': True,
-            'top_n': 1,
-            'top_fx': 2,
-            'top_cx': 3,
-            'only_fx': False,
-            'enbale_industry': True,
-            'empty_priority': True
-            },
-            {
-            'filtered': True,
-            'fx_filtered': True,
-            'top_n': 1,
+            'topn': 1,
             'top_fx': 1,
             'top_cx': 4,
             'only_fx': False,
@@ -325,7 +336,7 @@ strategies = {
             {
             'filtered': True,
             'fx_filtered': True,
-            'top_n': 1,
+            'topn': 1,
             'top_fx': 3,
             'top_cx': 2,
             'only_fx': False,
@@ -337,13 +348,15 @@ strategies = {
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.005],
+    "xiao_cao_1j2db": [0.008],
     "xiao_cao_dwyxdx": [0.005],
     "低吸-低位孕线低吸": [0.005],
+    "低吸-低位N字低吸": [0.005],
+    "低吸-中位孕线低吸": [0.005],
     "低吸-首断低吸": [0.005],
     "低吸-中位低吸": [0.005],
     "低吸-中位断板低吸": [0.005],
-    "低吸-断低吸": [0.005]
+    "低吸-断低吸": [0.007]
 }
 
 ##########################strategy configs ################
@@ -1806,7 +1819,7 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=3, id="code_schedule_job")
+    scheduler.add_job(strategy_schedule_job, 'interval', seconds=4, id="code_schedule_job")
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 

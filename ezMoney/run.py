@@ -52,10 +52,10 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
-buy = True
+do_test = True
+buy = False
 subscribe = True
-test_date = "2025-03-03"
+test_date = "2025-03-04"
 
 use_threading_buyer = True
 
@@ -1823,7 +1823,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0.35, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=1, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

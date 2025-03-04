@@ -169,5 +169,5 @@ def get_trade_dates(start_date, end_date, trade_days = 30):
 if __name__ == "__main__":
     
     print(trade_date_list)
-    print(is_trading_day("2025-02-15"))
+    print(is_trading_day("2025-03-03"))
     print(get_trade_dates_by_end("2025-03-01"))

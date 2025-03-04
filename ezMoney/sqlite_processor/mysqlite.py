@@ -102,7 +102,44 @@ class SQLiteManager:
         self.conn.commit()
         logger.info(f"Table {table_name} dropped successfully.")
 
-    
+
+    def update_budget(self, strategy_name, increment):
+        import json
+        from datetime import datetime
+        try:
+            self.conn.execute('BEGIN TRANSACTION')
+            self.cursor.execute('SELECT id, budget, extra_info FROM strategy_budget WHERE strategy_name =?', (strategy_name,))
+            result = self.cursor.fetchone()
+
+            if result:
+                budget_id, current_budget, extra_info_str = result
+                new_budget = current_budget + increment
+                try:
+                    extra_info = json.loads(extra_info_str) if extra_info_str else []
+                except json.JSONDecodeError:
+                    extra_info = []
+                update_info = {
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "amount": increment
+                }
+                extra_info.append(update_info)
+
+                new_extra_info_str = json.dumps(extra_info)
+
+                self.cursor.execute('UPDATE strategy_budget SET budget =?, extra_info =? WHERE id =?',
+                            (new_budget, new_extra_info_str, budget_id))
+
+                self.conn.commit()
+                return 1
+            else:
+                self.conn.rollback()
+                return -1
+
+        except Exception as e:
+            self.conn.rollback()
+            return 0
+
+
     def batch_insert_data(self, table_name, data_list):
         """
         批量插入数据

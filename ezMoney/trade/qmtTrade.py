@@ -262,6 +262,18 @@ class QMTTrader:
             else:
                 logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
                 order_logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                try:
+                    from sqlite_processor.mysqlite import SQLiteManager
+                    from date_utils import date
+                    date_key = date.get_current_date()
+                    db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+                    table_name = 'trade_data'
+                    with SQLiteManager(db_name) as manager:
+                            manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': order_remark, 'stock_code': stock_code ,'order_type': order_type, 'order_price': price, 'order_volume': volume})
+                except Exception as e:
+                    logger.error(f"插入数据失败 {e}")
+                    order_logger.error(f"插入数据失败 {e}")
+
                 if orders_dict != None:
                     orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time(), buffered)
                 if orders != None:
@@ -430,6 +442,14 @@ class QMTTrader:
         return self.trader.query_stock_positions(self.acc)
     
 
+
+    def query_stock_trades(self):
+        """
+        查询股票交易信息
+        """
+        return self.trader.query_stock_trades(self.acc)
+    
+    
     def get_tradable_stocks(self):
         """
         获取可交易股票数据

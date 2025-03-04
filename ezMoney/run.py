@@ -3,6 +3,8 @@ import multiprocessing
 import os
 from typing import ItemsView
 
+from pyparsing import indentedBlock
+
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 from strategy.strategy import sm
 from logger import catch, logger, order_logger, strategy_logger, order_success_logger
@@ -52,12 +54,13 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
-buy = False
+do_test = False
+buy = True
 subscribe = True
 test_date = "2025-03-04"
 
 use_threading_buyer = True
+budget_from_db = True
 
 #################### 测试配置 ########################
 global final_results
@@ -357,6 +360,18 @@ strategies_to_buffer = {
     "低吸-中位低吸": [0.005],
     "低吸-中位断板低吸": [0.005],
     "低吸-断低吸": [0.007]
+}
+
+default_positions = {
+    "xiao_cao_1j2db": 0.33,
+    "xiao_cao_dwyxdx": 1,
+    "低吸-低位孕线低吸": 1,
+    "低吸-低位N字低吸": 0.33,
+    "低吸-中位孕线低吸": 0.33,
+    "低吸-首断低吸": 0.33,
+    "低吸-中位低吸": 0.33,
+    "低吸-中位断板低吸": 0.33,
+    "低吸-断低吸": 0.33
 }
 
 ##########################strategy configs ################
@@ -829,11 +844,11 @@ def set_strategy_codes_to_budgets(strategy_name, codes, strategies_dict = strate
                 continue
             budgets_dict[budget_name]['codes'].append(code)
 
-def set_position_to_budgets(position = default_position, budgets_dict = budgets):
+def set_position_to_budgets(position = 0, budgets_dict = budgets):
     for _, budget in budgets_dict.items():
         if not budget or len(budget) == 0:
             continue
-        budget['total_position'] = position
+        budget['total_position'] = position + default_position
 
 def get_position_from_budgets(budgets_dict = budgets):
     rslt = {}
@@ -898,7 +913,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
             item = items[key]
             if item == None:
                 continue
-            position = default_position
+            position = 0
             auction_codes = []
             if 'xiao_cao_env' in item:
                 xiaocao_envs = item['xiao_cao_env'][0]
@@ -936,7 +951,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
 
 def get_position(xiaocao_envs):
     if xiaocao_envs == None or len(xiaocao_envs) == 0:
-        return default_position
+        return 0
     env_10cm_qs = xiaocao_envs['9A0001']
     env_10cm_cd = xiaocao_envs['9B0001']
     env_10cm_qp = xiaocao_envs['9C0001']
@@ -965,9 +980,9 @@ def get_position(xiaocao_envs):
     except Exception as e:
         logger.error(f"An error occurred in get_position: {e}")
     if len(lifts) != 3:
-        return default_position
+        return 0
     lift = lifts[0] * positions[0]  + lifts[1] * positions[1] + lifts[2] * positions[2]
-    return max(min(default_position + lift, 1.0), default_position)
+    return lift
 
 
 def merge_result(rslt, position):
@@ -985,6 +1000,32 @@ def merge_result(rslt, position):
     set_position_to_budgets(position)
     
     return get_position_from_budgets()
+
+
+
+def merge_result_new(rslt, position):
+    res = {}
+    if type(rslt) is not dict:
+        logger.error(f"merge result type error{type(rslt)}")
+        return {}
+    if len(rslt) == 0:
+        return {}
+    for key, codes in rslt.items():
+        logger.info(f"策略{key}, 成功得到结果 {codes}.")
+        code_len = len(codes)
+        if code_len <= 0:
+            continue
+        if key in default_positions:
+                base_position = default_positions[key]
+        else:
+            base_position = 0
+        real_position = max(min(base_position + position, 1), 0)
+        avg_position = real_position / code_len
+        for code in codes:
+            code_info = key + '|' + str(code)
+            res[code_info] = (avg_position, key)
+    
+    return res
 
 
 
@@ -1010,7 +1051,7 @@ def strategy_schedule_job():
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             cached_auction_infos.append({})
             return
-        m_rslt = merge_result(rslt, position)
+        m_rslt = merge_result_new(rslt, position)
         logger.info(f"[producer] 获取到目标股票 {m_rslt}.")
         cached_auction_infos.append(m_rslt)
         if len(cached_auction_infos) > 1:
@@ -1021,35 +1062,24 @@ def strategy_schedule_job():
                     return
                 logger.info(f"[producer] 连续2次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
                 order_logger.info(f"[producer] 连续2次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
-                l = len(final_results)
-                min_position = 0.0
-                total_position = 0.0
-                if l > 0:
-                    for _, v in final_results.items():
-                        total_position = total_position + v
-                    min_position = total_position / l
-                for code, (position, mark_info) in m_rslt.items():
-                    if code in final_results:
+                for code_info, (position, mark_info) in m_rslt.items():
+                    if code_info in final_results:
                         continue
-                    position = max(min_position, position)
-                    if code in codes_to_strategies:
-                        code_strategies = codes_to_strategies[code]
-                    else:
-                        code_strategies = []
+                    code = code_info.split('|')[1]
+                    code_strategy = code_info.split('|')[0]
+                    
                     buffers = []
-                    if code_strategies and len(code_strategies) > 0:
-                        for code_strategy in code_strategies:
-                            if code_strategy in strategies_to_buffer and len(strategies_to_buffer[code_strategy]) > 0:
-                                logger.info(f"[producer] 股票 {code} 有策略{code_strategy} 有buffer {strategies_to_buffer[code_strategy]} code_strategies {code_strategies} codes_to_strategies {codes_to_strategies}")
-                                buffers.extend(strategies_to_buffer[code_strategy])
+                    if code_strategy in strategies_to_buffer and len(strategies_to_buffer[code_strategy]) > 0:
+                        logger.info(f"[producer] 股票 {code} 有策略{code_strategy} 有buffer {strategies_to_buffer[code_strategy]}")
+                        buffers.extend(strategies_to_buffer[code_strategy])
                     buffers.sort()
                     
                     if use_threading_buyer:
-                        threading_q.put((code, position, buffers, mark_info))
+                        threading_q.put((code_info, position, buffers, mark_info))
                     else:
-                        q.put((code, position, buffers, mark_info))
+                        q.put((code_info, position, buffers, mark_info))
                     qq.put((code, position))
-                    final_results[code] = position
+                    final_results[code_info] = position
                     order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
     except Exception as e:
         error_time = error_time + 1
@@ -1071,15 +1101,25 @@ def consumer_to_buy(q, orders_dict, orders):
                 continue
             logger.info(f"[consumer] get account info total can used cash: {cash}")
             total_assert = total_assert - back_cash
+            
             if (type(data) == tuple):
-                c_cash = min(total_assert * data[1], cash)
                 buffers = data[2]
                 mark_info = data[3]
-                order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark=mark_info, sync=True, orders_dict=orders_dict, orders=orders, buffers=buffers)
+                code_info = data[0]
+                strategy_name = code_info.split('|')[0]
+                with SQLiteManager(db_name) as manager:
+                    all_data = manager.query_data_dict("strategy_budget", condition_dict={'strategy_name': strategy_name}, columns="*")
+                    if not all_data:
+                        order_logger.error(f"strategy_budget not found in db")
+                        continue
+                    total_assert = all_data[0]['budget']
+                c_cash = min(total_assert * data[1], cash)
+                code_id = code_info.split('|')[1]
+                order_id = qmt_trader.buy_quickly(code_id, c_cash, order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffers=buffers)
                 if order_id < 0:
-                     order_id = qmt_trader.buy_quickly(data[0], c_cash,  order_remark=mark_info, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
+                     order_id = qmt_trader.buy_quickly(code_id, c_cash,  order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
                      if order_id < 0:
-                        order_id = qmt_trader.buy_quickly(data[0], c_cash, order_remark=mark_info, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
+                        order_id = qmt_trader.buy_quickly(code_id, c_cash, order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
             elif type(data) == str and data == 'end':
                 break
             else:
@@ -1087,7 +1127,7 @@ def consumer_to_buy(q, orders_dict, orders):
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 
-def get_cancel_budgets(orders_dict, budgets_dict):
+def get_cancel_budgets(orders_dict, budgets_list):
     cancel_order_infos_dict = qmt_trader.get_all_cancel_order_infos()
     for order_id, order_info in cancel_order_infos_dict.items():
         if order_id in orders_dict:
@@ -1097,15 +1137,14 @@ def get_cancel_budgets(orders_dict, budgets_dict):
             price = order_info['price']
             left_volume = order_volume - traded_volume
             left_budget = left_volume * price
-            if stock_code in budgets_dict:
-                budgets_dict[stock_code] = (budgets_dict[stock_code][0] + left_volume, budgets_dict[stock_code][1] + left_budget)
-            else:
-                budgets_dict[stock_code] = (left_volume, left_budget)
-    return budgets_dict
+            (d_stock_code, d_price, d_volume, order_type, order_remark, timer, buffered) =  orders_dict[order_id]
+
+            budgets_list.append((stock_code, order_id, left_volume, left_budget, order_remark, buffered))
+    return budgets_list
 
 
 def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
-
+    time.sleep(0.4)
     if not orders_dict or len(orders_dict) == 0:
         logger.error(f"[consumer_to_rebuy] 无订单 {orders_dict}")
         return
@@ -1117,8 +1156,8 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
     stock_to_orders = {}
     # 股票对应未完成订单，会动态更新
     uncomplete_orders = {}
-    budgets_dict = {}
-    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+    budgets_list = []
+    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
 
     for order_id , order_info in orders_dict.items():
         stock_code = order_info[0]
@@ -1154,7 +1193,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
             data = tick_queue.get()
             order_logger.info(f"[consumer] Consumed: {data}")
             # update 撤单dict
-            budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
+            budgets_list = get_cancel_budgets(orders_dict, budgets_list)
 
             if (type(data) == dict):
                 tick_time = data['time']
@@ -1204,12 +1243,12 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     stock_statistics[stock_code]['volume_diff'].append(volume - stock_statistics[stock_code]['volume'][-2])
 
                 cur_uncomplete_orders =  uncomplete_orders[stock_code] if stock_code in uncomplete_orders else []
-                if stock_code in budgets_dict:
-                    buy_vol, buy_amount = budgets_dict[stock_code]
-                else:
-                    buy_vol, buy_amount = 0, 0
+                orders_to_rebuy = []
+                for budget_info in budgets_list:
+                    if budget_info[0] == stock_code:
+                        orders_to_rebuy.append(budget_info)
 
-                if not cur_uncomplete_orders and buy_vol <= 0:
+                if not cur_uncomplete_orders and len(orders_to_rebuy) == 0:
                     order_logger.info(f"[consumer_to_rebuy] 无未完成订单，且无买入需求，跳过 {stock_code}.")
                     if stock_code in need_listen_stocks:
                         need_listen_stocks.remove(stock_code)
@@ -1278,7 +1317,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                         uncomplete_orders[stock_code].remove(order_id)
                 
                 cur_uncomplete_orders = uncomplete_orders[stock_code]
-                if not cur_uncomplete_orders and buy_vol <= 0:
+                if not cur_uncomplete_orders and len(orders_to_rebuy) == 0:
                     order_logger.info(f"[consumer_to_rebuy] 无未完成订单，且无买入需求，跳过 {stock_code}.")
                     continue
                 current_time = datetime.datetime.now().timestamp()
@@ -1289,27 +1328,37 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 
                 price_diff = lastPrice / open - 1
                 if -0.004 < price_diff and price_diff < 0.003:
-                    
-                    if stock_code in budgets_dict:
-                        buy_vol, buy_amount = budgets_dict[stock_code]
-                    if buy_vol > 0:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格波动，有买入量: {stock_code} price_diff - {price_diff} buy_vol - {buy_vol} buy_amount - {buy_amount}")
+                    orders_to_rebuy = []
+                    for budget_info in budgets_list:
+                        if budget_info[0] == stock_code:
+                            orders_to_rebuy.append(budget_info)
+                    if len(orders_to_rebuy) > 0:
+                        order_logger.info(f"[consumer_to_rebuy] 股票价格波动，有买入量: {stock_code} price_diff - {price_diff}")
                         if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
                             order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                             continue
-                        c_order_id = -1
-                        if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            if 'SH' in stock_code:
-                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                        index = len(orders_to_rebuy) - 1
+                        while index >= 0:
+                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
+                            if left_volume <= 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                                index = index - 1
+                                continue
+                            c_order_id = -1
+                            if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                if 'SH' in stock_code:
+                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
+                                else:
+                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
                             else:
-                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
-                        else:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
-                        if c_order_id > 0 and stock_code in budgets_dict:
-                            buy_vol = 0
-                            budgets_dict.pop(stock_code)
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                            if c_order_id > 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                            index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格波动，无买入量: {stock_code} price_diff - {price_diff}")
                     continue
@@ -1327,17 +1376,28 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
-                    c_order_id = -1
-                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
-                    if stock_code in budgets_dict:
-                        buy_vol, buy_amount = budgets_dict[stock_code]
-                    
-                    if buy_vol > 0:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格略低，有买入量: {stock_code} price_diff - {price_diff} buy_vol - {buy_vol} buy_amount - {buy_amount}")
-                        c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
-                        if c_order_id > 0 and stock_code in budgets_dict:
-                            budgets_dict.pop(stock_code)
-                            buy_vol = 0
+                   
+                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
+                    orders_to_rebuy = []
+                    for budget_info in budgets_list:
+                        if budget_info[0] == stock_code:
+                            orders_to_rebuy.append(budget_info)
+                    if len(orders_to_rebuy) > 0:
+                        index = len(orders_to_rebuy) - 1
+                        while index >= 0:
+                            c_order_id = -1
+                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
+                            if left_volume <= 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
+                                del orders_to_rebuy[index]
+                                index = index - 1
+                                continue
+                            order_logger.info(f"[consumer_to_rebuy] 股票价格略低，有买入量: {stock_code} price_diff - {price_diff} ")
+                            c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                            if c_order_id > 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                            index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格略低，无买入量: {stock_code} price_diff - {price_diff}")
                 elif -0.007 >= price_diff and -0.01 < price_diff:
@@ -1352,16 +1412,27 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 1:
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
-                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
-                    if stock_code in budgets_dict:
-                        buy_vol,buy_amount = budgets_dict[stock_code]
-                    c_order_id = -1
-                    if buy_vol > 0:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格稍低，有买入量: {stock_code} price_diff - {price_diff} buy_vol - {buy_vol} buy_amount - {buy_amount}")
-                        c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
-                        if c_order_id > 0 and stock_code in budgets_dict:
-                            budgets_dict.pop(stock_code)
-                            buy_vol = 0
+                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
+                    orders_to_rebuy = []
+                    for budget_info in budgets_list:
+                        if budget_info[0] == stock_code:
+                            orders_to_rebuy.append(budget_info)
+                    if len(orders_to_rebuy) > 0:
+                        index = len(orders_to_rebuy) - 1
+                        while index >= 0:
+                            c_order_id = -1
+                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
+                            if left_volume <= 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
+                                del orders_to_rebuy[index]
+                                index = index - 1
+                                continue
+                            order_logger.info(f"[consumer_to_rebuy] 股票价格稍低，有买入量: {stock_code} price_diff - {price_diff}")
+                            c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                            if c_order_id > 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                            index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格稍低，无买入量: {stock_code} price_diff - {price_diff}")
                 elif price_diff <= -0.01:
@@ -1375,16 +1446,27 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2) :
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
-                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
-                    if stock_code in budgets_dict:
-                        buy_vol,buy_amount = budgets_dict[stock_code]
-                    c_order_id = -1
-                    if buy_vol > 0:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格很低，有买入量: {stock_code} price_diff - {price_diff} buy_vol - {buy_vol} buy_amount - {buy_amount}")
-                        c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
-                        if c_order_id > 0 and stock_code in budgets_dict:
-                            budgets_dict.pop(stock_code)
-                            buy_vol = 0
+                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
+                    orders_to_rebuy = []
+                    for budget_info in budgets_list:
+                        if budget_info[0] == stock_code:
+                            orders_to_rebuy.append(budget_info)
+                    if len(orders_to_rebuy) > 0:
+                        index = len(orders_to_rebuy) - 1
+                        while index >= 0:
+                            c_order_id = -1
+                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
+                            if left_volume <= 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
+                                del orders_to_rebuy[index]
+                                index = index - 1
+                                continue
+                            order_logger.info(f"[consumer_to_rebuy] 股票价格很低，有买入量: {stock_code} price_diff - {price_diff}")
+                            c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                            if c_order_id > 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                            index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格很低，无买入量: {stock_code} price_diff - {price_diff}")
                 elif price_diff >= 0.003 and price_diff < 0.006:
@@ -1398,23 +1480,34 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                                 cancel_result = qmt_trader.cancel_order(order_id, sync=True)
                                 if cancel_result == 0:
                                     qmt_trader.add_cancel_order(order_id)
-                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
-                    if stock_code in budgets_dict:
-                        buy_vol,buy_amount = budgets_dict[stock_code]
-                    c_order_id = -1
-                    if buy_vol > 0:
-                        if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            if 'SH' in stock_code:
-                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
+                    orders_to_rebuy = []
+                    for budget_info in budgets_list:
+                        if budget_info[0] == stock_code:
+                            orders_to_rebuy.append(budget_info)
+                    if len(orders_to_rebuy) > 0:
+                        index = len(orders_to_rebuy) - 1
+                        while index >= 0:
+                            c_order_id = -1
+                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
+                            if left_volume <= 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
+                                del orders_to_rebuy[index]
+                                index = index - 1
+                                continue
+                            if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                if 'SH' in stock_code:
+                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
+                                else:
+                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
                             else:
-                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
-                        else:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
-                        if c_order_id > 0 and stock_code in budgets_dict:
-                            budgets_dict.pop(stock_code)
-                            buy_vol = 0
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                            if c_order_id > 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                            index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格略高，无买入量: {stock_code} price_diff - {price_diff}")
                 elif price_diff >= 0.006 and price_diff < 0.03:
@@ -1429,22 +1522,34 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                         order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
                         continue
                     c_order_id = -1
-                    budgets_dict = get_cancel_budgets(orders_dict, budgets_dict)
-                    if stock_code in budgets_dict:
-                        buy_vol,buy_amount = budgets_dict[stock_code]
-                    if buy_vol > 0:
-                        if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            if 'SH' in stock_code:
-                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
+                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
+                    orders_to_rebuy = []
+                    for budget_info in budgets_list:
+                        if budget_info[0] == stock_code:
+                            orders_to_rebuy.append(budget_info)
+                    if len(orders_to_rebuy) > 0:
+                        index = len(orders_to_rebuy) - 1
+                        while index >= 0:
+                            c_order_id = -1
+                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
+                            if left_volume <= 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
+                                del orders_to_rebuy[index]
+                                index = index - 1
+                                continue
+                            if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                if 'SH' in stock_code:
+                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
+                                else:
+                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
                             else:
-                                c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark='rebuy_5', sync=True)
-                        else:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            c_order_id = qmt_trader.buy(stock_code, 0, buy_vol, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark='rebuy_1', sync=True)
-                        if c_order_id > 0 and stock_code in budgets_dict:
-                            budgets_dict.pop(stock_code)
-                            buy_vol = 0
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                            if c_order_id > 0:
+                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                                del orders_to_rebuy[index]
+                            index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格高，无买入量: {stock_code} price_diff - {price_diff}")
                 elif price_diff >= 0.03:
@@ -1788,6 +1893,86 @@ def print_latest_tick(full_tick_info_dict):
             x = {}
 
 
+def update_trade_budgets():
+    try:
+        is_trade, pre_trade_date = date.is_trading_day()
+        if not is_trade:
+            logger.info("非交易日，不更新预算。")
+            return
+        with SQLiteManager(db_name) as manager: 
+            all_trade_data_info = manager.query_data_dict("trade_data", condition_dict={'date_key': pre_trade_date}, columns="*")
+            if not all_trade_data_info:
+                logger.info(f"交易数据 日期-{pre_trade_date} 没有数据， 跳过更新")
+                return
+            all_trades = qmt_trader.query_stock_trades()
+            if not all_trades:
+                order_logger.info("无股票被出售")
+                return
+            
+            trade_infos = {}
+            sell_stocks = {}
+
+            for trade_data_info in all_trade_data_info:
+                strategy_name = trade_data_info['strategy_name']
+                stock_code = trade_data_info['stock_code']
+                trade_price = trade_data_info['trade_price']
+                trade_amout = trade_data_info['trade_amout']
+                traded_volume = trade_data_info['traded_volume']
+                if traded_volume > 0:
+                    if stock_code not in trade_infos:
+                        trade_infos[stock_code] = {}
+                        trade_infos[stock_code][strategy_name] = traded_volume
+                    else:
+                        if strategy_name not in trade_infos[stock_code]:
+                            trade_infos[stock_code][strategy_name] = traded_volume
+                        else:
+                            trade_infos[stock_code][strategy_name] = trade_infos[stock_code][strategy_name] + traded_volume
+            
+            for trade in all_trades:
+                stock_code = trade.stock_code
+                order_id = trade.order_id
+                traded_price = trade.traded_price
+                traded_volume = trade.traded_volume
+                trade_time = trade.traded_time
+                order_type = trade.order_type
+                traded_amount = trade.traded_amount
+                if order_type != xtconstant.STOCK_SELL:
+                    logger.error(f"更新预算，遇到非卖出订单 {stock_code}")
+                    continue
+                if stock_code in sell_stocks:
+                    sell_stock_info = sell_stocks[stock_code]
+                    amout = sell_stock_info[0]
+                    volume = sell_stock_info[1]
+                    sell_stocks[stock_code] = (amout + traded_amount, volume + traded_volume)
+                else:
+                    sell_stocks[stock_code] = (traded_amount, traded_volume)
+            
+                order_logger.info(f"股票出售 代码: {stock_code}, 订单ID: {order_id}, 成交价格: {traded_price},成交金额: {traded_amount}, 成交数量: {traded_volume}, 成交时间: {trade_time}, 交易类型: {order_type}")
+
+            for stock_code, sell_stock_info in sell_stocks.items():
+                amout = sell_stock_info[0]
+                volume = sell_stock_info[1]
+                avg_price = amout / volume
+                if stock_code in trade_infos:
+                    for strategy_name, traded_volume in trade_infos[stock_code].items():
+                        if volume >= traded_volume:
+                            volume = volume - traded_volume
+                            incument = traded_volume * avg_price
+                            manager.update_budget(strategy_name, incument)
+                            order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {traded_volume}")
+                        else:
+                            if volume > 0:
+                                incument = volume * avg_price
+                                manager.update_budget(strategy_name, incument)
+                                order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {volume}")
+                            else:
+                                break
+    except Exception as e:
+        order_logger.error(f"更新预算 出现错误: {e}")
+        
+
+
+
 if __name__ == "__main__":
 
     from xtquant import xtdatacenter as xtdc
@@ -1823,7 +2008,9 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=1, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+
+    scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

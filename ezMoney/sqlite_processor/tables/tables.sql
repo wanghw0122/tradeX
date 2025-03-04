@@ -134,8 +134,9 @@ CREATE TABLE IF NOT EXISTS trade_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_id TEXT NOT NULL,
     date_key TEXT NOT NULL,
+    strategy_name TEXT NOT NULL,
+    sub_strategy_name TEXT DEFAULT '',
     stock_code TEXT NOT NULL,
-    strategy_names TEXT DEFAULT '',
     buy0_or_sell1 INTEGER DEFAULT -1,
     order_type INTEGER DEFAULT -1,
     order_price REAL DEFAULT -1,
@@ -153,3 +154,14 @@ CREATE TABLE IF NOT EXISTS trade_data (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (order_id)
 )
+
+CREATE TABLE IF NOT EXISTS strategy_budget (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_name TEXT NOT NULL,
+    sub_strategy_name TEXT DEFAULT '',
+    budget REAL DEFAULT 0,
+    origin_budget REAL DEFAULT 0,
+    incrument_budget REAL DEFAULT 0,
+    extra_info TEXT DEFAULT '',
+    createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -1952,6 +1952,8 @@ def update_trade_budgets():
             for stock_code, sell_stock_info in sell_stocks.items():
                 amout = sell_stock_info[0]
                 volume = sell_stock_info[1]
+                if volume <= 0:
+                    continue
                 avg_price = amout / volume
                 if stock_code in trade_infos:
                     for strategy_name, traded_volume in trade_infos[stock_code].items():

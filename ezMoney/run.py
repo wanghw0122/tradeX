@@ -363,15 +363,15 @@ strategies_to_buffer = {
 }
 
 default_positions = {
-    "xiao_cao_1j2db": 0.5,
-    "xiao_cao_dwyxdx": 0.6,
+    "xiao_cao_1j2db": 1,
+    "xiao_cao_dwyxdx": 1,
     "低吸-低位孕线低吸": 1,
-    "低吸-低位N字低吸": 0.8,
+    "低吸-低位N字低吸": 1,
     "低吸-中位孕线低吸": 1,
     "低吸-首断低吸": 1,
     "低吸-中位低吸": 1,
     "低吸-中位断板低吸": 1,
-    "低吸-断低吸": 0.5
+    "低吸-断低吸": 1
 }
 
 ##########################strategy configs ################
@@ -1327,7 +1327,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     continue
                 
                 price_diff = lastPrice / open - 1
-                if -0.004 < price_diff and price_diff < 0.003:
+                if -0.004 < price_diff and price_diff < 0.004:
                     orders_to_rebuy = []
                     for budget_info in budgets_list:
                         if budget_info[0] == stock_code:
@@ -1469,7 +1469,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格很低，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff >= 0.003 and price_diff < 0.006:
+                elif price_diff >= 0.004 and price_diff < 0.01:
                     for order_id in cur_uncomplete_orders:
                         order_info = orders_dict[order_id]
                         buffered_t = order_info[6]
@@ -1510,7 +1510,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格略高，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff >= 0.006 and price_diff < 0.03:
+                elif price_diff >= 0.01 and price_diff < 0.055:
                     for order_id in cur_uncomplete_orders:
                         status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
                         if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
@@ -1552,7 +1552,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             index = index - 1
                     else:
                         order_logger.info(f"[consumer_to_rebuy] 股票价格高，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff >= 0.03:
+                elif price_diff >= 0.055:
                     order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格过高 {price_diff}，跳过.")
                     continue
         except Exception as e:
@@ -1916,8 +1916,8 @@ def update_trade_budgets():
                 strategy_name = trade_data_info['strategy_name']
                 stock_code = trade_data_info['stock_code']
                 trade_price = trade_data_info['trade_price']
-                trade_amout = trade_data_info['trade_amout']
-                traded_volume = trade_data_info['traded_volume']
+                trade_amout = trade_data_info['trade_amount']
+                traded_volume = trade_data_info['trade_volume']
                 if traded_volume > 0:
                     if stock_code not in trade_infos:
                         trade_infos[stock_code] = {}
@@ -1966,6 +1966,7 @@ def update_trade_budgets():
                             if volume > 0:
                                 incument = volume * avg_price
                                 manager.update_budget(strategy_name, incument)
+                                volume = 0
                                 order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {volume}")
                             else:
                                 break

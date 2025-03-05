@@ -34,13 +34,15 @@ if __name__ == "__main__":
             exit(0)
         else:
             logger.info(f"交易数据 日期-{date_key} 有数据 {all_data}， 开始更新")
+
+        # print(all_data)
         all_trades = qmt_trader.get_all_orders()
         if not all_trades:
             logger.info(f"QMT 没有数据， 跳过更新")
             exit(0)
         for data in all_data:
             id = data['id']
-            order_id = data['order_id']
+            order_id = int(data['order_id'])
             strategy_name = data['strategy_name']
             if order_id not in all_trades:
                 logger.error(f"Error order_id - {order_id} 没有数据， 跳过更新")
@@ -55,7 +57,7 @@ if __name__ == "__main__":
                 budgets_dict[strategy_name] = - traded_amount
             else:  
                 budgets_dict[strategy_name] = budgets_dict[strategy_name] - traded_amount
-            manager.update_data(table_name, {'id': id}, {'trade_result': order_status, 'trade_volume': traded_volume, 'trade_price': traded_price, 'trade_amount': traded_amount})
+            manager.update_data(table_name, {'trade_result': order_status, 'trade_volume': traded_volume, 'trade_price': traded_price, 'trade_amount': traded_amount}, {'id': id})
         for strategy_name, increment in budgets_dict.items():
             logger.info(f"更新预算 strategy_name: {strategy_name}, increment: {increment}")
             manager.update_budget(strategy_name, increment)

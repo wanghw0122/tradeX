@@ -480,14 +480,14 @@ class QMTTrader:
 
         return tradable_stocks
     
-    def sell_all_holdings(self, order_remark=''):
+    def sell_all_holdings(self, order_remark='', filter_codes = []):
         """
         卖出所有持仓股票
 
         :param account: 资金账号
         :return: 卖出结果
         """
-        now = datetime.datetime.now()
+        # now = datetime.datetime.now()
         # if now.hour > 0:
         #     logger.error(f"当前时间 {now} 非0点时间，无法自动卖出")
         #     return
@@ -498,6 +498,9 @@ class QMTTrader:
 
         for position in hold_positions:
             stock_code = position['stock_code']
+            if stock_code in filter_codes:
+                logger.info(f"股票 {stock_code} 在过滤列表中，跳过卖出")
+                continue
             quantity = position['available_qty']
             limit_down_price = self.calculate_limit_down_price(stock_code)
 
@@ -510,7 +513,7 @@ class QMTTrader:
                     'sell_price': limit_down_price,
                     'sell_result': sell_result
                 })
-                self.seq_ids_dict[sell_result] = (stock_code, limit_down_price, quantity, xtconstant.FIX_PRICE, order_remark)
+                # self.seq_ids_dict[sell_result] = (stock_code, limit_down_price, quantity, xtconstant.FIX_PRICE, order_remark)
             else:
                 logger.error(f"股票 {stock_code} 的跌停价计算错误，无法卖出")
         return sell_results

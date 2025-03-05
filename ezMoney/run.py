@@ -57,7 +57,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-04"
+test_date = "2025-03-05"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -351,15 +351,15 @@ strategies = {
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.009],
-    "xiao_cao_dwyxdx": [0.005],
-    "低吸-低位孕线低吸": [0.005],
-    "低吸-低位N字低吸": [0.005],
-    "低吸-中位孕线低吸": [0.005],
-    "低吸-首断低吸": [0.005],
-    "低吸-中位低吸": [0.005],
-    "低吸-中位断板低吸": [0.005],
-    "低吸-断低吸": [0.007]
+    "xiao_cao_1j2db": [0.015],
+    "xiao_cao_dwyxdx": [0.01],
+    "低吸-低位孕线低吸": [0.01],
+    "低吸-低位N字低吸": [0.01],
+    "低吸-中位孕线低吸": [0.01],
+    "低吸-首断低吸": [0.01],
+    "低吸-中位低吸": [0.01],
+    "低吸-中位断板低吸": [0.01],
+    "低吸-断低吸": [0.012]
 }
 
 default_positions = {
@@ -602,8 +602,8 @@ def direction_filter_fuc(candicates, category_infos, params):
     res = []
     if not candicates:
         return res
-    if len(candicates) == 1:
-        return [candicates[0].code]
+    # if len(candicates) == 1:
+    #     return [candicates[0].code]
     
     # if not params:
     #     logger.info("direction_filter_fuc params is empty")

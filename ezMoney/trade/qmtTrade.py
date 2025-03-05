@@ -289,6 +289,9 @@ class QMTTrader:
 
         if max_cash > 0:
             cash = min(cash, max_cash)
+        if cash <= 0:
+            logger.error(f"{stock_code} 买入金额预算不够 {cash}")
+            return
         if stock_code in self.all_stocks:
             stock_code = self.all_stocks[stock_code]
         full_tick = xtdata.get_full_tick([stock_code])

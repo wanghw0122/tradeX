@@ -4,6 +4,7 @@ import os
 from typing import ItemsView
 
 from pyparsing import indentedBlock
+import test
 
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 from strategy.strategy import sm
@@ -54,10 +55,10 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-03-05"
+test_date = "2025-03-06"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -171,7 +172,8 @@ strategies = {
                     'top_cx': 4,
                     'only_fx': False,
                     'enbale_industry': True,
-                    'empty_priority': True
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000
                     }
                 ]
             },
@@ -190,7 +192,8 @@ strategies = {
                     "top_cx": 2,
                     "only_fx": True,
                     "enbale_industry": False,
-                    "empty_priority": True
+                    "empty_priority": True,
+                    "min_trade_amount": 10000000
                     }
                 ]
             },
@@ -210,7 +213,8 @@ strategies = {
                     "top_cx": 2,
                     "only_fx": True,
                     "enbale_industry": False,
-                    "empty_priority": False
+                    "empty_priority": False,
+                    "min_trade_amount": 6000000
                     }
                 ]
             },
@@ -272,25 +276,26 @@ strategies = {
             #         }
             #     ]
             # },
-            # "中位断板低吸": {
-            #     # 可结束可开盘卖 回撤太大 强势上涨阶段收益很高 看趋势再玩
-            #     "code": "9G0042",
-            #     "returnNum": 2,
-            #     "budget": "zwdbdx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 1,
-            #         'top_cx': 3,
-            #         'only_fx': False,
-            #         'enbale_industry': True,
-            #         'empty_priority': True
-            #         }
-            #     ]
-            # },
+            "中位断板低吸": {
+                # 结束卖 回撤太大 强势上涨阶段收益很高 看趋势再玩
+                "code": "9G0042",
+                "returnNum": 2,
+                "budget": "zwdbdx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': True,
+                    'empty_priority': True,
+                    'min_trade_amount': 9000000
+                    }
+                ]
+            },
             "断低吸": {
                 # 开盘卖 还可以 挺强的
                 "code": "9G0032",
@@ -306,7 +311,8 @@ strategies = {
                     'top_cx': 2,
                     'only_fx': True,
                     'enbale_industry': True,
-                    'empty_priority': True
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000
                     }
                 ]
             }
@@ -326,7 +332,8 @@ strategies = {
             'top_cx': 4,
             'only_fx': False,
             'enbale_industry': True,
-            'empty_priority': True
+            'empty_priority': True,
+            'min_trade_amount': 6000000
             }
         ]
     },
@@ -344,22 +351,23 @@ strategies = {
             'top_cx': 2,
             'only_fx': False,
             'enbale_industry': False,
-            'empty_priority': False
+            'empty_priority': False,
+            'min_trade_amount': 12000000
             }
         ]
     }
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.015],
+    "xiao_cao_1j2db": [0.02],
     "xiao_cao_dwyxdx": [0.01],
     "低吸-低位孕线低吸": [0.01],
     "低吸-低位N字低吸": [0.01],
     "低吸-中位孕线低吸": [0.01],
     "低吸-首断低吸": [0.01],
     "低吸-中位低吸": [0.01],
-    "低吸-中位断板低吸": [0.01],
-    "低吸-断低吸": [0.012]
+    "低吸-中位断板低吸": [0.02],
+    "低吸-断低吸": [0.015]
 }
 
 default_positions = {
@@ -371,7 +379,7 @@ default_positions = {
     "低吸-首断低吸": 1,
     "低吸-中位低吸": 1,
     "低吸-中位断板低吸": 1,
-    "低吸-断低吸": 0.6
+    "低吸-断低吸": 0.5
 }
 
 ##########################strategy configs ################
@@ -392,11 +400,66 @@ def get_filter_params(strategy_name, strategies= strategies):
         return strategies[strategy_name]['filter_params']
     
 
+def time_str_between_925(time_str):
+    if '-' in time_str:
+        time_str = time_str.replace('-', ' ')
+    time_obj = datetime.datetime.strptime(time_str, '%Y%m%d %H:%M:%S')
+    start_time = time_obj.replace(hour=9, minute=20, second=0, microsecond=0)
+    end_time = time_obj.replace(hour=9, minute=26, second=0, microsecond=0)
+    is_between = start_time < time_obj < end_time
+    return is_between
 
-def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered = False, topn = 2, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False, empty_priority = False):
-    res = []
-    codes = [candicate.code for candicate in candicates]
-    logger.info("group_filter_fuc codes:{}".format(codes))
+def time_between_925(timestamp):
+    dt = datetime.datetime.fromtimestamp(timestamp)
+    start_time = dt.replace(hour=9, minute=20, second=0, microsecond=0)
+    end_time = dt.replace(hour=9, minute=26, second=0, microsecond=0)
+    is_between = start_time < dt < end_time
+    return is_between
+
+def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered = False, topn = 2, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False, empty_priority = False, min_trade_amount= 0):
+    c_codes = [candicate.code for candicate in candicates]
+    logger.info("group_filter_fuc candicates:{}".format(c_codes))
+    codes = []
+
+    if min_trade_amount > 0:
+        logger.info("group_filter_fuc min_trade_amount:{}".format(min_trade_amount))
+        r_codes = [qmt_trader.all_stocks[code.split('.')[0]] for code in c_codes]
+        r_codes_dict = {code.split('.')[0] : code for code in c_codes}
+        logger.info("group_filter_fuc r_codes:{}".format(r_codes))
+        logger.info("group_filter_fuc r_codes_dict:{}".format(r_codes_dict))
+        ful_ticks = xtdata.get_full_tick(r_codes)
+        logger.info("group_filter_fuc ful_ticks:{}".format(ful_ticks))
+        for code in r_codes:
+            if code not in ful_ticks:
+                logger.error("group_filter_fuc code not in ful_ticks:{}".format(code))
+                codes.append(r_codes_dict[code.split('.')[0]])
+                continue
+            ful_tick = ful_ticks[code]
+            logger.info("group_filter_fuc code ful_tick:{}".format(ful_tick))
+            if 'timetag' in ful_tick:
+                timestr = ful_tick['timetag']
+                is_between = time_str_between_925(timestr)
+            elif 'time' in ful_tick:
+                timestamp = ful_tick['time'] / 1000
+                is_between = time_between_925(timestamp)
+            else:
+                logger.error("group_filter_fuc code ful_tick not timetag or time:{}".format(code))
+                codes.append(r_codes_dict[code.split('.')[0]])
+                continue
+            if is_between:
+                logger.info("group_filter_fuc code is between:{}".format(code))
+                amount = ful_tick['amount']
+                logger.info("group_filter_fuc code amount:{}".format(amount))
+                if amount < min_trade_amount:
+                    logger.info("group_filter_fuc code amount is less than min_trade_amount:{}".format(code))
+                    continue
+            else:
+                logger.info("group_filter_fuc code is not between:{}".format(code))
+            codes.append(r_codes_dict[code.split('.')[0]])
+
+    logger.info("group_filter_fuc filtered codes:{}".format(codes))
+    if not codes:
+        return []
     if not filtered:
         return codes[:topn]
     if fx_filtered:
@@ -652,6 +715,11 @@ def direction_filter_fuc(candicates, category_infos, params):
             fuc_params['empty_priority'] = empty_priority
         else:
             empty_priority = None
+        if 'min_trade_amount' in c_param:
+            min_trade_amount = c_param['min_trade_amount']
+            fuc_params['min_trade_amount'] = min_trade_amount
+        else:
+            min_trade_amount = None
 
         
 
@@ -1910,7 +1978,6 @@ def update_trade_budgets():
                 return
             
             trade_infos = {}
-            sell_stocks = {}
 
             for trade_data_info in all_trade_data_info:
                 strategy_name = trade_data_info['strategy_name']
@@ -1928,48 +1995,65 @@ def update_trade_budgets():
                         else:
                             trade_infos[stock_code][strategy_name] = trade_infos[stock_code][strategy_name] + traded_volume
             
-            for trade in all_trades:
-                stock_code = trade.stock_code
-                order_id = trade.order_id
-                traded_price = trade.traded_price
-                traded_volume = trade.traded_volume
-                trade_time = trade.traded_time
-                order_type = trade.order_type
-                traded_amount = trade.traded_amount
-                if order_type != xtconstant.STOCK_SELL:
-                    logger.error(f"更新预算，遇到非卖出订单 {stock_code}")
-                    continue
-                if stock_code in sell_stocks:
-                    sell_stock_info = sell_stocks[stock_code]
+            def get_all_stocks():
+                sell_stocks = {}
+                all_trades = qmt_trader.query_stock_trades()
+                for trade in all_trades:
+                    stock_code = trade.stock_code
+                    order_id = trade.order_id
+                    traded_price = trade.traded_price
+                    traded_volume = trade.traded_volume
+                    trade_time = trade.traded_time
+                    order_type = trade.order_type
+                    traded_amount = trade.traded_amount
+                    if order_type != xtconstant.STOCK_SELL:
+                        logger.error(f"更新预算，遇到非卖出订单 {stock_code}")
+                        continue
+                    if stock_code in sell_stocks:
+                        sell_stock_info = sell_stocks[stock_code]
+                        amout = sell_stock_info[0]
+                        volume = sell_stock_info[1]
+                        sell_stocks[stock_code] = (amout + traded_amount, volume + traded_volume)
+                    else:
+                        sell_stocks[stock_code] = (traded_amount, traded_volume)
+                
+                    order_logger.info(f"股票出售 代码: {stock_code}, 订单ID: {order_id}, 成交价格: {traded_price},成交金额: {traded_amount}, 成交数量: {traded_volume}, 成交时间: {trade_time}, 交易类型: {order_type}")
+                return sell_stocks
+            
+            trade_stocks_list = list(trade_infos.keys())
+            i = 0
+            while i < 5:
+                if len(trade_stocks_list) == 0:
+                    order_logger.info("所有股票计算出售完毕")
+                    break
+                else:
+                    order_logger.info(f"剩余股票 {trade_stocks_list}")
+                sell_stocks = get_all_stocks()
+                for stock_code, sell_stock_info in sell_stocks.items():
                     amout = sell_stock_info[0]
                     volume = sell_stock_info[1]
-                    sell_stocks[stock_code] = (amout + traded_amount, volume + traded_volume)
-                else:
-                    sell_stocks[stock_code] = (traded_amount, traded_volume)
-            
-                order_logger.info(f"股票出售 代码: {stock_code}, 订单ID: {order_id}, 成交价格: {traded_price},成交金额: {traded_amount}, 成交数量: {traded_volume}, 成交时间: {trade_time}, 交易类型: {order_type}")
-
-            for stock_code, sell_stock_info in sell_stocks.items():
-                amout = sell_stock_info[0]
-                volume = sell_stock_info[1]
-                if volume <= 0:
-                    continue
-                avg_price = amout / volume
-                if stock_code in trade_infos:
-                    for strategy_name, traded_volume in trade_infos[stock_code].items():
-                        if volume >= traded_volume:
-                            volume = volume - traded_volume
-                            incument = traded_volume * avg_price
-                            manager.update_budget(strategy_name, incument)
-                            order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {traded_volume}")
-                        else:
-                            if volume > 0:
-                                incument = volume * avg_price
+                    if volume <= 0:
+                        continue
+                    avg_price = amout / volume
+                    if stock_code in trade_stocks_list:
+                        trade_stocks_list.remove(stock_code)
+                        order_logger.info(f"更新预算 股票代码: {stock_code}")
+                        for strategy_name, traded_volume in trade_infos[stock_code].items():
+                            if volume >= traded_volume:
+                                volume = volume - traded_volume
+                                incument = traded_volume * avg_price
                                 manager.update_budget(strategy_name, incument)
-                                volume = 0
-                                order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {volume}")
+                                order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {traded_volume}")
                             else:
-                                break
+                                if volume > 0:
+                                    incument = volume * avg_price
+                                    manager.update_budget(strategy_name, incument)
+                                    volume = 0
+                                    order_logger.info(f"更新预算 股票代码: {stock_code}, 策略名称: {strategy_name}, 增加金额: {incument}, 增加数量: {volume}")
+                                else:
+                                    break
+                i = i + 1
+                time.sleep(5)
     except Exception as e:
         order_logger.error(f"更新预算 出现错误: {e}")
         

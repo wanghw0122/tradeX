@@ -3,6 +3,7 @@ from sqlite_processor.mysqlite import *
 import multiprocessing
 from multiprocessing import Queue
 q = Queue()
+from date_utils import *
 
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
@@ -44,52 +45,8 @@ if __name__ == "__main__":
     #     traded_amount = trade.traded_amount
     #     print(f"股票代码: {stock_code}, 订单ID: {order_id}, 成交价格: {traded_price},成交金额: {traded_amount}, 成交数量: {traded_volume}, 成交时间: {trade_time}, 交易类型: {order_type}")
     with SQLiteManager(db_name) as manager:
-        # manager.insert_data("strategy_budget",{'strategy_name':'xiao_cao_1j2db',
+        # manager.insert_data("strategy_budget",{'strategy_name':'低吸-中位断板低吸',
         #                                   'budget':50000,
         #                                   'origin_budget': 50000})
-        all_trade_data_info = manager.query_data_dict("trade_data", condition_dict={'date_key': '2025-03-05'}, columns="*")
-        # print(all_trade_data_info)
-        trade_infos = {}
-        sell_stocks = {}
-
-        for trade_data_info in all_trade_data_info:
-            strategy_name = trade_data_info['strategy_name']
-            stock_code = trade_data_info['stock_code']
-            trade_price = trade_data_info['trade_price']
-            trade_amout = trade_data_info['trade_amount']
-            traded_volume = trade_data_info['trade_volume']
-            if traded_volume > 0:
-                if stock_code not in trade_infos:
-                    trade_infos[stock_code] = {}
-                    trade_infos[stock_code][strategy_name] = traded_volume
-                else:
-                    if strategy_name not in trade_infos[stock_code]:
-                        trade_infos[stock_code][strategy_name] = traded_volume
-                    else:
-                        trade_infos[stock_code][strategy_name] = trade_infos[stock_code][strategy_name] + traded_volume
-        print(trade_infos)
-        all_trades = qmt_trader.query_stock_trades()
-        print(qmt_trader.get_all_orders())
-
-        print(all_trades)
-        for trade in all_trades:
-            stock_code = trade.stock_code
-            order_id = trade.order_id
-            traded_price = trade.traded_price
-            traded_volume = trade.traded_volume
-            trade_time = trade.traded_time
-            order_type = trade.order_type
-            traded_amount = trade.traded_amount
-            if order_type != xtconstant.STOCK_SELL:
-                print(f"更新预算，遇到非卖出订单 {stock_code}")
-                continue
-            if stock_code in sell_stocks:
-                sell_stock_info = sell_stocks[stock_code]
-                amout = sell_stock_info[0]
-                volume = sell_stock_info[1]
-                sell_stocks[stock_code] = (amout + traded_amount, volume + traded_volume)
-            else:
-                sell_stocks[stock_code] = (traded_amount, traded_volume)
-
-        print(sell_stocks)
-            
+        manager.update_budget("xiao_cao_1j2db",10000)
+       

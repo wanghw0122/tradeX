@@ -58,7 +58,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-06"
+test_date = "2025-03-07"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -198,26 +198,47 @@ strategies = {
                 ]
             },
 
-            "低位N字低吸": {
-                # 近期表现强于低位孕线，回撤小点，不是每天都有标的.大概2-3天内一个吧
-                "code": "9G0080",   
-                "returnNum": 3,
+            "放宽低吸前3": {
+                # 结束卖
+                "code": "9G0099",   
+                "returnNum": 10,
                 "budget": "ndx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
                     "filtered": True,
-                    "fx_filtered": True,
+                    "fx_filtered": False,
                     "topn": 1,
-                    "top_fx": 4,
-                    "top_cx": 2,
-                    "only_fx": True,
+                    "top_fx": 1,
+                    "top_cx": 4,
+                    "only_fx": False,
                     "enbale_industry": False,
-                    "empty_priority": False,
-                    "min_trade_amount": 6000000
+                    "empty_priority": True,
+                    "min_trade_amount": 10000000
                     }
                 ]
             },
+
+            # "低位N字低吸": {
+            #     # 近期表现强于低位孕线，回撤小点，不是每天都有标的.大概2-3天内一个吧
+            #     "code": "9G0080",   
+            #     "returnNum": 3,
+            #     "budget": "ndx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         "filtered": True,
+            #         "fx_filtered": True,
+            #         "topn": 1,
+            #         "top_fx": 4,
+            #         "top_cx": 2,
+            #         "only_fx": True,
+            #         "enbale_industry": False,
+            #         "empty_priority": False,
+            #         "min_trade_amount": 6000000
+            #         }
+            #     ]
+            # },
             # "首断低吸": {
             #     # 开盘直接卖 pass 太弱
             #     "code": "9G0034",
@@ -360,26 +381,28 @@ strategies = {
 
 strategies_to_buffer = {
     "xiao_cao_1j2db": [0.02],
-    "xiao_cao_dwyxdx": [0.01],
-    "低吸-低位孕线低吸": [0.01],
-    "低吸-低位N字低吸": [0.01],
-    "低吸-中位孕线低吸": [0.01],
-    "低吸-首断低吸": [0.01],
-    "低吸-中位低吸": [0.01],
+    "xiao_cao_dwyxdx": [0.015],
+    "低吸-低位孕线低吸": [0.015],
+    "低吸-低位N字低吸": [0.015],
+    "低吸-中位孕线低吸": [0.015],
+    "低吸-首断低吸": [0.015],
+    "低吸-中位低吸": [0.012],
     "低吸-中位断板低吸": [0.02],
-    "低吸-断低吸": [0.015]
+    "低吸-断低吸": [0.015],
+    "低吸-放宽低吸前3": [0.015],
 }
 
 default_positions = {
-    "xiao_cao_1j2db": 1,
+    "xiao_cao_1j2db": 0.4,
     "xiao_cao_dwyxdx": 1,
-    "低吸-低位孕线低吸": 1,
+    "低吸-低位孕线低吸": 0.6,
     "低吸-低位N字低吸": 1,
     "低吸-中位孕线低吸": 1,
     "低吸-首断低吸": 1,
     "低吸-中位低吸": 1,
     "低吸-中位断板低吸": 1,
-    "低吸-断低吸": 0.5
+    "低吸-断低吸": 1,
+    "低吸-放宽低吸前3": 0.5
 }
 
 ##########################strategy configs ################
@@ -402,7 +425,7 @@ def get_filter_params(strategy_name, strategies= strategies):
 
 def time_str_between_925(time_str):
     if '-' in time_str:
-        time_str = time_str.replace('-', ' ')
+        time_str = time_str.replace('-', '')
     time_obj = datetime.datetime.strptime(time_str, '%Y%m%d %H:%M:%S')
     start_time = time_obj.replace(hour=9, minute=20, second=0, microsecond=0)
     end_time = time_obj.replace(hour=9, minute=26, second=0, microsecond=0)

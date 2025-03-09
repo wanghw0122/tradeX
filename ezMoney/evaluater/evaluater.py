@@ -1,4 +1,4 @@
-import multiprocessing
+from functools import lru_cache
 import os
 from re import A
 from tkinter import E
@@ -6,12 +6,8 @@ from typing import ItemsView
 from venv import logger
 
 from py import log
+
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
-from xtquant import xttrader
-from xtquant import xtdata
-from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
-from xtquant.xttype import StockAccount
-from xtquant import xtconstant
 import pandas_market_calendars as mcal
 import pandas as pd
 import akshare as ak
@@ -28,6 +24,15 @@ import pandas_market_calendars as mcal
 import pandas as pd
 import pandas_market_calendars as mcal
 import akshare as ak
+
+from xtquant import xtdatacenter as xtdc
+xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")
+
+print('xtdc.init')
+xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几秒的时间
+print('done')
+
+from xtquant import xtdata 
 
 
 try:
@@ -301,9 +306,98 @@ def caculate_returns(returns_df, row, _print = False, trade_frequcy = -1, trade_
 
     return r
 
+all_stocks = {}
+all_stocks_info = xtdata.get_stock_list_in_sector('沪深A股')
+for stock in all_stocks_info:
+    if stock.startswith('60') or stock.startswith('00'):
+        cde = stock.split('.')[0]
+        all_stocks[cde] = stock
+
+
+@lru_cache(maxsize=10000)
+def get_first_tick_trade_amount(stock_code, datekey):
+    import datetime
+    import pandas as pd
+
+    today = datetime.datetime.strptime(datekey, '%Y-%m-%d').date()
+
+    time_0930 = datetime.time(9, 20, 0)
+
+    dt_0930 = datetime.datetime.combine(today, time_0930)
+
+    timestamp_0930 = dt_0930.timestamp()
+
+    time_09305 = datetime.time(9, 26, 0)
+
+    dt_09305 = datetime.datetime.combine(today, time_09305)
+
+    timestamp_09305 = dt_09305.timestamp()
+
+    tims = int(timestamp_0930*1000)
+
+    tims5 = int(timestamp_09305*1000)
+    import numpy as np
+    n_data_key = datekey.replace('-', '')
+    xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
+    all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
+
+    # 假设 all_tick_data['000759.SZ'] 是 numpy.void 数组
+    if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
+        df = pd.DataFrame(all_tick_data[stock_code].tolist(), columns=all_tick_data[stock_code].dtype.names)
+    else:
+        raise
+
+    filtered_df = df[(df['time'] >= tims) & (df['time'] <= tims5)]
+
+    # 按 time 列升序排序
+    sorted_df = filtered_df.sort_values(by='time')
+
+    # 取 time 最小的行
+    min_time_row = sorted_df.tail(1)
+
+    amount = min_time_row['amount']
+
+    if len(amount) == 1:
+        real_amount = amount.item()
+    else:
+        raise Exception(f"{stock_code}-{datekey}")
+
+    return real_amount
+
+
 hd_pct = 0.003
 
-def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False):
+def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False, filter_amount = 0, all_stocks = all_stocks):
+    if filter_amount > 0:
+        masks = []
+        first_tick_amounts = []  # 存储每行的 first_tick_amount
+        
+        # 遍历每一行并计算值
+        for _, row in group.iterrows():
+            if row['stock_code'].split('.')[0] not in all_stocks:
+                masks.append(False)
+                first_tick_amounts.append(0)
+                continue
+            stock_code = all_stocks[row['stock_code'].split('.')[0]]
+            date_key = row['date_key']
+                
+            # 计算 first_tick_amount
+            first_tick_amount = get_first_tick_trade_amount(stock_code, date_key)
+            first_tick_amounts.append(first_tick_amount)  # 记录值
+            if first_tick_amount > filter_amount:
+                masks.append(True)
+            else:
+                print(f"过滤股票 {stock_code} 日期 {date_key} 过滤原因： first_tick_amount {first_tick_amount}")
+                masks.append(False)
+            # 生成过滤掩码
+        
+        # 将 first_tick_amount 添加到原始分组中
+        group = group.copy()  # 避免 SettingWithCopyWarning
+        group['first_tick_amount'] = first_tick_amounts
+        
+        # 应用过滤
+        group = group[masks]
+            
     if not filtered:
         valid_rows = group[(group['open_price'] > 0) & (group['next_day_open_price'] > 0) & (group['stock_rank'] <= topn) & (group['next_day_close_price'] > 0)]
         if len(valid_rows) > 0:
@@ -313,7 +407,7 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
             valid_rows['close_real_return'] = valid_rows['close_return'] - hd_pct
             avg_value = valid_rows['return'].mean()
             close_avg_value = valid_rows['close_return'].mean()
-            rank_one_row = group[group['stock_rank'] == 1].copy()
+            rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
             if len(rank_one_row) > 0:
                 # 将平均值赋给 rank 为 1 的行的指定列
                 rank_one_row['return'] = avg_value
@@ -322,7 +416,7 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
                 rank_one_row['close_real_return'] = close_avg_value - hd_pct
                 return rank_one_row
         else:
-            rank_one_row = group[group['stock_rank'] == 1].copy()
+            rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
             if len(rank_one_row) > 0:
                 rank_one_row['return'] = -10
                 rank_one_row['real_return'] = -10
@@ -351,7 +445,7 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
             if min_category_rank > top_fx:
                 if only_fx:
                     return group[group['max_block_category_rank'] < min_category_rank]
-                rank_one_row = group[group['stock_rank'] == 1].copy()
+                rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
                 if len(rank_one_row) > 0:
                     rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                     rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -363,7 +457,7 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
                 if len(category_filtered) == 0:
                     if only_fx:
                         return group[group['max_block_category_rank'] < min_category_rank]
-                    rank_one_row = group[group['stock_rank'] == 1].copy()
+                    rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
                     if not rank_one_row.empty and len(rank_one_row) > 0:
                         rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                         rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -380,7 +474,7 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
                 result['close_real_return'] = result['close_return'] - hd_pct
                 return result
         else:
-            rank_one_row = group[group['stock_rank'] == 1].copy()
+            rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
             if not rank_one_row.empty and len(rank_one_row) > 0:
                 rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                 rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -390,7 +484,36 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
 
 
 
-def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False):
+def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 2, top_cx = 2, only_fx = False, enbale_industry= False, filter_amount = 0, all_stocks = all_stocks):
+    if filter_amount > 0:
+        masks = []
+        first_tick_amounts = []  # 存储每行的 first_tick_amount
+        
+        # 遍历每一行并计算值
+        for _, row in group.iterrows():
+            if row['stock_code'].split('.')[0] not in all_stocks:
+                masks.append(False)
+                first_tick_amounts.append(0)
+                continue
+            stock_code = all_stocks[row['stock_code'].split('.')[0]]
+            date_key = row['date_key']
+                
+            # 计算 first_tick_amount
+            first_tick_amount = get_first_tick_trade_amount(stock_code, date_key)
+            first_tick_amounts.append(first_tick_amount)  # 记录值
+            if first_tick_amount > filter_amount:
+                masks.append(True)
+            else:
+                print(f"过滤股票 {stock_code} 日期 {date_key} 过滤原因： first_tick_amount {first_tick_amount}")
+                masks.append(False)
+            # 生成过滤掩码
+        
+        # 将 first_tick_amount 添加到原始分组中
+        group = group.copy()  # 避免 SettingWithCopyWarning
+        group['first_tick_amount'] = first_tick_amounts
+        
+        # 应用过滤
+        group = group[masks]
     if not filtered:
         valid_rows = group[(group['open_price'] > 0) & (group['next_day_open_price'] > 0) & (group['stock_rank'] <= topn) & (group['next_day_close_price'] > 0)]
         if len(valid_rows) > 0:
@@ -400,7 +523,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
             valid_rows['close_real_return'] = valid_rows['close_return'] - hd_pct
             avg_value = valid_rows['return'].mean()
             close_avg_value = valid_rows['close_return'].mean()
-            rank_one_row = group[group['stock_rank'] == 1].copy()
+            rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
             if len(rank_one_row) > 0:
                 # 将平均值赋给 rank 为 1 的行的指定列
                 rank_one_row['return'] = avg_value
@@ -409,7 +532,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
                 rank_one_row['close_real_return'] = close_avg_value - hd_pct
                 return rank_one_row
         else:
-            rank_one_row = group[group['stock_rank'] == 1].copy()
+            rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
             if len(rank_one_row) > 0:
                 rank_one_row['return'] = -10
                 rank_one_row['real_return'] = -10
@@ -438,7 +561,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
             if min_category_rank > top_fx:
                 if only_fx:
                     return group[group['max_block_category_rank'] < min_category_rank]
-                rank_one_row = group[group['stock_rank'] == 1].copy()
+                rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
                 if len(rank_one_row) > 0:
                     rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                     rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -466,7 +589,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
                             return rank_one_row
                     if only_fx:
                         return group[group['max_block_category_rank'] < min_category_rank]
-                    rank_one_row = group[group['stock_rank'] == 1].copy()
+                    rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
                     if not rank_one_row.empty and len(rank_one_row) > 0:
                         rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                         rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -481,7 +604,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
                 if result.empty or len(result) < 1:
                     if only_fx:
                         return group[group['max_block_category_rank'] < min_category_rank]
-                    rank_one_row = group[group['stock_rank'] == 1].copy()
+                    rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
                     if not rank_one_row.empty and len(rank_one_row) > 0:
                         rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                         rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -496,7 +619,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
                 result['close_real_return'] = result['close_return'] - hd_pct
                 return result
         else:
-            rank_one_row = group[group['stock_rank'] == 1].copy()
+            rank_one_row = group[group['stock_rank'] == group['stock_rank'].min()].copy()
             if not rank_one_row.empty and len(rank_one_row) > 0:
                 rank_one_row['return'] = rank_one_row['next_day_open_price'] / rank_one_row['open_price'] - 1
                 rank_one_row['real_return'] = rank_one_row['return'] - hd_pct
@@ -512,12 +635,12 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
 max_stock_rank = 20
 
 
-months = [ '202409', '202410', '202411', '202412', '202501', '202502' ]
+months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503']
 
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [3, 5, 7, 10, 15, 20, 30, 50]
+trade_days_rang = [5, 7, 10, 15]
 
 # 候选排名筛选
 max_stock_ranks = [10, 5, 3, 2]
@@ -528,19 +651,10 @@ max_stock_ranks = [10, 5, 3, 2]
 filter_funcs = [group_filter_fx, group_filter]
 
 # 计算的return
-return_names = ['close_real_return', 'real_return']
+return_names = ['r_return', 'r_close_return']
 
 
 filter_params = [
-    {
-        'filtered': False,
-        'fx_filtered': True,
-        'topn': [2,3,4],
-        'top_fx': 1,
-        'top_cx': 2,
-        'only_fx': False,
-        'enbale_industry': False
-    },
     {
         'filtered': True,
         'fx_filtered': False,
@@ -548,16 +662,18 @@ filter_params = [
         'top_fx': 2,
         'top_cx': 2,
         'only_fx': False,
-        'enbale_industry': False
+        'enbale_industry': False,
+        'filter_amount': [6000000, 8000000, 10000000, 12000000]
     },
     {
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,3,4],
-        'top_cx': [1,2,3,4],
+        'top_fx': [1,2,4],
+        'top_cx': [1,2,4],
         'only_fx': [False, True],
-        'enbale_industry': [False, True]
+        'enbale_industry': [False, True],
+        'filter_amount': [6000000, 8000000, 10000000, 12000000]
     }
 ]
 
@@ -571,47 +687,100 @@ def generate_filter_params(m):
     top_cx = m['top_cx']
     only_fx = m['only_fx']
     enbale_industry = m['enbale_industry']
-    if isinstance(topn, list):
-        for n in topn:
-            res.append({
-                'filtered': filtered,
-                'fx_filtered': fx_filtered,
-                'topn': n,
-                'top_fx': top_fx,
-                'top_cx': top_cx,
-                'only_fx': only_fx,
-                'enbale_industry': enbale_industry
-            })
+    filter_amount = m['filter_amount']
 
-    elif isinstance(enbale_industry, list):
+    if isinstance(enbale_industry, list):
         for e_i in enbale_industry:
             if isinstance(top_fx, list) and isinstance(only_fx, list) and isinstance(top_cx, list):
                 for fx in top_fx:
                     for cx in top_cx:
                         for of in only_fx:
-                            res.append({
-                                'filtered': filtered,
-                                'fx_filtered': fx_filtered,
-                                'topn': topn,
-                                'top_fx': fx,
-                                'top_cx': cx,
-                                'only_fx': of,
-                                'enbale_industry': e_i
-                            })
+                            for fa in filter_amount:
+                                res.append({
+                                    'filtered': filtered,
+                                    'fx_filtered': fx_filtered,
+                                    'topn': topn,
+                                    'top_fx': fx,
+                                    'top_cx': cx,
+                                    'only_fx': of,
+                                    'enbale_industry': e_i,
+                                    'filter_amount': fa
+                                })
             else:
-                res.append({
-                    'filtered': filtered,
-                    'fx_filtered': fx_filtered,
-                    'topn': topn,
-                    'top_fx': top_fx,
-                    'top_cx': top_cx,
-                    'only_fx': only_fx,
-                    'enbale_industry': e_i
-                })
+                for fa in filter_amount:
+                    res.append({
+                        'filtered': filtered,
+                        'fx_filtered': fx_filtered,
+                        'topn': topn,
+                        'top_fx': top_fx,
+                        'top_cx': top_cx,
+                        'only_fx': only_fx,
+                        'enbale_industry': e_i,
+                        'filter_amount': fa
+                    })
     else:
-        res.append(m)
-        
+        for fa in filter_amount:
+            res.append({
+                        'filtered': filtered,
+                        'fx_filtered': fx_filtered,
+                        'topn': topn,
+                        'top_fx': top_fx,
+                        'top_cx': top_cx,
+                        'only_fx': only_fx,
+                        'enbale_industry': enbale_industry,
+                        'filter_amount': fa
+                    })        
     return res
+
+@lru_cache
+def get_real_open_price(stock_code, datekey):
+    import datetime
+
+    today = datetime.datetime.strptime(datekey, '%Y-%m-%d').date()
+
+    time_0930 = datetime.time(9, 29, 0)
+
+    dt_0930 = datetime.datetime.combine(today, time_0930)
+
+    timestamp_0930 = dt_0930.timestamp()
+
+    time_09305 = datetime.time(9, 30, 5)
+
+    dt_09305 = datetime.datetime.combine(today, time_09305)
+
+    timestamp_09305 = dt_09305.timestamp()
+
+    tims = int(timestamp_0930*1000)
+
+    tims5 = int(timestamp_09305*1000)
+    import numpy as np
+    n_data_key = datekey.replace('-', '')
+    xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
+    all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
+
+    # 假设 all_tick_data['000759.SZ'] 是 numpy.void 数组
+    if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
+        df = pd.DataFrame(all_tick_data[stock_code].tolist(), columns=all_tick_data[stock_code].dtype.names)
+    else:
+        raise
+
+    filtered_df = df[(df['time'] >= tims) & (df['time'] <= tims5)]
+
+    # 按 time 列升序排序
+    sorted_df = filtered_df.sort_values(by='time')
+
+    # 取 time 最小的行
+    min_time_row = sorted_df.head(1)
+
+    last_price = min_time_row['lastPrice']
+
+    # 检查 Series 是否只有一个元素
+    if len(last_price) == 1:
+        last_price_real = last_price.item()
+    else:
+        raise Exception(f"{stock_code}-{datekey}")
+
+    return last_price_real
 
 if __name__ == '__main__':
 
@@ -712,8 +881,29 @@ if __name__ == '__main__':
                                     continue
 
                                 df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
+                                df['real_open'] = -1
+
+                                for idx, row in df.iterrows():
+                                    stock_code = row['stock_code']
+                                    if stock_code.split('.')[0] not in all_stocks:
+                                        df.loc[idx, 'real_open'] = -1
+                                        continue
+                                    stock_code = all_stocks[stock_code.split('.')[0]]
+                                    date_key = row['date_key']
+                                    n_data_key = date_key
+                                    if '-' in n_data_key:
+                                        n_data_key = n_data_key.replace('-', '')
+                                    
+                                    real_open_price = get_real_open_price(stock_code, date_key)
+                                    df.loc[idx, 'real_open'] = real_open_price
                                 
-                                
+                                df = df[df['real_open'] > 0]
+
+                                df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
+                                df['r_return'] = df['r_return']-0.001
+                                df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
+                                df['r_close_return'] = df['r_close_return']-0.001
+
                                 min_date_key = df['date_key'].min()
 
                                 if min_date_key not in last_100_trade_days:
@@ -764,7 +954,7 @@ if __name__ == '__main__':
     column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
-    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval\\')
+    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_202539\\')
 
     # 假设 df 已经定义
     # 按照 交易策略、交易子策略、最近交易日数 进行分组

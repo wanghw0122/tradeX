@@ -58,7 +58,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-07"
+test_date = "2025-03-11"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -347,7 +347,7 @@ strategies = {
         'filter_params': [
             {
             'filtered': True,
-            'fx_filtered': True,
+            'fx_filtered': False,
             'topn': 1,
             'top_fx': 1,
             'top_cx': 4,
@@ -394,15 +394,15 @@ strategies_to_buffer = {
 
 default_positions = {
     "xiao_cao_1j2db": 0.4,
-    "xiao_cao_dwyxdx": 1,
-    "低吸-低位孕线低吸": 0.6,
+    "xiao_cao_dwyxdx": 0.45,
+    "低吸-低位孕线低吸": 0.45,
     "低吸-低位N字低吸": 1,
-    "低吸-中位孕线低吸": 1,
+    "低吸-中位孕线低吸": 0.4,
     "低吸-首断低吸": 1,
     "低吸-中位低吸": 1,
-    "低吸-中位断板低吸": 1,
-    "低吸-断低吸": 1,
-    "低吸-放宽低吸前3": 0.5
+    "低吸-中位断板低吸": 0.5,
+    "低吸-断低吸": 0.4,
+    "低吸-放宽低吸前3": 0.7
 }
 
 ##########################strategy configs ################
@@ -1235,7 +1235,6 @@ def get_cancel_budgets(orders_dict, budgets_list):
 
 
 def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
-    time.sleep(0.4)
     if not orders_dict or len(orders_dict) == 0:
         logger.error(f"[consumer_to_rebuy] 无订单 {orders_dict}")
         return
@@ -2118,7 +2117,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=1, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 

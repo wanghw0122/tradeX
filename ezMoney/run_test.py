@@ -50,6 +50,7 @@ if __name__ == "__main__":
         #                                   'origin_budget': 25000})
 
         manager.update_data("strategy_budget",{
-                                          'origin_budget': 50000}, {'strategy_name':'低吸-中位断板低吸'})
+                                          'origin_budget': 15000,
+                                          'budget': 15000}, {'strategy_name':'低吸-放宽低吸前3'})
         # manager.update_budget("xiao_cao_1j2db",10000)
        

@@ -33,7 +33,10 @@ xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几
 print('done')
 
 from xtquant import xtdata 
-
+import sys
+sys.path.append("..")
+from http_request import build_http_request
+from data_class import category_rank_class
 
 try:
     trade_date_df = ak.tool_trade_date_hist_sina()
@@ -653,6 +656,8 @@ filter_funcs = [group_filter_fx, group_filter]
 # 计算的return
 return_names = ['r_return', 'r_close_return']
 
+block_rank_filter =  [False, True]
+# gap10_generate = [False, True]
 
 filter_params = [
     {
@@ -782,6 +787,57 @@ def get_real_open_price(stock_code, datekey):
 
     return last_price_real
 
+@lru_cache
+def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = False):
+    build_http_request.check_user_alive()
+    categoryRankList = category_rank_class.build_category_rank_sort_list(date_key)
+    block_rank_list = []
+    for item in categoryRankList:
+        if item == None:
+            continue
+        if item.stockType == 'industry':
+            block_rank_list.append(item)
+        if item.blockRankList == None:
+            continue
+        block_rank_list.extend(item.blockRankList)
+
+    if except_is_ppp:
+        block_rank_list = [item for item in block_rank_list if not item['isPpp']]
+    if except_is_track:
+        block_rank_list = [item for item in block_rank_list if not item['isTrack']]
+
+    sorted_block_rank_list = sorted(block_rank_list, key=lambda x: (-x['num'], -x['numChange']))
+    rank_dict = {}
+    prev_num = None
+    current_rank = 1
+
+    for idx, item in enumerate(sorted_block_rank_list):
+        code = item['blockCode']
+        num = item['num']
+
+        if idx == 0:
+            # 第一个元素直接赋初始排名
+            rank_dict[code] = current_rank
+            prev_num = num
+            continue
+
+        delta = 0
+        diff = prev_num - num
+
+        # 判断差值规则
+        if abs(diff) <= 0.0001:
+            delta = 0
+        elif diff > 15:
+            delta = int(diff // 10) + 1
+        else:
+            delta = 1
+
+        current_rank += delta
+        rank_dict[code] = current_rank
+        prev_num = num
+    return rank_dict
+
+
 if __name__ == '__main__':
 
     import yaml
@@ -860,101 +916,130 @@ if __name__ == '__main__':
                     continue
                 # 重置索引
                 trade_df = trade_df.reset_index(drop=True)
+                for rank_filter in block_rank_filter:
+                    if rank_filter:
+                        for idx, row in trade_df.iterrows():
+                            block_category = row['block_category']
+                            block_codes = row['block_codes']
+                            industry_code = row['industry_code']
+                            date_key = row['date_key']
+                            ranked_block_dict = get_ranked_category_infos(date_key)
+                            min_rank = 100
+                            if not block_codes:
+                                continue
+                            else:
+                                for block_code in block_codes.split(','):
+                                    if block_code in ranked_block_dict:
+                                        rank_this = ranked_block_dict[block_code]
+                                        min_rank = min(min_rank, rank_this)
+                            if not industry_code:
+                                trade_df.loc[idx, 'max_block_code_rank'] = min_rank
+                                continue
+                            else:
+                                i_min_rank = 100
+                                for i_code in industry_code.split(','):
+                                    if i_code in ranked_block_dict:
+                                        rank_this = ranked_block_dict[i_code]
+                                        min_rank = min(min_rank, rank_this)
+                                        i_min_rank = min(i_min_rank, rank_this)
+                                        trade_df.loc[idx, 'max_industry_code_rank'] = i_min_rank
+                            trade_df.loc[idx, 'max_block_code_rank'] = min_rank
 
-                for max_stock_rank in max_stock_ranks:
-                    trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
+                        for max_stock_rank in max_stock_ranks:
+                            trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
 
-                    for filter_fuc in filter_funcs:
-                        for filter_param in filter_params:
-                            params_list = generate_filter_params(filter_param)
-                            for param_dict in params_list:
-                                import warnings
-                                df = None
-                                # 临时忽略 DeprecationWarning 警告
-                                with warnings.catch_warnings():
-                                    warnings.filterwarnings("ignore", category=DeprecationWarning)
-                                    df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
-                               
-                                # df = df.drop(['block_category_info'], axis=1)
-                                # 将索引设置为 date_key 列
-                                if len(df) < 1:
-                                    continue
+                            for filter_fuc in filter_funcs:
+                                for filter_param in filter_params:
+                                    params_list = generate_filter_params(filter_param)
+                                    for param_dict in params_list:
+                                        import warnings
+                                        df = None
+                                        # 临时忽略 DeprecationWarning 警告
+                                        with warnings.catch_warnings():
+                                            warnings.filterwarnings("ignore", category=DeprecationWarning)
+                                            df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
 
-                                df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
-                                df['real_open'] = -1
+                                        # df = df.drop(['block_category_info'], axis=1)
+                                        # 将索引设置为 date_key 列
+                                        if len(df) < 1:
+                                            continue
 
-                                for idx, row in df.iterrows():
-                                    stock_code = row['stock_code']
-                                    if stock_code.split('.')[0] not in all_stocks:
-                                        df.loc[idx, 'real_open'] = -1
-                                        continue
-                                    stock_code = all_stocks[stock_code.split('.')[0]]
-                                    date_key = row['date_key']
-                                    n_data_key = date_key
-                                    if '-' in n_data_key:
-                                        n_data_key = n_data_key.replace('-', '')
-                                    
-                                    real_open_price = get_real_open_price(stock_code, date_key)
-                                    df.loc[idx, 'real_open'] = real_open_price
-                                
-                                df = df[df['real_open'] > 0]
+                                        df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
+                                        df['real_open'] = -1
 
-                                df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
-                                df['r_return'] = df['r_return']-0.001
-                                df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
-                                df['r_close_return'] = df['r_close_return']-0.001
+                                        for idx, row in df.iterrows():
+                                            stock_code = row['stock_code']
+                                            if stock_code.split('.')[0] not in all_stocks:
+                                                df.loc[idx, 'real_open'] = -1
+                                                continue
+                                            stock_code = all_stocks[stock_code.split('.')[0]]
+                                            date_key = row['date_key']
+                                            n_data_key = date_key
+                                            if '-' in n_data_key:
+                                                n_data_key = n_data_key.replace('-', '')
 
-                                min_date_key = df['date_key'].min()
+                                            real_open_price = get_real_open_price(stock_code, date_key)
+                                            df.loc[idx, 'real_open'] = real_open_price
 
-                                if min_date_key not in last_100_trade_days:
-                                    print(f'min_date_key: {min_date_key}')
-                                    raise
-                                min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
+                                        df = df[df['real_open'] > 0]
 
-                                trade_frequency = min_date_trade_days / len(df)
+                                        df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
+                                        df['r_return'] = df['r_return']-0.001
+                                        df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
+                                        df['r_close_return'] = df['r_close_return']-0.001
 
-                                
-                                import datetime
-                                if not isinstance(min_date_key, datetime.datetime):
-                                    min_date_key = pd.to_datetime(min_date_key)
+                                        min_date_key = df['date_key'].min()
 
-                                # 获取当前日期
-                                current_date = datetime.datetime.now()
-                                time_interval = current_date - min_date_key
-                                first_trade_interval = time_interval.days
+                                        if min_date_key not in last_100_trade_days:
+                                            print(f'min_date_key: {min_date_key}')
+                                            raise
+                                        min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
 
-                                trade_avg_days = first_trade_interval / len(df)
+                                        trade_frequency = min_date_trade_days / len(df)
 
-                                df = df.set_index('date_key')
-                                # 对索引进行排序
-                                df = df.sort_index()
-                                import json
 
-                                for return_name in return_names:
-                                    r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
-                                    codes_dict = df['stock_name'].to_dict()
-                                    json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4)
+                                        import datetime
+                                        if not isinstance(min_date_key, datetime.datetime):
+                                            min_date_key = pd.to_datetime(min_date_key)
 
-                                    
-                                    r['交易策略'] =  strategy_name
-                                    r['交易子策略'] =  sub_strategy_name
-                                    r['交易明细'] =  json_codes_data
-                                    r['最近交易日数'] = trade_days
-                                    r['交易日候选数'] = max_stock_rank
-                                    r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
-                                    r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4)
-                                    r['收益计算方式'] = return_name
-                                    if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
-                                        r['强方向过滤'] = 1
-                                    else:
-                                        r['强方向过滤'] = 0
-                                    results.append(r)
+                                        # 获取当前日期
+                                        current_date = datetime.datetime.now()
+                                        time_interval = current_date - min_date_key
+                                        first_trade_interval = time_interval.days
+
+                                        trade_avg_days = first_trade_interval / len(df)
+
+                                        df = df.set_index('date_key')
+                                        # 对索引进行排序
+                                        df = df.sort_index()
+                                        import json
+
+                                        for return_name in return_names:
+                                            r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
+                                            codes_dict = df['stock_name'].to_dict()
+                                            json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4)
+
+
+                                            r['交易策略'] =  strategy_name
+                                            r['交易子策略'] =  sub_strategy_name
+                                            r['交易明细'] =  json_codes_data
+                                            r['最近交易日数'] = trade_days
+                                            r['方向重新计算'] = rank_filter
+                                            r['交易日候选数'] = max_stock_rank
+                                            r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
+                                            r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4)
+                                            r['收益计算方式'] = return_name
+                                            if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                                r['强方向过滤'] = 1
+                                            else:
+                                                r['强方向过滤'] = 0
+                                            results.append(r)
                                     
     sve_df = pd.DataFrame(results)
-    column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
+    column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
-    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_202539\\')
+    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250311\\')
 
     # 假设 df 已经定义
     # 按照 交易策略、交易子策略、最近交易日数 进行分组

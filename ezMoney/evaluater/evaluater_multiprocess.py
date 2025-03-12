@@ -6,16 +6,17 @@ from typing import ItemsView
 from venv import logger
 
 from py import log
-
+import uuid
+from filelock import FileLock
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 import pandas_market_calendars as mcal
 import pandas as pd
 import akshare as ak
-
+import gc
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.dates as mdates
-
+import numpy as np
 import sqlite3
 
 from datetime import datetime, timedelta
@@ -24,7 +25,7 @@ import pandas_market_calendars as mcal
 import pandas as pd
 import pandas_market_calendars as mcal
 import akshare as ak
-
+import json
 
 import sys
 sys.path.append(r"D:\workspace\TradeX\ezMoney")
@@ -38,6 +39,12 @@ try:
 except:
     trade_date_list = []
 
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        return super(NpEncoder, self).default(obj)
 
 def init_process():
     xtdata.connect(port=58611)
@@ -636,7 +643,7 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503']
 
 # 交易天数范围
 trade_days_rang = [5, 7, 10, 15, 30, 50]
-gaps = [0, 15, 20]
+gaps = [0, 10, 15, 20, 30]
 # 候选排名筛选
 max_stock_ranks = [10, 5, 3, 2]
 
@@ -729,7 +736,7 @@ def generate_filter_params(m):
                     })        
     return res
 
-@lru_cache
+@lru_cache(maxsize=1024)
 def get_real_open_price(stock_code, datekey):
     import datetime
 
@@ -780,7 +787,7 @@ def get_real_open_price(stock_code, datekey):
 
     return last_price_real
 
-@lru_cache(maxsize=10000)
+@lru_cache(maxsize=1024)
 def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = False, gap = 10):
     # build_http_request.check_user_alive()
     categoryRankList = category_rank_class.build_category_rank_sort_list(date_key)
@@ -846,10 +853,16 @@ def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = 
     return rank_dict
 
 
-def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, results):
+def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, output_dir):
     print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
     
     print ("consumer_to_subscribe_whole connect success")
+    
+    file_name = f"{strategy_name}_{sub_strategy_name}_{uuid.uuid4().hex[:8]}.jsonl"
+    output_path = os.path.join(output_dir, file_name)
+    
+    # 创建文件锁
+    lock_path = output_path + ".lock"
     # for i in range(0, len(months)):
     all_stocks = {}
     all_stocks_info = xtdata.get_stock_list_in_sector('沪深A股')
@@ -859,8 +872,8 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, resu
             all_stocks[cde] = stock
 
     combined_df = pd.DataFrame()
+    conn = sqlite3.connect('D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db')
     for month in months[:]:
-        conn = sqlite3.connect('D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db')
         db_name = 'strategy_data_aftermarket_%s' % month
         if sub_strategy_name != strategy_name: 
             query = "select * from %s where (strategy_name = '%s' and sub_strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, sub_strategy_name, 20)
@@ -996,7 +1009,7 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, resu
                                     for return_name in return_names:
                                         r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
                                         codes_dict = df['stock_name'].to_dict()
-                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4)
+                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
 
 
                                         r['交易策略'] =  strategy_name
@@ -1007,13 +1020,22 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, resu
                                         r['间隔'] = gap
                                         r['交易日候选数'] = max_stock_rank
                                         r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
-                                        r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4)
+                                        if 'all_stocks' in param_dict:
+                                            del param_dict['all_stocks']
+                                        r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
                                         r['收益计算方式'] = return_name
                                         if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
                                             r['强方向过滤'] = 1
                                         else:
                                             r['强方向过滤'] = 0
-                                        results.append(r)
+                                        with FileLock(lock_path):
+                                            with open(output_path, 'a', encoding='utf-8') as f:
+                                                f.write(json.dumps(r, ensure_ascii=False, cls=NpEncoder) + '\n')
+                                                
+                                        # 及时清理内存
+                                        del r
+                                        gc.collect()
+                                        # return
 
 
 
@@ -1038,6 +1060,10 @@ if __name__ == '__main__':
     configs = config['configs']
     cur_day = get_current_date()
     m = {}
+
+    output_dir = f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250311'
+    os.makedirs(output_dir, exist_ok=True)
+    
 
     for config in configs:
        strategy_name=config['strategy_name']
@@ -1066,18 +1092,18 @@ if __name__ == '__main__':
     # ... existing code ...
 
     from concurrent.futures import ProcessPoolExecutor
-    from multiprocessing import Manager
+    # from multiprocessing import Manager
 
     # 创建一个可在进程间共享的列表
-    manager = Manager()
-    results = manager.list()
+    # manager = Manager()
+    # results = manager.list()
     build_http_request.check_user_alive()
 
-    with ProcessPoolExecutor(max_workers=5, initializer=init_process) as executor:
+    with ProcessPoolExecutor(max_workers=10, initializer=init_process) as executor:
         futures = []
         for strategy_name, sub_strategy_names in m.items():
             for sub_strategy_name in sub_strategy_names:
-                future = executor.submit(process_strategy, strategy_name, sub_strategy_name, last_100_trade_days, results)
+                future = executor.submit(process_strategy, strategy_name, sub_strategy_name, last_100_trade_days, output_dir)
                 futures.append(future)
 
         # 等待所有任务完成
@@ -1088,13 +1114,21 @@ if __name__ == '__main__':
                 print(f"An error occurred: {e}")
 
     # ... existing code ...
+    import json
+    all_results = []
+    for file in os.listdir(output_dir):
+        if file.endswith('.jsonl'):
+            with open(os.path.join(output_dir, file), 'r', encoding='utf-8') as f:
+                for line in f:
+                    all_results.append(json.loads(line))
+    
+    sve_df = pd.DataFrame(all_results)        
 
-                                    
-    sve_df = pd.DataFrame(list(results))
+    sve_df = sve_df.drop_duplicates(subset=['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '间隔', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数'], keep='last')
     column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '间隔', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
-    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250311\\')
+    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval\\')
 
     # 假设 df 已经定义
     # 按照 交易策略、交易子策略、最近交易日数 进行分组

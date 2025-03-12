@@ -846,7 +846,7 @@ def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = 
     return rank_dict
 
 
-def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days):
+def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, results):
     print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
     
     print ("consumer_to_subscribe_whole connect success")
@@ -1077,7 +1077,7 @@ if __name__ == '__main__':
         futures = []
         for strategy_name, sub_strategy_names in m.items():
             for sub_strategy_name in sub_strategy_names:
-                future = executor.submit(process_strategy, strategy_name, sub_strategy_name, last_100_trade_days)
+                future = executor.submit(process_strategy, strategy_name, sub_strategy_name, last_100_trade_days, results)
                 futures.append(future)
 
         # 等待所有任务完成

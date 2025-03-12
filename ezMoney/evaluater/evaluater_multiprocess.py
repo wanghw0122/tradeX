@@ -30,13 +30,16 @@ import sys
 sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from http_request import build_http_request
 from data_class import category_rank_class
-
+from xtquant import xtdata
 try:
     trade_date_df = ak.tool_trade_date_hist_sina()
     trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
     trade_date_list.sort()
 except:
     trade_date_list = []
+
+def init_process():
+    xtdata.connect(port=58611)
 
 
 def get_current_date():
@@ -308,8 +311,6 @@ def caculate_returns(returns_df, row, _print = False, trade_frequcy = -1, trade_
 def get_first_tick_trade_amount(stock_code, datekey):
     import datetime
     import pandas as pd
-    from xtquant import xtdata
-    xtdata.connect(port=58611)
 
     today = datetime.datetime.strptime(datekey, '%Y-%m-%d').date()
 
@@ -332,6 +333,8 @@ def get_first_tick_trade_amount(stock_code, datekey):
     n_data_key = datekey.replace('-', '')
     xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
     all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
+    if not all_tick_data or len(all_tick_data) == 0:
+        print("all_tick_data is empty.")
 
     # 假设 all_tick_data['000759.SZ'] 是 numpy.void 数组
     if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
@@ -729,8 +732,6 @@ def generate_filter_params(m):
 @lru_cache
 def get_real_open_price(stock_code, datekey):
     import datetime
-    from xtquant import xtdata
-    xtdata.connect(port=58611)
 
     today = datetime.datetime.strptime(datekey, '%Y-%m-%d').date()
 
@@ -753,7 +754,8 @@ def get_real_open_price(stock_code, datekey):
     n_data_key = datekey.replace('-', '')
     xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
     all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
-
+    if not all_tick_data:
+        print('No all_tick_data available.')
     # 假设 all_tick_data['000759.SZ'] 是 numpy.void 数组
     if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
         df = pd.DataFrame(all_tick_data[stock_code].tolist(), columns=all_tick_data[stock_code].dtype.names)
@@ -848,8 +850,6 @@ def process_strategy(strategy_name, sub_strategy_name):
     print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
     
     print ("consumer_to_subscribe_whole connect success")
-    from xtquant import xtdata
-    xtdata.connect(port=58611)
     # for i in range(0, len(months)):
     all_stocks = {}
     all_stocks_info = xtdata.get_stock_list_in_sector('沪深A股')
@@ -1072,7 +1072,7 @@ if __name__ == '__main__':
     results = manager.list()
     build_http_request.check_user_alive()
 
-    with ProcessPoolExecutor() as executor:
+    with ProcessPoolExecutor(max_workers=5, initializer=init_process) as executor:
         futures = []
         for strategy_name, sub_strategy_names in m.items():
             for sub_strategy_name in sub_strategy_names:

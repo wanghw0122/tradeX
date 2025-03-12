@@ -38,9 +38,6 @@ try:
 except:
     trade_date_list = []
 
-def init_process():
-    xtdata.connect(port=58611)
-
 
 def get_current_date():
     """
@@ -868,6 +865,7 @@ def process_strategy(strategy_name, sub_strategy_name):
             query = "select * from %s where (strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, 20)
         df = pd.read_sql_query(query, conn)
         combined_df = pd.concat([combined_df, df], axis=0)
+    conn.close()
     combined_df = combined_df.reset_index(drop=True)
     if len(combined_df) < 1:
         return
@@ -1017,6 +1015,7 @@ def process_strategy(strategy_name, sub_strategy_name):
 
 
 if __name__ == '__main__':
+
     from xtquant import xtdatacenter as xtdc
     xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")
 
@@ -1059,6 +1058,8 @@ if __name__ == '__main__':
 
     l_days = len(last_100_trade_days)
 
+    def init_process():
+        xtdata.connect(port=58611)
 
     import concurrent.futures
 

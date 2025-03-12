@@ -34,7 +34,7 @@ print('done')
 
 from xtquant import xtdata 
 import sys
-sys.path.append("..")
+sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from http_request import build_http_request
 from data_class import category_rank_class
 
@@ -643,8 +643,8 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503']
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [5, 7, 10, 15]
-
+trade_days_rang = [5, 7, 10, 15, 30, 50]
+gaps = [0, 15, 20]
 # 候选排名筛选
 max_stock_ranks = [10, 5, 3, 2]
 
@@ -674,8 +674,8 @@ filter_params = [
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,4],
-        'top_cx': [1,2,4],
+        'top_fx': [1,2,3, 15],
+        'top_cx': [1,2,3, 15],
         'only_fx': [False, True],
         'enbale_industry': [False, True],
         'filter_amount': [6000000, 8000000, 10000000, 12000000]
@@ -787,16 +787,28 @@ def get_real_open_price(stock_code, datekey):
 
     return last_price_real
 
-@lru_cache
-def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = False):
-    build_http_request.check_user_alive()
+@lru_cache(maxsize=10000)
+def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = False, gap = 10):
+    # build_http_request.check_user_alive()
     categoryRankList = category_rank_class.build_category_rank_sort_list(date_key)
     block_rank_list = []
     for item in categoryRankList:
         if item == None:
             continue
         if item.stockType == 'industry':
-            block_rank_list.append(item)
+            isPpp = item.isPpp
+            num = item.num
+            numChange = item.numChange
+            isTrack = item.isTrack
+            stockCode = item.categoryCode
+            r  = {
+                'isPpp': isPpp,
+                'num': num,
+                'numChange': numChange,
+                'isTrack': isTrack,
+                'blockCode': stockCode
+            }
+            block_rank_list.append(r)
         if item.blockRankList == None:
             continue
         block_rank_list.extend(item.blockRankList)
@@ -827,11 +839,14 @@ def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = 
         # 判断差值规则
         if abs(diff) <= 0.0001:
             delta = 0
-        elif diff > 15:
-            delta = int(diff // 10) + 1
         else:
-            delta = 1
-
+            if gap == 0:
+                delta = 1
+            else:
+                if diff > gap:
+                    delta = int(diff // gap) + 1
+                else:
+                    delta = 1
         current_rank += delta
         rank_dict[code] = current_rank
         prev_num = num
@@ -874,56 +889,63 @@ if __name__ == '__main__':
     l_days = len(last_100_trade_days)
 
     results = []
+    build_http_request.check_user_alive()
 
-    for strategy_name, sub_strategy_names in m.items():
-        for sub_strategy_name in sub_strategy_names:
-            # if sub_strategy_name != '中位低吸':
-            #     continue
-            print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
-            # for i in range(0, len(months)):
 
-            combined_df = pd.DataFrame()
-            for month in months[:]:
-                conn = sqlite3.connect('D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db')
-                db_name = 'strategy_data_aftermarket_%s' % month
-                if sub_strategy_name != strategy_name: 
-                    query = "select * from %s where (strategy_name = '%s' and sub_strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, sub_strategy_name, 20)
-                else:
-                    query = "select * from %s where (strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, 20)
-                df = pd.read_sql_query(query, conn)
-                combined_df = pd.concat([combined_df, df], axis=0)
-            combined_df = combined_df.reset_index(drop=True)
-            if len(combined_df) < 1:
+    import concurrent.futures
+
+    # ... existing code ...
+
+    results = []
+    build_http_request.check_user_alive()
+
+    def process_strategy(strategy_name, sub_strategy_name):
+        print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
+        # for i in range(0, len(months)):
+
+        combined_df = pd.DataFrame()
+        for month in months[:]:
+            conn = sqlite3.connect('D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db')
+            db_name = 'strategy_data_aftermarket_%s' % month
+            if sub_strategy_name != strategy_name: 
+                query = "select * from %s where (strategy_name = '%s' and sub_strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, sub_strategy_name, 20)
+            else:
+                query = "select * from %s where (strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, 20)
+            df = pd.read_sql_query(query, conn)
+            combined_df = pd.concat([combined_df, df], axis=0)
+        combined_df = combined_df.reset_index(drop=True)
+        if len(combined_df) < 1:
+            return
+
+        combined_df = combined_df[(combined_df['open_price'] > 0) & (combined_df['next_day_open_price'] > 0) & (combined_df['next_day_close_price'] > 0)]
+        if len(combined_df) < 1:
+            return
+
+        combined_df = combined_df.sort_values(by='date_key', ascending=False)
+            
+        for trade_days in trade_days_rang:
+
+            print(len(combined_df))
+            
+            # 获取最近的 7 个不同的 date_key
+            latest_trade_dates = combined_df['date_key'].unique()[:trade_days]
+
+            # 筛选出最近 7 个 date_key 对应的行
+            a_trade_df = combined_df[combined_df['date_key'].isin(latest_trade_dates)]
+
+            if len(a_trade_df) < trade_days - 1:
                 continue
-
-            combined_df = combined_df[(combined_df['open_price'] > 0) & (combined_df['next_day_open_price'] > 0) & (combined_df['next_day_close_price'] > 0)]
-            if len(combined_df) < 1:
-                continue
-
-            combined_df = combined_df.sort_values(by='date_key', ascending=False)
-                
-            for trade_days in trade_days_rang:
-
-                print(len(combined_df))
-                
-                # 获取最近的 7 个不同的 date_key
-                latest_trade_dates = combined_df['date_key'].unique()[:trade_days]
-
-                # 筛选出最近 7 个 date_key 对应的行
-                trade_df = combined_df[combined_df['date_key'].isin(latest_trade_dates)]
-
-                if len(trade_df) < trade_days - 1:
-                    continue
-                # 重置索引
-                trade_df = trade_df.reset_index(drop=True)
-                for rank_filter in block_rank_filter:
+            # 重置索引
+            for rank_filter in block_rank_filter:
+                for gap in gaps:
                     if rank_filter:
+                        trade_df = a_trade_df.reset_index(drop=True)
                         for idx, row in trade_df.iterrows():
                             block_category = row['block_category']
                             block_codes = row['block_codes']
                             industry_code = row['industry_code']
                             date_key = row['date_key']
-                            ranked_block_dict = get_ranked_category_infos(date_key)
+                            ranked_block_dict = get_ranked_category_infos(date_key, gap = gap)
                             min_rank = 100
                             if not block_codes:
                                 continue
@@ -943,7 +965,7 @@ if __name__ == '__main__':
                                         min_rank = min(min_rank, rank_this)
                                         i_min_rank = min(i_min_rank, rank_this)
                                         trade_df.loc[idx, 'max_industry_code_rank'] = i_min_rank
-                            trade_df.loc[idx, 'max_block_code_rank'] = min_rank
+                                trade_df.loc[idx, 'max_block_code_rank'] = min_rank
 
                         for max_stock_rank in max_stock_ranks:
                             trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
@@ -1025,6 +1047,7 @@ if __name__ == '__main__':
                                             r['交易明细'] =  json_codes_data
                                             r['最近交易日数'] = trade_days
                                             r['方向重新计算'] = rank_filter
+                                            r['间隔'] = gap
                                             r['交易日候选数'] = max_stock_rank
                                             r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
                                             r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4)
@@ -1034,9 +1057,24 @@ if __name__ == '__main__':
                                             else:
                                                 r['强方向过滤'] = 0
                                             results.append(r)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for strategy_name, sub_strategy_names in m.items():
+            for sub_strategy_name in sub_strategy_names:
+                future = executor.submit(process_strategy, strategy_name, sub_strategy_name)
+                futures.append(future)
+
+        # 等待所有任务完成
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
                                     
     sve_df = pd.DataFrame(results)
-    column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
+    column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '间隔', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
     dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250311\\')

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import lru_cache
 import logging
 from typing import List
 import json
@@ -73,7 +74,6 @@ def build_category_rank_list(date = get_current_date()):
         curItem = CategoryRank(**item)
         categoryRankList.append(curItem)
     return categoryRankList
-
 
 def build_category_rank_sort_list(date = get_current_date()):
     rslt = build_http_request.block_category_rank(date = date)

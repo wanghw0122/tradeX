@@ -58,7 +58,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-11"
+test_date = "2025-03-12"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -173,7 +173,11 @@ strategies = {
                     'only_fx': False,
                     'enbale_industry': True,
                     'empty_priority': True,
-                    'min_trade_amount': 6000000
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': False,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             },
@@ -193,7 +197,11 @@ strategies = {
                     "only_fx": True,
                     "enbale_industry": False,
                     "empty_priority": True,
-                    "min_trade_amount": 10000000
+                    "min_trade_amount": 10000000,
+                    'block_rank_filter': False,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             },
@@ -214,7 +222,11 @@ strategies = {
                     "only_fx": False,
                     "enbale_industry": False,
                     "empty_priority": True,
-                    "min_trade_amount": 10000000
+                    "min_trade_amount": 10000000,
+                    'block_rank_filter': False,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             },
@@ -313,7 +325,11 @@ strategies = {
                     'only_fx': False,
                     'enbale_industry': True,
                     'empty_priority': True,
-                    'min_trade_amount': 9000000
+                    'min_trade_amount': 9000000,
+                    'block_rank_filter': False,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             },
@@ -333,7 +349,11 @@ strategies = {
                     'only_fx': True,
                     'enbale_industry': True,
                     'empty_priority': True,
-                    'min_trade_amount': 6000000
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': False,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             }
@@ -354,7 +374,11 @@ strategies = {
             'only_fx': False,
             'enbale_industry': True,
             'empty_priority': True,
-            'min_trade_amount': 6000000
+            'min_trade_amount': 6000000,
+            'block_rank_filter': False,
+            'gap': 0,
+            'except_is_ppp': True,
+            'except_is_track': False
             }
         ]
     },
@@ -373,7 +397,11 @@ strategies = {
             'only_fx': False,
             'enbale_industry': False,
             'empty_priority': False,
-            'min_trade_amount': 12000000
+            'min_trade_amount': 12000000,
+            'block_rank_filter': False,
+            'gap': 0,
+            'except_is_ppp': True,
+            'except_is_track': False
             }
         ]
     }
@@ -393,14 +421,14 @@ strategies_to_buffer = {
 }
 
 default_positions = {
-    "xiao_cao_1j2db": 0.4,
-    "xiao_cao_dwyxdx": 0.45,
-    "低吸-低位孕线低吸": 0.45,
+    "xiao_cao_1j2db": 0.7,
+    "xiao_cao_dwyxdx": 0.5,
+    "低吸-低位孕线低吸": 0.5,
     "低吸-低位N字低吸": 1,
-    "低吸-中位孕线低吸": 0.4,
+    "低吸-中位孕线低吸": 0.5,
     "低吸-首断低吸": 1,
     "低吸-中位低吸": 1,
-    "低吸-中位断板低吸": 0.5,
+    "低吸-中位断板低吸": 0.6,
     "低吸-断低吸": 0.4,
     "低吸-放宽低吸前3": 0.7
 }
@@ -744,7 +772,23 @@ def direction_filter_fuc(candicates, category_infos, params):
         else:
             min_trade_amount = None
 
-        
+        if 'block_rank_filter' in c_param:
+            block_rank_filter = c_param['block_rank_filter']
+        else:
+            block_rank_filter = False
+
+        if 'gap' in c_param:
+            gap = c_param['gap']
+        else:
+            gap = 0
+        if 'except_is_ppp' in c_param:
+            except_is_ppp = c_param['except_is_ppp']
+        else:
+            except_is_ppp = False
+        if 'except_is_track' in c_param:
+            except_is_track = c_param['except_is_track']
+        else:
+            except_is_track = False
 
         if not category_infos or len(category_infos) == 0:
             return [candicates[0].code]
@@ -753,7 +797,8 @@ def direction_filter_fuc(candicates, category_infos, params):
 
         category_dict = {}
         block_dict = {}    
-        block_list = [] 
+        block_list = []
+        rank_dict = {}
         index = 1
         for info in category_infos:
             if info == None:
@@ -767,6 +812,8 @@ def direction_filter_fuc(candicates, category_infos, params):
             numChange = info.numChange
             stockType = info.stockType
             blockRankList = info.blockRankList
+            isPpp = 1 if info.isPpp else 0
+            isTrack = 1 if info.isTrack else 0
             category_dict[categoryCode] = {}
             category_dict[categoryCode]['categoryCode'] = categoryCode
             category_dict[categoryCode]['categoryName'] = categoryName
@@ -776,7 +823,7 @@ def direction_filter_fuc(candicates, category_infos, params):
             category_dict[categoryCode]['blocks'] = []
             if stockType and stockType == 'industry':
                 category_dict[categoryCode]['industry'] = 1
-                block_list.append((categoryCode, num, prePctChangeRate, numChange))
+                block_list.append((categoryCode, num, prePctChangeRate, numChange, isPpp, isTrack))
                 category_dict[categoryCode]['blocks'].append(categoryCode)
             else:
                 category_dict[categoryCode]['industry'] = 0
@@ -793,9 +840,12 @@ def direction_filter_fuc(candicates, category_infos, params):
                     num = block['num']
                     prePctChangeRate = block['prePctChangeRate']
                     numChange = block['numChange']
-                    block_list.append((blockCode, num, prePctChangeRate, numChange))
+                    isPpp = 1 if block['isPpp'] else 0
+                    isTrack = 1 if block['isTrack'] else 0
+                    block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp, isTrack))
             index = index + 1
         block_list.sort(key=lambda x: x[1], reverse=True)
+        
         index = 1
         for block in block_list:
             blockCode = block[0]
@@ -809,6 +859,42 @@ def direction_filter_fuc(candicates, category_infos, params):
             block_dict[blockCode]['numChange'] = numChange
             block_dict[blockCode]['rank'] = index
             index = index + 1
+        if block_rank_filter:
+            if except_is_ppp:
+                block_list = [block for block in block_list if block[4] == 0]
+            if except_is_track:
+                block_list = [block for block in block_list if block[5] == 0]
+            block_list = sorted(block_list, key=lambda x: (-x[1], -x[3]))
+            prev_num = None
+            current_rank = 1
+            for idx, item in enumerate(block_list):
+                code = item[0]
+                num = item[1]
+
+                if idx == 0:
+                    # 第一个元素直接赋初始排名
+                    rank_dict[code] = current_rank
+                    prev_num = num
+                    continue
+
+                delta = 0
+                diff = prev_num - num
+
+                # 判断差值规则
+                if abs(diff) <= 0.0001:
+                    delta = 0
+                else:
+                    if gap == 0:
+                        delta = 1
+                    else:
+                        if diff > gap:
+                            delta = int(diff // gap) + 1
+                        else:
+                            delta = 1
+                current_rank += delta
+                rank_dict[code] = current_rank
+                prev_num = num
+            
         for _, info in category_dict.items():
             if 'blocks' not in info:
                 continue
@@ -851,7 +937,6 @@ def direction_filter_fuc(candicates, category_infos, params):
                     min_rank = min(min_rank, info_rank)
                 code_to_index_dict[code]['max_block_category_rank'] = min_rank
 
-
             if blockCodeList and len(blockCodeList) > 0:
                 min_rank = 100
                 for block in blockCodeList:
@@ -862,6 +947,7 @@ def direction_filter_fuc(candicates, category_infos, params):
                     info_rank = info['rank']
                     min_rank = min(min_rank, info_rank)
                 code_to_index_dict[code]['max_block_code_rank'] = min_rank
+                
             
             if industryBlockCodeList and len(industryBlockCodeList) > 0:
                 min_rank = 100
@@ -877,6 +963,29 @@ def direction_filter_fuc(candicates, category_infos, params):
                         info_rank = info['rank']
                         min_rank = min(min_rank, info_rank)
                 code_to_index_dict[code]['max_industry_code_rank'] = min_rank
+            
+            if block_rank_filter:
+                min_rank_filter = 100
+                if not blockCodeList:
+                    continue
+                else:
+                    for block in blockCodeList:
+                        if block not in rank_dict:
+                            continue
+                        rank_this = rank_dict[block]
+                        min_rank_filter = min(min_rank_filter, rank_this)
+                if not industryBlockCodeList:
+                    code_to_index_dict[code]['max_block_code_rank'] = min_rank_filter
+                    continue
+                else:
+                    i_min_rank_filter = 100
+                    for i_code in industryBlockCodeList:
+                        if i_code in rank_dict:
+                            rank_this = rank_dict[i_code]
+                            min_rank_filter = min(min_rank_filter, rank_this)
+                            i_min_rank_filter = min(i_min_rank_filter, rank_this)
+                            code_to_index_dict[code]['max_industry_code_rank'] = i_min_rank_filter
+                code_to_index_dict[code]['max_block_code_rank'] = min_rank_filter
 
         c_res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
         if c_res and len(c_res) > 0:

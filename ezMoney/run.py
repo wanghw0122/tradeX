@@ -1378,18 +1378,28 @@ def consumer_to_buy(q, orders_dict, orders):
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 
 def get_cancel_budgets(orders_dict, budgets_list):
+    new_order_infos = {}
+    if budgets_list and len(budgets_list) > 0:
+        cached_budget_ids = [budget[1] for budget in budgets_list]
+        new_order_infos = qmt_trader.get_all_orders(filter_order_ids = cached_budget_ids)
     cancel_order_infos_dict = qmt_trader.get_all_cancel_order_infos()
+    if new_order_infos and len(new_order_infos) > 0:
+        cancel_order_infos_dict.update(new_order_infos)
+        budgets_list.clear()
     for order_id, order_info in cancel_order_infos_dict.items():
         if order_id in orders_dict:
             stock_code = order_info['stock_code']
             order_volume = order_info['order_volume']
             traded_volume = order_info['traded_volume']
             price = order_info['price']
+            order_status = order_info['order_status']
             left_volume = order_volume - traded_volume
             left_budget = left_volume * price
             (d_stock_code, d_price, d_volume, order_type, order_remark, timer, buffered) =  orders_dict[order_id]
-
-            budgets_list.append((stock_code, order_id, left_volume, left_budget, order_remark, buffered))
+            if order_status == xtconstant.ORDER_SUCCEEDED:
+                order_logger.info(f"[consumer_to_rebuy] 撤单已成 {order_id} {order_info}")
+                continue
+            budgets_list.append((stock_code, order_id, left_volume, left_budget, order_remark, buffered, order_status))
     return budgets_list
 
 
@@ -1406,6 +1416,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
     # 股票对应未完成订单，会动态更新
     uncomplete_orders = {}
     budgets_list = []
+
+    order_id_to_price_dict = {}
+    
     budgets_list = get_cancel_budgets(orders_dict, budgets_list)
 
     for order_id , order_info in orders_dict.items():
@@ -1416,7 +1429,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
         order_remark = order_info[4]
         time_stamp = order_info[5]
         buffered = order_info[6]
-
+        order_id_to_price_dict[order_id] = price
         if stock_code in uncomplete_orders:
             uncomplete_orders[stock_code].append(order_id)
         else:
@@ -1520,11 +1533,11 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 is_a = False
                 fall_steps = 0
                 up_steps = 0
-                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] < 1.1 * price_diff_pcts[-2] and price_diff_pcts[-2] < -0.0012:
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] < 1.5 * price_diff_pcts[-2] and price_diff_pcts[-2] < -0.0012:
                     is_over_fall = True
                 if len(price_diff_pcts) > 1 and price_diff_pcts[-1] < 0 and price_diff_pcts[-2] < 0:
                     is_fall = True
-                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] > 1.1 * price_diff_pcts[-2] and price_diff_pcts[-2] > 0.0012:
+                if len(price_diff_pcts) > 1 and price_diff_pcts[-1] > 1.5 * price_diff_pcts[-2] and price_diff_pcts[-2] > 0.0012:
                     is_over_up = True
                 if len(price_diff_pcts) > 1 and price_diff_pcts[-1] > 0 and  price_diff_pcts[-2] > 0:
                     is_up = True
@@ -1575,235 +1588,81 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     order_logger.error(f"[consumer_to_rebuy] 股票代码超时: {stock_code} curdiff - {time_difference} diff - {diff}")
                     continue
                 
-                price_diff = lastPrice / open - 1
-                if -0.004 < price_diff and price_diff < 0.004:
-                    orders_to_rebuy = []
-                    for budget_info in budgets_list:
-                        if budget_info[0] == stock_code:
-                            orders_to_rebuy.append(budget_info)
-                    if len(orders_to_rebuy) > 0:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格波动，有买入量: {stock_code} price_diff - {price_diff}")
-                        if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
+                def cancel_order_once(order_id, stock_order_statuses = stock_order_statuses):
+                    status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
+                    if status_q == None:
+                        return
+                    if  status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING or status_q == xtconstant.ORDER_UNREPORTED:
+                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 准备撤单 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                        cancel_result = qmt_trader.cancel_order(order_id, sync=True)
+                        if cancel_result == 0:
+                            qmt_trader.add_cancel_order(order_id)
+
+                if cur_uncomplete_orders and len(cur_uncomplete_orders) > 0:
+                    for order_id in cur_uncomplete_orders:
+                        if order_id not in order_id_to_price_dict:
                             continue
-                        index = len(orders_to_rebuy) - 1
-                        while index >= 0:
-                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
-                            if left_volume <= 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
-                                index = index - 1
-                                continue
-                            c_order_id = -1
+                        order_price = order_id_to_price_dict[order_id]
+                        price_diff = lastPrice / order_price - 1
+                        
+                        if price_diff >=0 and price_diff <= 0.006:
                             if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                if 'SH' in stock_code:
-                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
-                                else:
-                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格冲高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                cancel_order_once(order_id)
                             else:
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
-                            if c_order_id > 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
-                            index = index - 1
-                    else:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格波动，无买入量: {stock_code} price_diff - {price_diff}")
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，等待成交 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                                continue
+                        elif price_diff < 0 and price_diff >= -0.006:
+                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格平稳 {price_diff}，等待成交 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
+                            continue
+                        elif price_diff > 0.006:
+                            if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格冲低 {price_diff}，等待成交 orderid-{order_id} {is_over_fall}, {is_cross_avg_down},{fall_steps}.")
+                                continue
+                            else:
+                                cancel_order_once(order_id)
+                                continue
+
+                        elif price_diff < -0.006 and price_diff > -0.015:
+                            if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
+                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格低位冲高 {price_diff}，等待成交 orderid-{order_id} {is_over_fall}, {is_cross_avg_down},{fall_steps}.")
+                                continue
+                            else:
+                                cancel_order_once(order_id)
+                                continue
+                        else:
+                            cancel_order_once(order_id)
+                            continue
+
+                budgets_list = get_cancel_budgets(orders_dict, budgets_list)
+                if not budgets_list:
                     continue
-                elif -0.007 < price_diff and price_diff <= -0.004:
-                    for order_id in cur_uncomplete_orders:
-                        order_info = orders_dict[order_id]
-                        buffered_t = order_info[6]
-                        if buffered_t and not is_up and not is_over_up and not is_cross_avg_up and up_steps < 2:
-                            status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
-                            if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                                if cancel_result == 0:
-                                    qmt_trader.add_cancel_order(order_id)
-                    if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2:
-                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略低 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                        continue
-                   
-                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
-                    orders_to_rebuy = []
-                    for budget_info in budgets_list:
-                        if budget_info[0] == stock_code:
-                            orders_to_rebuy.append(budget_info)
-                    if len(orders_to_rebuy) > 0:
-                        index = len(orders_to_rebuy) - 1
-                        while index >= 0:
-                            c_order_id = -1
-                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
-                            if left_volume <= 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
-                                del orders_to_rebuy[index]
-                                index = index - 1
-                                continue
-                            order_logger.info(f"[consumer_to_rebuy] 股票价格略低，有买入量: {stock_code} price_diff - {price_diff} ")
-                            c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
-                            if c_order_id > 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
+                orders_to_rebuy = []
+                for budget_info in budgets_list:
+                    if budget_info[0] == stock_code:
+                        orders_to_rebuy.append(budget_info)
+                if len(orders_to_rebuy) > 0:
+                    index = len(orders_to_rebuy) - 1
+                    while index >= 0:
+                        c_order_id = -1
+                        (s_code, o_id, left_volume, left_budget, order_remark, buffered, order_status_c) = orders_to_rebuy[index]
+
+                        if left_volume <= 0:
+                            budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
+                            del orders_to_rebuy[index]
                             index = index - 1
-                    else:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格略低，无买入量: {stock_code} price_diff - {price_diff}")
-                elif -0.007 >= price_diff and -0.01 < price_diff:
-                    for order_id in cur_uncomplete_orders:
-                        if not is_over_up and up_steps < 3 and not (is_cross_avg_up and up_steps > 1):
-                            status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
-                            if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                                if cancel_result == 0:
-                                    qmt_trader.add_cancel_order(order_id)
-                    if is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 1:
-                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格稍低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                        continue
-                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
-                    orders_to_rebuy = []
-                    for budget_info in budgets_list:
-                        if budget_info[0] == stock_code:
-                            orders_to_rebuy.append(budget_info)
-                    if len(orders_to_rebuy) > 0:
-                        index = len(orders_to_rebuy) - 1
-                        while index >= 0:
-                            c_order_id = -1
-                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
-                            if left_volume <= 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
-                                del orders_to_rebuy[index]
-                                index = index - 1
-                                continue
-                            order_logger.info(f"[consumer_to_rebuy] 股票价格稍低，有买入量: {stock_code} price_diff - {price_diff}")
-                            c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
-                            if c_order_id > 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
+                            continue
+                        if order_status_c != xtconstant.ORDER_CANCELED and order_status_c != xtconstant.ORDER_PART_CANCEL:
                             index = index - 1
-                    else:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格稍低，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff <= -0.01:
-                    for order_id in cur_uncomplete_orders:
-                        status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
-                        if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有高买可撤高买 orderid-{order_id} {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                            cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                            if cancel_result == 0:
-                                qmt_trader.add_cancel_order(order_id)
-                    if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2) :
-                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格很低 {price_diff}，有撤单，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                        continue
-                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
-                    orders_to_rebuy = []
-                    for budget_info in budgets_list:
-                        if budget_info[0] == stock_code:
-                            orders_to_rebuy.append(budget_info)
-                    if len(orders_to_rebuy) > 0:
-                        index = len(orders_to_rebuy) - 1
-                        while index >= 0:
-                            c_order_id = -1
-                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
-                            if left_volume <= 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
-                                del orders_to_rebuy[index]
-                                index = index - 1
-                                continue
-                            order_logger.info(f"[consumer_to_rebuy] 股票价格很低，有买入量: {stock_code} price_diff - {price_diff}")
-                            c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
-                            if c_order_id > 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
-                            index = index - 1
-                    else:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格很低，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff >= 0.004 and price_diff < 0.01:
-                    for order_id in cur_uncomplete_orders:
-                        order_info = orders_dict[order_id]
-                        buffered_t = order_info[6]
-                        if not buffered_t and not (is_over_fall or (is_cross_avg_down and fall_steps > 1) or fall_steps > 2):
-                            status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
-                            if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                                cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                                if cancel_result == 0:
-                                    qmt_trader.add_cancel_order(order_id)
-                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
-                    orders_to_rebuy = []
-                    for budget_info in budgets_list:
-                        if budget_info[0] == stock_code:
-                            orders_to_rebuy.append(budget_info)
-                    if len(orders_to_rebuy) > 0:
-                        index = len(orders_to_rebuy) - 1
-                        while index >= 0:
-                            c_order_id = -1
-                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
-                            if left_volume <= 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
-                                del orders_to_rebuy[index]
-                                index = index - 1
-                                continue
-                            if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                if 'SH' in stock_code:
-                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
-                                else:
-                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
-                            else:
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格略高 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
-                            if c_order_id > 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
-                            index = index - 1
-                    else:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格略高，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff >= 0.01 and price_diff < 0.055:
-                    for order_id in cur_uncomplete_orders:
-                        status_q = stock_order_statuses[order_id]['order_status'] if order_id in stock_order_statuses else None
-                        if status_q and (status_q == xtconstant.ORDER_PART_SUCC or status_q == xtconstant.ORDER_REPORTED or status_q == xtconstant.ORDER_WAIT_REPORTING):
-                            order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有低买可撤低买 orderid-{order_id} {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                            cancel_result = qmt_trader.cancel_order(order_id, sync=True)
-                            if cancel_result == 0:
-                                qmt_trader.add_cancel_order(order_id)
-                    if (is_over_fall and fall_steps > 3) or (is_cross_avg_down and fall_steps > 2):
-                        order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，下跌跳过 {is_over_fall}, {is_cross_avg_down}, {fall_steps}.")
-                        continue
-                    c_order_id = -1
-                    budgets_list = get_cancel_budgets(orders_dict, budgets_list)
-                    orders_to_rebuy = []
-                    for budget_info in budgets_list:
-                        if budget_info[0] == stock_code:
-                            orders_to_rebuy.append(budget_info)
-                    if len(orders_to_rebuy) > 0:
-                        index = len(orders_to_rebuy) - 1
-                        while index >= 0:
-                            c_order_id = -1
-                            (s_code, o_id, left_volume, left_budget, order_remark, buffered) = orders_to_rebuy[index]
-                            if left_volume <= 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1]!= o_id]
-                                del orders_to_rebuy[index]
-                                index = index - 1
-                                continue
-                            if is_over_up or (is_cross_avg_up and up_steps > 1) or up_steps > 2:
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有撤单，上涨追买5 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                if 'SH' in stock_code:
-                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SH_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
-                                else:
-                                    c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_SZ_CONVERT_5_CANCEL, order_remark=order_remark, sync=True)
-                            else:
-                                order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格高 {price_diff}，有撤单，追买1 {is_over_up}, {is_cross_avg_up}, {up_steps}.")
-                                c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
-                            if c_order_id > 0:
-                                budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
-                                del orders_to_rebuy[index]
-                            index = index - 1
-                    else:
-                        order_logger.info(f"[consumer_to_rebuy] 股票价格高，无买入量: {stock_code} price_diff - {price_diff}")
-                elif price_diff >= 0.055:
-                    order_logger.info(f"[consumer_to_rebuy] 股票代码: {stock_code} 价格过高 {price_diff}，跳过.")
-                    continue
+                            order_logger.info(f"[consumer_to_rebuy] 撤单状态不对 {order_status_c}")
+                            continue
+
+                        order_logger.info(f"[consumer_to_rebuy] 股票撤单，有买入量: {stock_code}  - {left_volume} ")
+                        c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                        if c_order_id > 0:
+                            budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
+                            del orders_to_rebuy[index]
+                        index = index - 1
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 

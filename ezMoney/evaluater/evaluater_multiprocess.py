@@ -27,6 +27,7 @@ import pandas_market_calendars as mcal
 import akshare as ak
 import json
 
+import datetime
 import sys
 sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from http_request import build_http_request
@@ -642,10 +643,10 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503']
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [5, 7, 10, 15, 30, 50]
-gaps = [0, 10, 15, 20, 30]
+trade_days_rang = [5, 10, 15]
+gaps = [0]
 # 候选排名筛选
-max_stock_ranks = [10, 5, 3, 2]
+max_stock_ranks = [5, 3, 2]
 
 # 方向前几
 
@@ -676,10 +677,32 @@ filter_params = [
         'top_fx': [1,2,3, 50],
         'top_cx': [1,2,3, 50],
         'only_fx': [False, True],
-        'enbale_industry': [False, True],
+        'enbale_industry': [False],
         'filter_amount': [6000000, 8000000, 10000000, 12000000]
     }
 ]
+
+class ResultWriter:
+    """批量结果写入器"""
+    def __init__(self, output_path, batch_size=5000):
+        self.buffer = []
+        self.output_path = output_path
+        self.batch_size = batch_size
+        self.lock_path = output_path + ".lock"
+    
+    def add(self, result):
+        self.buffer.append(result)
+        if len(self.buffer) >= self.batch_size:
+            self.flush()
+    
+    def flush(self):
+        if not self.buffer:
+            return
+        with FileLock(self.lock_path):
+            with open(self.output_path, 'a', encoding='utf-8') as f:
+                for item in self.buffer:
+                    f.write(json.dumps(item, ensure_ascii=False, cls=NpEncoder) + '\n')
+        self.buffer = []
 
 
 def generate_filter_params(m):
@@ -860,9 +883,8 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
     
     file_name = f"{strategy_name}_{sub_strategy_name}_{uuid.uuid4().hex[:8]}.jsonl"
     output_path = os.path.join(output_dir, file_name)
-    
+    writer = ResultWriter(output_path)
     # 创建文件锁
-    lock_path = output_path + ".lock"
     # for i in range(0, len(months)):
     all_stocks = {}
     all_stocks_info = xtdata.get_stock_list_in_sector('沪深A股')
@@ -907,8 +929,8 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
         # 重置索引
         for rank_filter in block_rank_filter:
             for gap in gaps:
+                trade_df = a_trade_df.reset_index(drop=True)
                 if rank_filter:
-                    trade_df = a_trade_df.reset_index(drop=True)
                     for idx, row in trade_df.iterrows():
                         block_category = row['block_category']
                         block_codes = row['block_codes']
@@ -936,108 +958,107 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                     trade_df.loc[idx, 'max_industry_code_rank'] = i_min_rank
                             trade_df.loc[idx, 'max_block_code_rank'] = min_rank
 
-                    for max_stock_rank in max_stock_ranks:
-                        trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
+                for max_stock_rank in max_stock_ranks:
+                    trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
 
-                        for filter_fuc in filter_funcs:
-                            for filter_param in filter_params:
-                                params_list = generate_filter_params(filter_param)
-                                for param_dict in params_list:
-                                    import warnings
-                                    df = None
-                                    # 临时忽略 DeprecationWarning 警告
-                                    param_dict['all_stocks'] = all_stocks
-                                    with warnings.catch_warnings():
-                                        warnings.filterwarnings("ignore", category=DeprecationWarning)
-                                        df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
+                    for filter_fuc in filter_funcs:
+                        for filter_param in filter_params:
+                            params_list = generate_filter_params(filter_param)
+                            for param_dict in params_list:
+                                import warnings
+                                df = None
+                                # 临时忽略 DeprecationWarning 警告
+                                param_dict['all_stocks'] = all_stocks
+                                with warnings.catch_warnings():
+                                    warnings.filterwarnings("ignore", category=DeprecationWarning)
+                                    df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
 
-                                    # df = df.drop(['block_category_info'], axis=1)
-                                    # 将索引设置为 date_key 列
-                                    if len(df) < 1:
+                                # df = df.drop(['block_category_info'], axis=1)
+                                # 将索引设置为 date_key 列
+                                if len(df) < 1:
+                                    continue
+
+                                df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
+                                df['real_open'] = -1
+
+                                for idx, row in df.iterrows():
+                                    stock_code = row['stock_code']
+                                    if stock_code.split('.')[0] not in all_stocks:
+                                        df.loc[idx, 'real_open'] = -1
                                         continue
+                                    stock_code = all_stocks[stock_code.split('.')[0]]
+                                    date_key = row['date_key']
+                                    n_data_key = date_key
+                                    if '-' in n_data_key:
+                                        n_data_key = n_data_key.replace('-', '')
 
-                                    df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
-                                    df['real_open'] = -1
+                                    real_open_price = get_real_open_price(stock_code, date_key)
+                                    df.loc[idx, 'real_open'] = real_open_price
 
-                                    for idx, row in df.iterrows():
-                                        stock_code = row['stock_code']
-                                        if stock_code.split('.')[0] not in all_stocks:
-                                            df.loc[idx, 'real_open'] = -1
-                                            continue
-                                        stock_code = all_stocks[stock_code.split('.')[0]]
-                                        date_key = row['date_key']
-                                        n_data_key = date_key
-                                        if '-' in n_data_key:
-                                            n_data_key = n_data_key.replace('-', '')
+                                df = df[df['real_open'] > 0]
 
-                                        real_open_price = get_real_open_price(stock_code, date_key)
-                                        df.loc[idx, 'real_open'] = real_open_price
+                                df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
+                                df['r_return'] = df['r_return']-0.001
+                                df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
+                                df['r_close_return'] = df['r_close_return']-0.001
 
-                                    df = df[df['real_open'] > 0]
+                                min_date_key = df['date_key'].min()
 
-                                    df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
-                                    df['r_return'] = df['r_return']-0.001
-                                    df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
-                                    df['r_close_return'] = df['r_close_return']-0.001
+                                if min_date_key not in last_100_trade_days:
+                                    print(f'min_date_key: {min_date_key}')
+                                    raise
+                                min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
 
-                                    min_date_key = df['date_key'].min()
-
-                                    if min_date_key not in last_100_trade_days:
-                                        print(f'min_date_key: {min_date_key}')
-                                        raise
-                                    min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
-
-                                    trade_frequency = min_date_trade_days / len(df)
+                                trade_frequency = min_date_trade_days / len(df)
 
 
-                                    import datetime
-                                    if not isinstance(min_date_key, datetime.datetime):
-                                        min_date_key = pd.to_datetime(min_date_key)
+                                import datetime
+                                if not isinstance(min_date_key, datetime.datetime):
+                                    min_date_key = pd.to_datetime(min_date_key)
 
-                                    # 获取当前日期
-                                    current_date = datetime.datetime.now()
-                                    time_interval = current_date - min_date_key
-                                    first_trade_interval = time_interval.days
+                                # 获取当前日期
+                                current_date = datetime.datetime.now()
+                                time_interval = current_date - min_date_key
+                                first_trade_interval = time_interval.days
 
-                                    trade_avg_days = first_trade_interval / len(df)
+                                trade_avg_days = first_trade_interval / len(df)
 
-                                    df = df.set_index('date_key')
-                                    # 对索引进行排序
-                                    df = df.sort_index()
-                                    import json
+                                df = df.set_index('date_key')
+                                # 对索引进行排序
+                                df = df.sort_index()
+                                import json
 
-                                    for return_name in return_names:
-                                        r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
-                                        codes_dict = df['stock_name'].to_dict()
-                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                for return_name in return_names:
+                                    r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
+                                    codes_dict = df['stock_name'].to_dict()
+                                    json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
 
 
-                                        r['交易策略'] =  strategy_name
-                                        r['交易子策略'] =  sub_strategy_name
-                                        r['交易明细'] =  json_codes_data
-                                        r['最近交易日数'] = trade_days
-                                        r['方向重新计算'] = rank_filter
-                                        r['间隔'] = gap
-                                        r['交易日候选数'] = max_stock_rank
-                                        r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
-                                        if 'all_stocks' in param_dict:
-                                            del param_dict['all_stocks']
-                                        r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
-                                        r['收益计算方式'] = return_name
-                                        if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
-                                            r['强方向过滤'] = 1
-                                        else:
-                                            r['强方向过滤'] = 0
-                                        with FileLock(lock_path):
-                                            with open(output_path, 'a', encoding='utf-8') as f:
-                                                f.write(json.dumps(r, ensure_ascii=False, cls=NpEncoder) + '\n')
-                                                
-                                        # 及时清理内存
-                                        del r
-                                        gc.collect()
+                                    r['交易策略'] =  strategy_name
+                                    r['交易子策略'] =  sub_strategy_name
+                                    r['交易明细'] =  json_codes_data
+                                    r['最近交易日数'] = trade_days
+                                    r['方向重新计算'] = rank_filter
+                                    r['间隔'] = gap
+                                    r['交易日候选数'] = max_stock_rank
+                                    r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
+                                    if 'all_stocks' in param_dict:
+                                        del param_dict['all_stocks']
+                                    r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                    r['收益计算方式'] = return_name
+                                    if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                        r['强方向过滤'] = 1
+                                    else:
+                                        r['强方向过滤'] = 0
+                                    writer.add(r)
+                                            
+                                    # 及时清理内存
+                                    del r
+                                gc.collect()
                                         # return
 
 
+    writer.flush()
 
 if __name__ == '__main__':
 
@@ -1058,11 +1079,31 @@ if __name__ == '__main__':
             print("Config No data Error.")
 
     configs = config['configs']
-    cur_day = get_current_date()
     m = {}
+    cur_day = datetime.datetime.now().strftime("%Y-%m-%d")
 
-    output_dir = f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250313'
-    os.makedirs(output_dir, exist_ok=True)
+    
+    
+    filter_strategy_names = []
+    total_args = 'Strategy-'
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            if arg == 'a':
+                filter_strategy_names.extend(['低吸', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a'])
+                total_args = total_args + '低吸'
+            elif arg == 'b':
+                filter_strategy_names.append('追涨')
+                total_args = total_args + '追涨'
+            elif arg == 'c':
+                filter_strategy_names.append('接力')
+                total_args = total_args + '接力'
+            else:
+                continue
+        else:
+            print("No arguments provided.")
+    
+    if not filter_strategy_names:
+        filter_strategy_names = ['低吸', '追涨', '接力', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a']
     
 
     for config in configs:
@@ -1087,6 +1128,7 @@ if __name__ == '__main__':
 
     l_days = len(last_100_trade_days)
 
+   
     import concurrent.futures
 
     # ... existing code ...
@@ -1098,14 +1140,19 @@ if __name__ == '__main__':
     # manager = Manager()
     # results = manager.list()
     build_http_request.check_user_alive()
+    
+    output_dir = f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval\\eval_{cur_day}\\{total_args}\\'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     with ProcessPoolExecutor(max_workers=10, initializer=init_process) as executor:
         futures = []
         for strategy_name, sub_strategy_names in m.items():
-            if '追涨' != strategy_name:
+            if strategy_name not in filter_strategy_names:
                 continue
             for sub_strategy_name in sub_strategy_names:
                 future = executor.submit(process_strategy, strategy_name, sub_strategy_name, last_100_trade_days, output_dir)
+                print(f'add task {strategy_name} - {sub_strategy_name}')
                 futures.append(future)
 
         # 等待所有任务完成
@@ -1130,50 +1177,50 @@ if __name__ == '__main__':
     column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '间隔', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
-    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_zz\\')
-
     # 假设 df 已经定义
     # 按照 交易策略、交易子策略、最近交易日数 进行分组
-    grouped = sve_df.groupby(['交易策略', '交易子策略', '最近交易日数', '收益计算方式'])
+    grouped = sve_df.groupby(['交易策略', '交易子策略', '最近交易日数', '收益计算方式', '方向重新计算'])
 
-    # 筛选出总收益率最大且交易频率 <= 3 的数据
-    max_return = grouped.apply(lambda x: x[x['交易频率'] <= 5].nlargest(1, '总收益率')).reset_index(drop=True)
-    max_return = max_return.sort_values(by='总收益率', ascending=False)
+    for rg in [(0 , 1.5), (1.5, 3), (3, 5)]:
+        min_freq, max_freq = rg
+        # 筛选出交易频率在指定范围内的数据
+        filtered_df = grouped.apply(lambda x: x[(x['交易频率'] > min_freq) & (x['交易频率'] <= max_freq)]).reset_index(drop=True)
 
-    # 筛选出回撤最小且交易频率 <= 3 的数据
-    min_drawdown = grouped.apply(lambda x: x[x['交易频率'] <= 5].nlargest(1, '最大回撤')).reset_index(drop=True)
-    min_drawdown = min_drawdown.sort_values(by='最大回撤', ascending=False)
+        max_return = filtered_df.groupby(['交易策略', '交易子策略', '最近交易日数', '收益计算方式', '方向重新计算']).apply(lambda x: x.nlargest(1, '总收益率')).reset_index(drop=True)
+        max_return = max_return.sort_values(by='总收益率', ascending=False)
+        
+        min_drawdown = filtered_df.groupby(['交易策略', '交易子策略', '最近交易日数', '收益计算方式', '方向重新计算']).apply(lambda x: x.nlargest(1, '最大回撤')).reset_index(drop=True)
+        min_drawdown = min_drawdown.sort_values(by='最大回撤', ascending=False)
 
-    # 筛选出胜率最高且交易频率 <= 3 的数据
-    max_win_rate = grouped.apply(lambda x: x[x['交易频率'] <= 3].nlargest(1, '胜率')).reset_index(drop=True)
-    max_win_rate = max_win_rate.sort_values(by='胜率', ascending=False)
+        max_win_rate = filtered_df.groupby(['交易策略', '交易子策略', '最近交易日数', '收益计算方式', '方向重新计算']).apply(lambda x: x.nlargest(1, '胜率')).reset_index(drop=True)
+        max_win_rate = max_win_rate.sort_values(by='胜率', ascending=False)
 
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    # sve_df.to_excel(f'{dir_path}\\eval_results.xlsx')
+        dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_results\\{cur_day}\\freq_{max_freq}\\{total_args}\\')
 
-    for dayns in trade_days_rang:
-        for return_type in return_names:
-            excel_file_name = f'{return_type}_max_return_{dayns}.xlsx'
-            sv_max_return = max_return[(max_return['最近交易日数'] == dayns) & (max_return['收益计算方式'] == return_type)].reset_index(drop=True)
-            sv_max_return = sv_max_return.sort_values(by='总收益率', ascending=False)
-            sv_max_return.to_excel(f'{dir_path}\\{excel_file_name}')
-    
-    for dayns in trade_days_rang:
-        for return_type in return_names:
-            excel_file_name = f'{return_type}_min_drawdown_{dayns}.xlsx'
-            sv_max_return = min_drawdown[(min_drawdown['最近交易日数'] == dayns) & (min_drawdown['收益计算方式'] == return_type)].reset_index(drop=True)
-            sv_max_return = sv_max_return.sort_values(by='最大回撤', ascending=False)
-            sv_max_return.to_excel(f'{dir_path}\\{excel_file_name}')
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        # sve_df.to_excel(f'{dir_path}\\eval_results.xlsx')
 
-    for dayns in trade_days_rang:
-        for return_type in return_names:
-            excel_file_name = f'{return_type}_max_win_rate_{dayns}.xlsx'
-            sv_max_return = max_win_rate[(max_win_rate['最近交易日数'] == dayns) & (max_win_rate['收益计算方式'] == return_type)].reset_index(drop=True)
-            sv_max_return = sv_max_return.sort_values(by='胜率', ascending=False)
-            sv_max_return.to_excel(f'{dir_path}\\{excel_file_name}')
+        for dayns in trade_days_rang:
+            with pd.ExcelWriter(f'{dir_path}\\result_sheets_{dayns}.xlsx') as writer:
+                for return_type in return_names:
+                    tag = ''
+                    if return_type == 'r_return':
+                        tag = 'open'
+                    else:
+                        tag = 'close'
+                    sv_max_return = max_return[(max_return['最近交易日数'] == dayns) & (max_return['收益计算方式'] == return_type)].reset_index(drop=True)
+                    sv_max_return = sv_max_return.sort_values(by='总收益率', ascending=False)
+                    sv_max_return.to_excel(writer, sheet_name=f'max_return_{tag}')
+                    
+                    sv_max_return = min_drawdown[(min_drawdown['最近交易日数'] == dayns) & (min_drawdown['收益计算方式'] == return_type)].reset_index(drop=True)
+                    sv_max_return = sv_max_return.sort_values(by='最大回撤', ascending=False)
+                    sv_max_return.to_excel(writer, sheet_name=f'min_drawdown_{tag}')
 
+                    sv_max_return = max_win_rate[(max_win_rate['最近交易日数'] == dayns) & (max_win_rate['收益计算方式'] == return_type)].reset_index(drop=True)
+                    sv_max_return = sv_max_return.sort_values(by='胜率', ascending=False)
+                    sv_max_return.to_excel(writer, sheet_name=f'max_win_rate_{tag}')
 
-    max_return.to_excel(f'{dir_path}\\max_return_results.xlsx')
-    min_drawdown.to_excel(f'{dir_path}\\min_drawdown_results.xlsx')
-    max_win_rate.to_excel(f'{dir_path}\\max_win_rate_results.xlsx')
+        max_return.to_excel(f'{dir_path}\\max_return_results.xlsx')
+        min_drawdown.to_excel(f'{dir_path}\\min_drawdown_results.xlsx')
+        max_win_rate.to_excel(f'{dir_path}\\max_win_rate_results.xlsx')

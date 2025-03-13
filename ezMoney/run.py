@@ -55,10 +55,10 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-13"
+test_date = "2025-03-14"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -342,6 +342,35 @@ strategies = {
                     }
                 ]
             }
+            
+        }
+    }
+    ,
+    "追涨": {
+        "sub_strategies": {
+            "小高开追涨": {
+                "code": "9G0019",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 3,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 30,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            } 
         }
     }
     # ,
@@ -406,7 +435,8 @@ strategies_to_buffer = {
     "低吸-连断低吸": [0.025],
     "低吸-断低吸": [0.018],
     "低吸-放宽低吸前3": [0.018],
-    "低吸-绿盘低吸": [0.018]
+    "低吸-绿盘低吸": [0.018],
+    "追涨-小高开追涨": [0.025]
 }
 
 default_positions = {
@@ -422,6 +452,7 @@ default_positions = {
     "低吸-断低吸": 0.1,
     "低吸-放宽低吸前3": 0.1,
     "低吸-绿盘低吸": 0.1,
+    "追涨-小高开追涨": 0.1,
 }
 
 ##########################strategy configs ################
@@ -563,6 +594,7 @@ def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered
         return []
     if not filtered:
         return codes[:topn]
+    code_to_index_dict = {key: value for key, value in code_to_index_dict.items() if key in codes}
     if fx_filtered:
         min_category_rank = get_max_block_category_rank(code_to_index_dict)
         if enbale_industry:
@@ -772,6 +804,7 @@ def direction_filter_fuc(candicates, category_infos, params):
     # if not params:
     #     logger.info("direction_filter_fuc params is empty")
     #     return [candicates[0].code]
+
     for c_param in params:
         fuc_params = {
         }

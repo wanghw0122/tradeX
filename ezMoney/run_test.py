@@ -45,12 +45,12 @@ if __name__ == "__main__":
     #     traded_amount = trade.traded_amount
     #     print(f"股票代码: {stock_code}, 订单ID: {order_id}, 成交价格: {traded_price},成交金额: {traded_amount}, 成交数量: {traded_volume}, 成交时间: {trade_time}, 交易类型: {order_type}")
     with SQLiteManager(db_name) as manager:
-        # manager.insert_data("strategy_budget",{'strategy_name':'低吸-中位断板低吸',
-        #                                   'budget':25000,
-        #                                   'origin_budget': 25000})
+        manager.insert_data("strategy_budget",{'strategy_name':'追涨-小高开追涨',
+                                          'budget':30000,
+                                          'origin_budget': 30000})
 
-        manager.update_data("strategy_budget",{
-                                          'origin_budget': 30000,
-                                          'budget': 30000}, {'strategy_name':'xiao_cao_dwyxdx'})
+        # manager.update_data("strategy_budget",{
+        #                                   'origin_budget': 30000,
+        #                                   'budget': 30000}, {'strategy_name':'xiao_cao_dwyxdx'})
         # manager.update_budget("xiao_cao_1j2db",10000)
        

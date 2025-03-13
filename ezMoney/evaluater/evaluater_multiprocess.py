@@ -634,7 +634,7 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
 
 # sub_strategy_name = '低位N字低吸'
 
-max_stock_rank = 20
+# max_stock_rank = 20
 
 
 months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503']
@@ -673,8 +673,8 @@ filter_params = [
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,3, 15],
-        'top_cx': [1,2,3, 15],
+        'top_fx': [1,2,3, 50],
+        'top_cx': [1,2,3, 50],
         'only_fx': [False, True],
         'enbale_industry': [False, True],
         'filter_amount': [6000000, 8000000, 10000000, 12000000]
@@ -1061,7 +1061,7 @@ if __name__ == '__main__':
     cur_day = get_current_date()
     m = {}
 
-    output_dir = f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250311'
+    output_dir = f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_20250313'
     os.makedirs(output_dir, exist_ok=True)
     
 
@@ -1102,6 +1102,8 @@ if __name__ == '__main__':
     with ProcessPoolExecutor(max_workers=10, initializer=init_process) as executor:
         futures = []
         for strategy_name, sub_strategy_names in m.items():
+            if '追涨' != strategy_name:
+                continue
             for sub_strategy_name in sub_strategy_names:
                 future = executor.submit(process_strategy, strategy_name, sub_strategy_name, last_100_trade_days, output_dir)
                 futures.append(future)
@@ -1128,7 +1130,7 @@ if __name__ == '__main__':
     column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '方向重新计算', '间隔', '强方向过滤', '收益计算方式', '交易日候选数', '过滤函数', '过滤参数', '最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
-    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval\\')
+    dir_path = os.path.dirname(f'D:\\workspace\\TradeX\\ezMoney\\evaluater\\eval_zz\\')
 
     # 假设 df 已经定义
     # 按照 交易策略、交易子策略、最近交易日数 进行分组
@@ -1148,7 +1150,7 @@ if __name__ == '__main__':
 
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    sve_df.to_excel(f'{dir_path}\\eval_results.xlsx')
+    # sve_df.to_excel(f'{dir_path}\\eval_results.xlsx')
 
     for dayns in trade_days_rang:
         for return_type in return_names:

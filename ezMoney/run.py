@@ -395,18 +395,18 @@ strategies = {
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.02],
-    "xiao_cao_dwyxdx": [0.015],
-    "低吸-低位孕线低吸": [0.015],
-    "低吸-低位N字低吸": [0.015],
-    "低吸-中位孕线低吸": [0.015],
-    "低吸-首断低吸": [0.015],
-    "低吸-中位低吸": [0.015],
-    "低吸-中位断板低吸": [0.02],
-    "低吸-连断低吸": [0.02],
-    "低吸-断低吸": [0.015],
-    "低吸-放宽低吸前3": [0.015],
-    "低吸-绿盘低吸": [0.015]
+    "xiao_cao_1j2db": [0.025],
+    "xiao_cao_dwyxdx": [0.018],
+    "低吸-低位孕线低吸": [0.018],
+    "低吸-低位N字低吸": [0.018],
+    "低吸-中位孕线低吸": [0.018],
+    "低吸-首断低吸": [0.018],
+    "低吸-中位低吸": [0.018],
+    "低吸-中位断板低吸": [0.025],
+    "低吸-连断低吸": [0.025],
+    "低吸-断低吸": [0.018],
+    "低吸-放宽低吸前3": [0.018],
+    "低吸-绿盘低吸": [0.018]
 }
 
 default_positions = {
@@ -2131,7 +2131,7 @@ if __name__ == "__main__":
 
     scheduler = BackgroundScheduler()
     # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=4, id="code_schedule_job")
+    scheduler.add_job(strategy_schedule_job, 'interval', seconds=3, id="code_schedule_job")
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 

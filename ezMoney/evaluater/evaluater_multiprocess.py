@@ -27,7 +27,6 @@ import pandas_market_calendars as mcal
 import akshare as ak
 import json
 
-import datetime
 import sys
 sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from http_request import build_http_request
@@ -1080,7 +1079,7 @@ if __name__ == '__main__':
 
     configs = config['configs']
     m = {}
-    cur_day = datetime.datetime.now().strftime("%Y-%m-%d")
+    cur_day = datetime.now().strftime("%Y-%m-%d")
 
     
     

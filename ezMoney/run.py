@@ -220,7 +220,7 @@ strategies = {
                     }
                 ]
             },
-
+            
             "放宽低吸前3": {
                 # 近期亮眼
                 "code": "9G0099",   
@@ -368,6 +368,21 @@ strategies = {
                     'gap': 30,
                     'except_is_ppp': True,
                     'except_is_track': False
+                    },
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 1,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False 
                     }
                 ]
             } 
@@ -424,19 +439,19 @@ strategies = {
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.025],
-    "xiao_cao_dwyxdx": [0.018],
-    "低吸-低位孕线低吸": [0.018],
-    "低吸-低位N字低吸": [0.018],
-    "低吸-中位孕线低吸": [0.018],
-    "低吸-首断低吸": [0.018],
-    "低吸-中位低吸": [0.018],
-    "低吸-中位断板低吸": [0.025],
-    "低吸-连断低吸": [0.025],
-    "低吸-断低吸": [0.018],
-    "低吸-放宽低吸前3": [0.018],
-    "低吸-绿盘低吸": [0.018],
-    "追涨-小高开追涨": [0.025]
+    "xiao_cao_1j2db": [0.018],
+    "xiao_cao_dwyxdx": [0.013],
+    "低吸-低位孕线低吸": [0.013],
+    "低吸-低位N字低吸": [0.013],
+    "低吸-中位孕线低吸": [0.013],
+    "低吸-首断低吸": [0.013],
+    "低吸-中位低吸": [0.013],
+    "低吸-中位断板低吸": [0.018],
+    "低吸-连断低吸": [0.018],
+    "低吸-断低吸": [0.013],
+    "低吸-放宽低吸前3": [0.013],
+    "低吸-绿盘低吸": [0.013],
+    "追涨-小高开追涨": [0.018]
 }
 
 default_positions = {

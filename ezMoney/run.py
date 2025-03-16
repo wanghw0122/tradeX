@@ -55,7 +55,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-03-14"
@@ -368,21 +368,6 @@ strategies = {
                     'gap': 30,
                     'except_is_ppp': True,
                     'except_is_track': False
-                    },
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'topn': 1,
-                    'top_fx': 1,
-                    'top_cx': 1,
-                    'only_fx': False,
-                    'enbale_industry': False,
-                    'empty_priority': True,
-                    'min_trade_amount': 10000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': False 
                     }
                 ]
             } 

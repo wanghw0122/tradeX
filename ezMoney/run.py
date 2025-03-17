@@ -58,7 +58,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-14"
+test_date = "2025-03-17"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -182,7 +182,7 @@ strategies = {
             #     ]
             # },
             "连断低吸": {
-                # 15日 交易低频 夏普高 
+                # 15日 交易低频 夏普高 有方向
                 "code": "9G0033",
                 "returnNum": 2,
                 "budget": "zwdbdx",
@@ -207,7 +207,7 @@ strategies = {
             },
             # 交易频率2 15日最强
             "放宽低吸前3": {
-                # 15日 亮眼
+                # 15日 亮眼 有方向
                 "code": "9G0099",   
                 "returnNum": 10,
                 "budget": "ndx",
@@ -232,7 +232,7 @@ strategies = {
             },
     
             "中位断板低吸": {
-                # 偏中长期，稳定收益
+                # 偏中长期，稳定收益 无方向
                 "code": "9G0042",
                 "returnNum": 2,
                 "budget": "zwdbdx",
@@ -256,7 +256,7 @@ strategies = {
                 ]
             },
             "断低吸": {
-                # 10日 高频 前2
+                # 10日 高频 前2 有方向
                 "code": "9G0032",
                 "returnNum": 2,
                 "budget": "ddx",
@@ -304,7 +304,7 @@ strategies = {
             #     ]
             # },
             "绿盘低吸": {
-                # 5日最强-高频 2
+                # 5日最强-高频 2 无方向
                 "code": "9G0002",
                 "returnNum": 5,
                 "budget": "ddx",
@@ -328,7 +328,7 @@ strategies = {
                 ]
             },
             "低位低吸": {
-                # 5日最强-高频 1
+                # 5日最强-高频 1 无方向
                 "code": "9G0020",
                 "returnNum": 5,
                 "budget": "ddx",
@@ -357,7 +357,7 @@ strategies = {
     ,
     "追涨": {
         "sub_strategies": {
-            # 10日高频 收益不错
+            # 10日高频 收益不错 无方向
             "小高开追涨": {
                 "code": "9G0019",
                 "returnNum": 5,

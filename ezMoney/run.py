@@ -182,7 +182,7 @@ strategies = {
             #     ]
             # },
             "连断低吸": {
-                # 近期表现亮眼 + 15
+                # 15日 交易低频 夏普高 
                 "code": "9G0033",
                 "returnNum": 2,
                 "budget": "zwdbdx",
@@ -193,26 +193,11 @@ strategies = {
                     "fx_filtered": True,
                     "topn": 1,
                     "top_fx": 2,
-                    "top_cx": 15,
-                    "only_fx": True,
-                    "enbale_industry": True,
-                    "empty_priority": True,
-                    'min_trade_amount': 6000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': False
-                    },
-                    {
-                    "filtered": True,
-                    "fx_filtered": True,
-                    "topn": 1,
-                    "top_fx": 1,
                     "top_cx": 1,
                     "only_fx": True,
                     "enbale_industry": False,
                     "empty_priority": False,
-                    'min_trade_amount': 6000000,
+                    'min_trade_amount': 8000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -220,9 +205,9 @@ strategies = {
                     }
                 ]
             },
-            
+            # 交易频率2 15日最强
             "放宽低吸前3": {
-                # 近期亮眼
+                # 15日 亮眼
                 "code": "9G0099",   
                 "returnNum": 10,
                 "budget": "ndx",
@@ -247,7 +232,7 @@ strategies = {
             },
     
             "中位断板低吸": {
-                # 结束卖 回撤太大 强势上涨阶段收益很高 看趋势再玩
+                # 偏中长期，稳定收益
                 "code": "9G0042",
                 "returnNum": 2,
                 "budget": "zwdbdx",
@@ -271,9 +256,9 @@ strategies = {
                 ]
             },
             "断低吸": {
-                # 开盘卖 还可以 挺强的
+                # 10日 高频 前2
                 "code": "9G0032",
-                "returnNum": 3,
+                "returnNum": 2,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -282,11 +267,11 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 2,
-                    'top_cx': 1,
+                    'top_cx': 50,
                     'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': False,
-                    'min_trade_amount': 12000000,
+                    'min_trade_amount': 6000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -294,34 +279,34 @@ strategies = {
                     }
                 ]
             },
-            "中位低吸": {
-                # 收盘卖
-                "code": "9G0026",
-                "returnNum": 3,
-                "budget": "ddx",
-                'returnFullInfo': True,
-                'filter_params': [
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'topn': 1,
-                    'top_fx': 2,
-                    'top_cx': 1,
-                    'only_fx': True,
-                    'enbale_industry': False,
-                    'empty_priority': True,
-                    'min_trade_amount': 8000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': False
-                    }
-                ]
-            },
+            # "中位低吸": {
+            #     # 收盘卖
+            #     "code": "9G0026",
+            #     "returnNum": 3,
+            #     "budget": "ddx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 2,
+            #         'top_cx': 1,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': True,
+            #         'min_trade_amount': 8000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': False
+            #         }
+            #     ]
+            # },
             "绿盘低吸": {
-                # 开盘卖 还可以 挺强的
+                # 5日最强-高频 2
                 "code": "9G0002",
-                "returnNum": 3,
+                "returnNum": 5,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -330,10 +315,34 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 2,
-                    'top_cx': 1,
-                    'only_fx': True,
+                    'top_cx': 50,
+                    'only_fx': False,
                     'enbale_industry': False,
-                    'empty_priority': True,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            },
+            "低位低吸": {
+                # 5日最强-高频 1
+                "code": "9G0020",
+                "returnNum": 5,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': False,
                     'min_trade_amount': 12000000,
                     'block_rank_filter': True,
                     'gap': 0,
@@ -348,9 +357,10 @@ strategies = {
     ,
     "追涨": {
         "sub_strategies": {
+            # 10日高频 收益不错
             "小高开追涨": {
                 "code": "9G0019",
-                "returnNum": 10,
+                "returnNum": 5,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -359,13 +369,13 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 2,
-                    'top_cx': 3,
-                    'only_fx': True,
+                    'top_cx': 1,
+                    'only_fx': False,
                     'enbale_industry': False,
                     'empty_priority': True,
-                    'min_trade_amount': 10000000,
+                    'min_trade_amount': 6000000,
                     'block_rank_filter': True,
-                    'gap': 30,
+                    'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': False
                     }
@@ -425,18 +435,19 @@ strategies = {
 
 strategies_to_buffer = {
     "xiao_cao_1j2db": [0.018],
-    "xiao_cao_dwyxdx": [0.013],
-    "低吸-低位孕线低吸": [0.013],
-    "低吸-低位N字低吸": [0.013],
-    "低吸-中位孕线低吸": [0.013],
-    "低吸-首断低吸": [0.013],
-    "低吸-中位低吸": [0.013],
+    "xiao_cao_dwyxdx": [0.015],
+    "低吸-低位孕线低吸": [0.015],
+    "低吸-低位N字低吸": [0.015],
+    "低吸-中位孕线低吸": [0.015],
+    "低吸-首断低吸": [0.015],
+    "低吸-中位低吸": [0.015],
     "低吸-中位断板低吸": [0.018],
     "低吸-连断低吸": [0.018],
-    "低吸-断低吸": [0.013],
-    "低吸-放宽低吸前3": [0.013],
-    "低吸-绿盘低吸": [0.013],
-    "追涨-小高开追涨": [0.018]
+    "低吸-断低吸": [0.015],
+    "低吸-放宽低吸前3": [0.015],
+    "低吸-绿盘低吸": [0.015],
+    "追涨-小高开追涨": [0.018],
+    "低吸-低位低吸": [0.015]
 }
 
 default_positions = {
@@ -453,6 +464,7 @@ default_positions = {
     "低吸-放宽低吸前3": 0.1,
     "低吸-绿盘低吸": 0.1,
     "追涨-小高开追涨": 0.1,
+    "低吸-低位低吸": 0.1
 }
 
 ##########################strategy configs ################
@@ -1685,7 +1697,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             del orders_to_rebuy[index]
                             index = index - 1
                             continue
-                        if order_status_c != xtconstant.ORDER_CANCELED and order_status_c != xtconstant.ORDER_PART_CANCEL:
+                        if order_status_c != xtconstant.ORDER_CANCELED and order_status_c != xtconstant.ORDER_PART_CANCEL and order_status_c != xtconstant.ORDER_JUNK:
                             index = index - 1
                             order_logger.info(f"[consumer_to_rebuy] 撤单状态不对 {order_status_c}")
                             continue

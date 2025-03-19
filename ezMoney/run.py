@@ -58,7 +58,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-18"
+test_date = "2025-03-19"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -333,12 +333,12 @@ strategies_to_buffer = {
 }
 
 default_positions = {
-    "低吸-低位孕线低吸": 0.2,
-    "低吸-连断低吸": 0.2,
-    "低吸-中位断板低吸": 0.2,
-    "低吸-断低吸": 0.2,
-    "低吸-放宽低吸前3": 0.1,
-    "追涨-小高开追涨": 0.2
+    "低吸-低位孕线低吸": 0.5,
+    "低吸-连断低吸": 0.3,
+    "低吸-中位断板低吸": 0.5,
+    "低吸-断低吸": 0.3,
+    "低吸-放宽低吸前3": 0.2,
+    "追涨-小高开追涨": 0.3
 }
 
 ##########################strategy configs ################

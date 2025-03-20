@@ -10,6 +10,33 @@ from logger import logger
 import functools
 import time
 
+import threading
+
+# ... 已有代码 ...
+
+# 定义一个锁
+system_time_lock = threading.Lock()
+check_user_alive_lock = threading.Lock()
+
+
+
+def timed_lru_cache(seconds: int, maxsize: int = 128):
+    def wrapper_cache(func):
+        func = functools.lru_cache(maxsize=maxsize)(func)
+        func.lifetime = seconds
+        func.expiration = time.time() + func.lifetime
+
+        @functools.wraps(func)
+        def wrapped_func(*args, **kwargs):
+            if time.time() >= func.expiration:
+                func.cache_clear()
+                func.expiration = time.time() + func.lifetime
+            return func(*args, **kwargs)
+
+        return wrapped_func
+
+    return wrapper_cache
+
 
 def log_error(func):
     @functools.wraps(func)
@@ -72,6 +99,8 @@ def get_request(url, headers, cookies, params=None):
     return response.json()
 
 
+
+@timed_lru_cache(seconds=10)
 @log_error
 def check_user_alive():
     """
@@ -81,29 +110,32 @@ def check_user_alive():
         dict: 响应的 JSON 数据。
     """
     # 获取请求配置
-    urlConfig = get_request_confg_by_name('check_user_alive')
-    url = url_prefix + urlConfig['path']
-    head = urlConfig['headers']
-    cookie = urlConfig['cookies']
-    timeout = urlConfig['timeout']
-    post = urlConfig['method'] == 'post'
-    data = {}
-    if post:
-        post_result = post_request(url, head, cookie, data)
-        i = 0
-        while post_result == None or not post_result['ok']:
-            logger.info("check alive fail user is not login.")
-            user_login()
+    with check_user_alive_lock:
+        urlConfig = get_request_confg_by_name('check_user_alive')
+        url = url_prefix + urlConfig['path']
+        head = urlConfig['headers']
+        cookie = urlConfig['cookies']
+        timeout = urlConfig['timeout']
+        post = urlConfig['method'] == 'post'
+        data = {}
+        if post:
             post_result = post_request(url, head, cookie, data)
-            i = i + 1
-            if i > 3:
-                break
-        if post_result and post_result['ok']:
-            logger.info("check alive success.")
-        return post_result
-    else:
-        return get_request(url, head, cookie)
+            i = 0
+            while post_result == None or not post_result['ok']:
+                logger.info("check alive fail user is not login.")
+                user_login()
+                post_result = post_request(url, head, cookie, data)
+                i = i + 1
+                if i > 3:
+                    break
+            if post_result and post_result['ok']:
+                logger.info("check alive success.")
+            return post_result
+        else:
+            return get_request(url, head, cookie)
 
+
+@timed_lru_cache(seconds=10)
 @log_error
 def system_time(formatter = ""):
     """
@@ -113,25 +145,26 @@ def system_time(formatter = ""):
         str: 格式化后的时间字符串。
     """
     # 获取请求配置
-    urlConfig = get_request_confg_by_name('system_time')
-    url = url_prefix + urlConfig['path']
-    head = urlConfig['headers']
-    cookie = urlConfig['cookies']
-    post = urlConfig['method'] == 'post'
-    data = {}
-    if post:
-        sys_time_json = post_request(url, head, cookie, data)
-        if sys_time_json == None:
-            raise ValueError(f"Request failed with res: {sys_time_json}")
-        if 'errorCode' in sys_time_json and sys_time_json['errorCode']:
-            raise ValueError(f"Request failed with errorcode: {sys_time_json['errorCode']}, errormsg: {sys_time_json['errorMsg']}")
-        if 'result' not in sys_time_json:
-            raise ValueError(f"Request failed with res: {sys_time_json}")
-        timestamp = sys_time_json['result']
-        date_obj = datetime.fromtimestamp(timestamp/1000)
-        return date_obj.strftime(formatter)
-    else:
-        raise
+    with system_time_lock:
+        urlConfig = get_request_confg_by_name('system_time')
+        url = url_prefix + urlConfig['path']
+        head = urlConfig['headers']
+        cookie = urlConfig['cookies']
+        post = urlConfig['method'] == 'post'
+        data = {}
+        if post:
+            sys_time_json = post_request(url, head, cookie, data)
+            if sys_time_json == None:
+                raise ValueError(f"Request failed with res: {sys_time_json}")
+            if 'errorCode' in sys_time_json and sys_time_json['errorCode']:
+                raise ValueError(f"Request failed with errorcode: {sys_time_json['errorCode']}, errormsg: {sys_time_json['errorMsg']}")
+            if 'result' not in sys_time_json:
+                raise ValueError(f"Request failed with res: {sys_time_json}")
+            timestamp = sys_time_json['result']
+            date_obj = datetime.fromtimestamp(timestamp/1000)
+            return date_obj.strftime(formatter)
+        else:
+            raise
 @log_error
 def block_category_rank(date = get_current_date(), model = 0):
     """

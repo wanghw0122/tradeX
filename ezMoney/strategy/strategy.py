@@ -12,6 +12,7 @@ from jinja2 import Template
 from data_class.xiao_cao_environment_second_line_v2 import *
 from functools import wraps
 from functools import lru_cache
+import concurrent.futures
 
 file_name = 'D:\\workspace\\TradeX\\ezMoney\\strategy\\strategyConfig.yml'
 
@@ -285,6 +286,30 @@ class StrategyManager:
                 return_rslt[strategy_name] = rslt
         return return_rslt
 
+
+    # def run_all_strategys(self, strategies_dict = {}, current_date = date.get_current_date()):
+    #     logger.info(f"strategies_dict: {strategies_dict}")
+    #     return_rslt = {}
+    #     if strategies_dict is None or len(strategies_dict) == 0:
+    #         return {}
+    #     all_valid_strategy_names = self.get_all_strategy_names()
+    #     futures = []
+    #     with concurrent.futures.ThreadPoolExecutor() as executor:
+    #         for strategy_name, sub_task_dict in strategies_dict.items():
+    #             if strategy_name not in all_valid_strategy_names:
+    #                 logger.info(f"策略 {strategy_name} 无效，取消执行.")
+    #                 continue
+    #             if 'sub_strategies' in sub_task_dict and sub_task_dict['sub_strategies']:
+    #                 sub_strategies = sub_task_dict['sub_strategies']
+    #                 for sub_task, params in sub_strategies.items():
+    #                     future = executor.submit(self.run_strategys, [strategy_name], current_date, sub_task, params)
+    #                     futures.append((strategy_name + '-' + sub_task, future))
+    #             else:
+    #                 future = executor.submit(self.run_strategys, [strategy_name], current_date, params=sub_task_dict)
+    #                 futures.append((strategy_name, future))
+    #         for key, future in futures:
+    #             return_rslt[key] = future.result()
+    #     return return_rslt
 
     def get_all_strategy_names(self):
         return [strategy.name for strategy in self.strategy_list if strategy.status > 0]

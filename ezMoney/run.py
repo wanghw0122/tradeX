@@ -158,9 +158,9 @@ budgets = {
 strategies = {
     "低吸": {
         "sub_strategies": {
-            # 长期玩
+            # 长期玩 回撤不高 创建日期 2025-03-19
             "低位孕线低吸": {
-                "code": "9G0086",   
+                "code": "9G0086",
                 "returnNum": 2,
                 "budget": "ydx",
                 'returnFullInfo': True,
@@ -183,7 +183,7 @@ strategies = {
                 ]
             },
             "连断低吸": {
-                # 15日 交易低频 夏普高 有方向 最近强势
+                # 15日 交易低频 夏普高 有方向 最近强势 创建日期 2025-03-19
                 "code": "9G0033",
                 "returnNum": 2,
                 "budget": "zwdbdx",
@@ -208,7 +208,7 @@ strategies = {
             },
             # 交易频率2 15日最强
             "放宽低吸前3": {
-                # 15日 亮眼 有方向 最近强势
+                # 15日 亮眼 有方向 最近强势 创建日期 2025-03-19
                 "code": "9G0099",   
                 "returnNum": 10,
                 "budget": "ndx",
@@ -239,6 +239,7 @@ strategies = {
                 "budget": "zwdbdx",
                 'returnFullInfo': True,
                 'filter_params': [
+                    # 中长期 上升趋势强 下降趋势弱， 创建日期 2025-03-19
                     {
                     'filtered': True,
                     'fx_filtered': True,
@@ -253,11 +254,27 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': False
+                    },
+                    # 最近方向表现不错， 夏普高 创建日期 2025-03-20 
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False 
                     }
                 ]
             },
             "断低吸": {
-                # 10日 高频 前2 有方向 最近强势
+                # 10日 高频 前2 有方向 最近强势 创建日期 2025-03-19
                 "code": "9G0032",
                 "returnNum": 3,
                 "budget": "ddx",
@@ -279,14 +296,63 @@ strategies = {
                     'except_is_track': False
                     }
                 ]
-            }
+            },
             
+            "绿盘低吸": {
+                # 30日 中频 前2 有方向 最近强势 创建日期 2025-03-20
+                "code": "9G0002",
+                "returnNum": 3,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 12000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            },
+
+            "中位低吸": {
+                # 15日 中频 前2 有方向 胜率 60% 最近强势 创建日期 2025-03-20
+                "code": "9G0026",
+                "returnNum": 3,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 3,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            }
         }
     }
     ,
     "追涨": {
         "sub_strategies": {
-            # 收益不错 有方向 最近强势
+            # 收益不错 有方向 最近强势 ，创建日期 2025-03-19
             "小高开追涨": {
                 "code": "9G0019",
                 "returnNum": 5,
@@ -303,6 +369,31 @@ strategies = {
                     'enbale_industry': False,
                     'empty_priority': False,
                     'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            },
+
+            "中位小高开起爆": {
+                # 最近5天可以，夏普高 有方向 最近强势 创建日期 2025-03-20
+                "code": "9G0091",
+                "returnNum": 5,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 8000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -329,16 +420,20 @@ strategies_to_buffer = {
     "低吸-绿盘低吸": [0.012],
     "追涨-小高开追涨": [0.018],
     "低吸-低位低吸": [0.012],
-    "追涨-断追涨": [0.018]
+    "追涨-断追涨": [0.018],
+    "追涨-中位小高开起爆": [0.018]
 }
 
 default_positions = {
-    "低吸-低位孕线低吸": 0.5,
-    "低吸-连断低吸": 0.3,
-    "低吸-中位断板低吸": 0.5,
-    "低吸-断低吸": 0.3,
-    "低吸-放宽低吸前3": 0.2,
-    "追涨-小高开追涨": 0.3
+    "低吸-低位孕线低吸": 0.25,
+    "低吸-连断低吸": 0.2,
+    "低吸-中位断板低吸": 0.1,
+    "低吸-断低吸": 0.25,
+    "低吸-放宽低吸前3": 0.25,
+    "追涨-小高开追涨": 0.2,
+    "低吸-绿盘低吸": 0.25,
+    "低吸-中位低吸": 0.25,
+    "追涨-中位小高开起爆": 0.1
 }
 
 ##########################strategy configs ################
@@ -682,15 +777,16 @@ def get_max_industry_code_rank_items_by_rank(code_to_index_dict, rank=1):
 
 def direction_filter_fuc(candicates, category_infos, params):
     res = []
+    res_dict = {}
     if not candicates:
-        return res
+        return res_dict
     # if len(candicates) == 1:
     #     return [candicates[0].code]
     
     # if not params:
     #     logger.info("direction_filter_fuc params is empty")
     #     return [candicates[0].code]
-
+    
     for c_param in params:
         fuc_params = {
         }
@@ -958,11 +1054,23 @@ def direction_filter_fuc(candicates, category_infos, params):
 
         c_res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
         if c_res and len(c_res) > 0:
+            apos = 1 / len(c_res)
             for c in c_res:
-                if c and c not in res:
-                    res.append(c)
+                if c:
+                    res.append((c, apos))
+    
+    if not res:
+        return {}
+    
 
-    return res
+    
+    for c, ppos in res:
+        if c in res_dict:
+            res_dict[c] = res_dict[c] + ppos
+        else:
+            res_dict[c] = ppos
+
+    return res_dict
 
 
 def set_strategy_codes_to_budgets(strategy_name, codes, strategies_dict = strategies, budgets_dict = budgets):
@@ -1084,6 +1192,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
                 continue
             position = 0
             auction_codes = []
+            auction_codes_dict = {}
             if 'xiao_cao_env' in item:
                 xiaocao_envs = item['xiao_cao_env'][0]
                 position = get_position(xiaocao_envs)
@@ -1092,18 +1201,24 @@ def get_target_codes_by_all_strategies(retry_times=3):
                 real_item_list = item[name]
                 if real_item_list == None:
                     continue
+                real_item_dict = {}
                 if 'xiaocao_category_info' in item:
                     xiaocao_category_infos = item['xiaocao_category_info']
-                    real_item_list = direction_filter_fuc(real_item_list, xiaocao_category_infos, params=get_filter_params(key))
+                    real_item_dict = direction_filter_fuc(real_item_list, xiaocao_category_infos, params=get_filter_params(key))
                 else:
                     if type(real_item_list[0]) != str:
                         real_item_list = [t.code for t in real_item_list]
-                for code in real_item_list:
-                    if not code or len(code) == 0:
+                        lr = len(real_item_list)
+                        
+                        for code in real_item_list:
+                            real_item_dict[code] = 1/lr
+                for code, pos in real_item_dict.items():
+                    if not code or len(code) == 0 or pos <= 0:
                         continue
                     auction_codes.append(code.split('.')[0])
-            if len(auction_codes):
-                rslt_dct[key] = auction_codes
+                    auction_codes_dict[code.split('.')[0]] = pos
+            if len(auction_codes_dict):
+                rslt_dct[key] = auction_codes_dict
                 for code in auction_codes:
                     if code in codes_to_strategies:
                         if key not in codes_to_strategies[code]:
@@ -1111,7 +1226,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
                     else:
                         codes_to_strategies[code] = [key]
             else:
-                rslt_dct[key] = []
+                rslt_dct[key] = {}
         return rslt_dct, position
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
@@ -1179,20 +1294,20 @@ def merge_result_new(rslt, position):
         return {}
     if len(rslt) == 0:
         return {}
-    for key, codes in rslt.items():
-        logger.info(f"策略{key}, 成功得到结果 {codes}.")
-        code_len = len(codes)
+    for key, codes_dict in rslt.items():
+        logger.info(f"策略{key}, 成功得到结果 {codes_dict}.")
+        code_len = len(codes_dict)
         if code_len <= 0:
             continue
         if key in default_positions:
-                base_position = default_positions[key]
+            base_position = default_positions[key]
         else:
             base_position = 0
         real_position = max(min(base_position + position, 1), 0)
         avg_position = real_position / code_len
-        for code in codes:
+        for code, p in codes_dict.items():
             code_info = key + '|' + str(code)
-            res[code_info] = (avg_position, key)
+            res[code_info] = (avg_position * p, key)
     
     return res
 

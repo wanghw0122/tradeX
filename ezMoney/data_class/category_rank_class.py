@@ -84,8 +84,13 @@ def build_category_rank_sort_list(date = get_current_date()):
         localCategoryRankList = rslt['result']['localCategoryRankList']
     if localCategoryRankList == None:
         return categoryRankList
+    # for item in localCategoryRankList:
+    #     curItem = CategoryRank(**item)
+    #     categoryRankList.append(curItem)
     for item in localCategoryRankList:
-        curItem = CategoryRank(**item)
+        # 过滤掉不在 CategoryRank 类属性中的字段
+        filtered_item = {k: v for k, v in item.items() if k in CategoryRank.__dataclass_fields__}
+        curItem = CategoryRank(**filtered_item)
         categoryRankList.append(curItem)
 
     categoryRankList.sort(key=lambda x: x.num, reverse=True)
@@ -105,7 +110,8 @@ def build_block_rank_list(date = get_current_date()):
     for item in block_rank_list:
         if item == None:
             continue
-        block = BlockRank(**item)
+        filtered_item = {k: v for k, v in item.items() if k in BlockRank.__dataclass_fields__}
+        block = BlockRank(**filtered_item)
         rslt.append(block)
     return rslt
 

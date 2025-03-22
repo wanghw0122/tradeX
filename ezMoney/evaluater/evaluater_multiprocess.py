@@ -26,7 +26,7 @@ import pandas as pd
 import pandas_market_calendars as mcal
 import akshare as ak
 import json
-
+import traceback
 import sys
 sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from http_request import build_http_request
@@ -876,188 +876,195 @@ def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = 
 
 
 def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, output_dir):
-    print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
-    
-    print ("consumer_to_subscribe_whole connect success")
-    
-    file_name = f"{strategy_name}_{sub_strategy_name}_{uuid.uuid4().hex[:8]}.jsonl"
-    output_path = os.path.join(output_dir, file_name)
-    writer = ResultWriter(output_path)
-    # 创建文件锁
-    # for i in range(0, len(months)):
-    all_stocks = {}
-    all_stocks_info = xtdata.get_stock_list_in_sector('沪深A股')
-    for stock in all_stocks_info:
-        if stock.startswith('60') or stock.startswith('00'):
-            cde = stock.split('.')[0]
-            all_stocks[cde] = stock
-
-    combined_df = pd.DataFrame()
-    conn = sqlite3.connect('D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db')
-    for month in months[:]:
-        db_name = 'strategy_data_aftermarket_%s' % month
-        if sub_strategy_name != strategy_name: 
-            query = "select * from %s where (strategy_name = '%s' and sub_strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, sub_strategy_name, 20)
-        else:
-            query = "select * from %s where (strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, 20)
-        df = pd.read_sql_query(query, conn)
-        combined_df = pd.concat([combined_df, df], axis=0)
-    conn.close()
-    combined_df = combined_df.reset_index(drop=True)
-    if len(combined_df) < 1:
-        return
-
-    combined_df = combined_df[(combined_df['open_price'] > 0) & (combined_df['next_day_open_price'] > 0) & (combined_df['next_day_close_price'] > 0)]
-    if len(combined_df) < 1:
-        return
-
-    combined_df = combined_df.sort_values(by='date_key', ascending=False)
+    try:
+        print(f"strategy_name: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
         
-    for trade_days in trade_days_rang:
-
-        print(len(combined_df))
+        print ("consumer_to_subscribe_whole connect success")
         
-        # 获取最近的 7 个不同的 date_key
-        latest_trade_dates = combined_df['date_key'].unique()[:trade_days]
+        file_name = f"{strategy_name}_{sub_strategy_name}_{uuid.uuid4().hex[:8]}.jsonl"
+        output_path = os.path.join(output_dir, file_name)
+        writer = ResultWriter(output_path)
+        # 创建文件锁
+        # for i in range(0, len(months)):
+        all_stocks = {}
+        all_stocks_info = xtdata.get_stock_list_in_sector('沪深A股')
+        for stock in all_stocks_info:
+            if stock.startswith('60') or stock.startswith('00'):
+                cde = stock.split('.')[0]
+                all_stocks[cde] = stock
 
-        # 筛选出最近 7 个 date_key 对应的行
-        a_trade_df = combined_df[combined_df['date_key'].isin(latest_trade_dates)]
+        combined_df = pd.DataFrame()
+        conn = sqlite3.connect('D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db')
+        for month in months[:]:
+            db_name = 'strategy_data_aftermarket_%s' % month
+            if sub_strategy_name != strategy_name: 
+                query = "select * from %s where (strategy_name = '%s' and sub_strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, sub_strategy_name, 20)
+            else:
+                query = "select * from %s where (strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, 20)
+            df = pd.read_sql_query(query, conn)
+            combined_df = pd.concat([combined_df, df], axis=0)
+        conn.close()
+        combined_df = combined_df.reset_index(drop=True)
+        if len(combined_df) < 1:
+            return
 
-        if len(a_trade_df) < trade_days - 1:
-            continue
-        # 重置索引
-        for rank_filter in block_rank_filter:
-            for gap in gaps:
-                trade_df = a_trade_df.reset_index(drop=True)
-                if rank_filter:
-                    for idx, row in trade_df.iterrows():
-                        block_category = row['block_category']
-                        block_codes = row['block_codes']
-                        industry_code = row['industry_code']
-                        date_key = row['date_key']
-                        ranked_block_dict = get_ranked_category_infos(date_key, gap = gap)
-                        min_rank = 100
-                        if not block_codes:
-                            continue
-                        else:
-                            for block_code in block_codes.split(','):
-                                if block_code in ranked_block_dict:
-                                    rank_this = ranked_block_dict[block_code]
-                                    min_rank = min(min_rank, rank_this)
-                        if not industry_code:
-                            trade_df.loc[idx, 'max_block_code_rank'] = min_rank
-                            continue
-                        else:
-                            i_min_rank = 100
-                            for i_code in industry_code.split(','):
-                                if i_code in ranked_block_dict:
-                                    rank_this = ranked_block_dict[i_code]
-                                    min_rank = min(min_rank, rank_this)
-                                    i_min_rank = min(i_min_rank, rank_this)
-                                    trade_df.loc[idx, 'max_industry_code_rank'] = i_min_rank
-                            trade_df.loc[idx, 'max_block_code_rank'] = min_rank
+        combined_df = combined_df[(combined_df['open_price'] > 0) & (combined_df['next_day_open_price'] > 0) & (combined_df['next_day_close_price'] > 0)]
+        if len(combined_df) < 1:
+            return
 
-                for max_stock_rank in max_stock_ranks:
-                    trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
+        combined_df = combined_df.sort_values(by='date_key', ascending=False)
+            
+        for trade_days in trade_days_rang:
 
-                    for filter_fuc in filter_funcs:
-                        for filter_param in filter_params:
-                            params_list = generate_filter_params(filter_param)
-                            for param_dict in params_list:
-                                import warnings
-                                df = None
-                                # 临时忽略 DeprecationWarning 警告
-                                param_dict['all_stocks'] = all_stocks
-                                with warnings.catch_warnings():
-                                    warnings.filterwarnings("ignore", category=DeprecationWarning)
-                                    df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
+            print(len(combined_df))
+            
+            # 获取最近的 7 个不同的 date_key
+            latest_trade_dates = combined_df['date_key'].unique()[:trade_days]
 
-                                # df = df.drop(['block_category_info'], axis=1)
-                                # 将索引设置为 date_key 列
-                                if len(df) < 1:
-                                    continue
+            # 筛选出最近 7 个 date_key 对应的行
+            a_trade_df = combined_df[combined_df['date_key'].isin(latest_trade_dates)]
 
-                                df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
-                                df['real_open'] = -1
+            if len(a_trade_df) < trade_days - 1:
+                continue
+            # 重置索引
+            for rank_filter in block_rank_filter:
+                for gap in gaps:
+                    trade_df = a_trade_df.reset_index(drop=True)
+                    if rank_filter:
+                        for idx, row in trade_df.iterrows():
+                            block_category = row['block_category']
+                            block_codes = row['block_codes']
+                            industry_code = row['industry_code']
+                            date_key = row['date_key']
+                            ranked_block_dict = get_ranked_category_infos(date_key, gap = gap)
+                            min_rank = 100
+                            if not block_codes:
+                                continue
+                            else:
+                                for block_code in block_codes.split(','):
+                                    if block_code in ranked_block_dict:
+                                        rank_this = ranked_block_dict[block_code]
+                                        min_rank = min(min_rank, rank_this)
+                            if not industry_code:
+                                trade_df.loc[idx, 'max_block_code_rank'] = min_rank
+                                continue
+                            else:
+                                i_min_rank = 100
+                                for i_code in industry_code.split(','):
+                                    if i_code in ranked_block_dict:
+                                        rank_this = ranked_block_dict[i_code]
+                                        min_rank = min(min_rank, rank_this)
+                                        i_min_rank = min(i_min_rank, rank_this)
+                                        trade_df.loc[idx, 'max_industry_code_rank'] = i_min_rank
+                                trade_df.loc[idx, 'max_block_code_rank'] = min_rank
 
-                                for idx, row in df.iterrows():
-                                    stock_code = row['stock_code']
-                                    if stock_code.split('.')[0] not in all_stocks:
-                                        df.loc[idx, 'real_open'] = -1
+                    for max_stock_rank in max_stock_ranks:
+                        trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
+
+                        for filter_fuc in filter_funcs:
+                            for filter_param in filter_params:
+                                params_list = generate_filter_params(filter_param)
+                                for param_dict in params_list:
+                                    import warnings
+                                    df = None
+                                    # 临时忽略 DeprecationWarning 警告
+                                    param_dict['all_stocks'] = all_stocks
+                                    with warnings.catch_warnings():
+                                        warnings.filterwarnings("ignore", category=DeprecationWarning)
+                                        df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
+
+                                    # df = df.drop(['block_category_info'], axis=1)
+                                    # 将索引设置为 date_key 列
+                                    if len(df) < 1:
                                         continue
-                                    stock_code = all_stocks[stock_code.split('.')[0]]
-                                    date_key = row['date_key']
-                                    n_data_key = date_key
-                                    if '-' in n_data_key:
-                                        n_data_key = n_data_key.replace('-', '')
 
-                                    real_open_price = get_real_open_price(stock_code, date_key)
-                                    df.loc[idx, 'real_open'] = real_open_price
+                                    df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
+                                    df['real_open'] = -1
 
-                                df = df[df['real_open'] > 0]
+                                    for idx, row in df.iterrows():
+                                        stock_code = row['stock_code']
+                                        if stock_code.split('.')[0] not in all_stocks:
+                                            df.loc[idx, 'real_open'] = -1
+                                            continue
+                                        stock_code = all_stocks[stock_code.split('.')[0]]
+                                        date_key = row['date_key']
+                                        n_data_key = date_key
+                                        if '-' in n_data_key:
+                                            n_data_key = n_data_key.replace('-', '')
 
-                                df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
-                                df['r_return'] = df['r_return']-0.001
-                                df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
-                                df['r_close_return'] = df['r_close_return']-0.001
+                                        real_open_price = get_real_open_price(stock_code, date_key)
+                                        df.loc[idx, 'real_open'] = real_open_price
 
-                                min_date_key = df['date_key'].min()
+                                    df = df[df['real_open'] > 0]
 
-                                if min_date_key not in last_100_trade_days:
-                                    print(f'min_date_key: {min_date_key}')
-                                    raise
-                                min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
+                                    df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
+                                    df['r_return'] = df['r_return']-0.001
+                                    df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
+                                    df['r_close_return'] = df['r_close_return']-0.001
 
-                                trade_frequency = min_date_trade_days / len(df)
+                                    min_date_key = df['date_key'].min()
 
+                                    if min_date_key not in last_100_trade_days:
+                                        print(f'min_date_key: {min_date_key}')
+                                        raise
+                                    min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
 
-                                import datetime
-                                if not isinstance(min_date_key, datetime.datetime):
-                                    min_date_key = pd.to_datetime(min_date_key)
-
-                                # 获取当前日期
-                                current_date = datetime.datetime.now()
-                                time_interval = current_date - min_date_key
-                                first_trade_interval = time_interval.days
-
-                                trade_avg_days = first_trade_interval / len(df)
-
-                                df = df.set_index('date_key')
-                                # 对索引进行排序
-                                df = df.sort_index()
-                                import json
-
-                                for return_name in return_names:
-                                    r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
-                                    codes_dict = df['stock_name'].to_dict()
-                                    json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                    trade_frequency = min_date_trade_days / len(df)
 
 
-                                    r['交易策略'] =  strategy_name
-                                    r['交易子策略'] =  sub_strategy_name
-                                    r['交易明细'] =  json_codes_data
-                                    r['最近交易日数'] = trade_days
-                                    r['方向重新计算'] = rank_filter
-                                    r['间隔'] = gap
-                                    r['交易日候选数'] = max_stock_rank
-                                    r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
-                                    if 'all_stocks' in param_dict:
-                                        del param_dict['all_stocks']
-                                    r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
-                                    r['收益计算方式'] = return_name
-                                    if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
-                                        r['强方向过滤'] = 1
-                                    else:
-                                        r['强方向过滤'] = 0
-                                    writer.add(r)
-                                            
-                                    # 及时清理内存
-                                    del r
-                                gc.collect()
-                                        # return
+                                    import datetime
+                                    if not isinstance(min_date_key, datetime.datetime):
+                                        min_date_key = pd.to_datetime(min_date_key)
+
+                                    # 获取当前日期
+                                    current_date = datetime.datetime.now()
+                                    time_interval = current_date - min_date_key
+                                    first_trade_interval = time_interval.days
+
+                                    trade_avg_days = first_trade_interval / len(df)
+
+                                    df = df.set_index('date_key')
+                                    # 对索引进行排序
+                                    df = df.sort_index()
+                                    import json
+
+                                    for return_name in return_names:
+                                        r = caculate_returns(df, return_name, _print=False, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
+                                        codes_dict = df['stock_name'].to_dict()
+                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
 
 
-    writer.flush()
+                                        r['交易策略'] =  strategy_name
+                                        r['交易子策略'] =  sub_strategy_name
+                                        r['交易明细'] =  json_codes_data
+                                        r['最近交易日数'] = trade_days
+                                        r['方向重新计算'] = rank_filter
+                                        r['间隔'] = gap
+                                        r['交易日候选数'] = max_stock_rank
+                                        r['过滤函数'] =  '空方向优先' if filter_fuc == group_filter_fx else '方向优先'
+                                        if 'all_stocks' in param_dict:
+                                            del param_dict['all_stocks']
+                                        r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                        r['收益计算方式'] = return_name
+                                        if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                            r['强方向过滤'] = 1
+                                        else:
+                                            r['强方向过滤'] = 0
+                                        writer.add(r)
+                                                
+                                        # 及时清理内存
+                                        del r
+                                    gc.collect()
+                                            # return
+
+
+        writer.flush()
+    except Exception as e:
+        print(f"Error processing strategy: {strategy_name}, sub_strategy_name: {sub_strategy_name}")
+        print(e)
+        traceback.print_exc()
+        stack_trace = traceback.format_exc()
+        print(stack_trace)
 
 if __name__ == '__main__':
 

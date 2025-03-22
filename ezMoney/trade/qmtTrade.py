@@ -251,6 +251,8 @@ class QMTTrader:
         :param order_remark: 委托备注，默认为空
         :return: 委托ID
         """
+        from decimal import Decimal, ROUND_HALF_UP
+        price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
         if sync:
             if order_type == xtconstant.FIX_PRICE:
                 order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
@@ -517,6 +519,70 @@ class QMTTrader:
             else:
                 logger.error(f"股票 {stock_code} 的跌停价计算错误，无法卖出")
         return sell_results
+    
+
+    def sell_all_holdings_end(self, order_remark='', filter_codes = []):
+        """
+        卖出所有持仓股票
+
+        :param account: 资金账号
+        :return: 卖出结果
+        """
+        # now = datetime.datetime.now()
+        # if now.hour > 0:
+        #     logger.error(f"当前时间 {now} 非0点时间，无法自动卖出")
+        #     return
+        logger.info(f"开始卖出所有持仓股票")
+
+        hold_positions = self.get_tradable_stocks()
+        sell_results = []
+
+        for position in hold_positions:
+            stock_code = position['stock_code']
+            if stock_code in filter_codes:
+                logger.info(f"股票 {stock_code} 在过滤列表中，跳过卖出")
+                continue
+            quantity = position['available_qty']
+            down_price = self.calculate_sell_price(stock_code)
+            limit_down_price = self.calculate_limit_down_price(stock_code)
+            limit_down_price = max(limit_down_price, down_price)
+
+            logger.info(f"准备挂单卖出 股票代码: {stock_code}, 可卖出数量: {quantity}, 卖出跌停价: {limit_down_price}")
+            if limit_down_price:
+                sell_result = self.sell(stock_code, limit_down_price, quantity)
+                sell_results.append({
+                    'stock_code': stock_code,
+                    'quantity': quantity,
+                    'sell_price': limit_down_price,
+                    'sell_result': sell_result
+                })
+                # self.seq_ids_dict[sell_result] = (stock_code, limit_down_price, quantity, xtconstant.FIX_PRICE, order_remark)
+            else:
+                logger.error(f"股票 {stock_code} 的跌停价计算错误，无法卖出")
+        return sell_results
+    
+
+    def calculate_sell_price(self, stock_code):
+        """
+        计算第二天跌停价
+
+        :param stock_code: 股票代码
+        :return: 第二天跌停价，如果计算失败则返回 None
+        """
+        try:
+            full_tick = xtdata.get_full_tick([stock_code])
+            if full_tick and 'lastPrice' in full_tick[stock_code]:
+                last_price = full_tick[stock_code]['lastPrice']
+                print(f"last_price {last_price}")
+                from decimal import Decimal, ROUND_HALF_UP
+                limit_down_price = Decimal(str(last_price * 0.99)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+                return limit_down_price
+            else:
+                logger.error(f"无法获取股票 {stock_code} 的最新价")
+                return None
+        except Exception as e:
+            logger.error(f"计算股票 {stock_code} 的跌停价时发生错误: {e}")
+            return None
     
     def calculate_limit_down_price(self, stock_code):
         """

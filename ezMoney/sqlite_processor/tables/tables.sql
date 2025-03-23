@@ -165,3 +165,34 @@ CREATE TABLE IF NOT EXISTS strategy_budget (
     extra_info TEXT DEFAULT '',
     createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE IF NOT EXISTS strategy_meta_info (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_name TEXT NOT NULL,
+    sub_strategy_name TEXT DEFAULT '',
+    budget REAL DEFAULT 0,
+    origin_budget REAL DEFAULT 0,
+    incrument_budget REAL DEFAULT 0,
+    stop_loss_pct REAL DEFAULT -1,
+    take_profit_pct REAL DEFAULT -1,
+    max_trade_days INTEGER DEFAULT -1,
+    trade_at_open INTEGER DEFAULT 0,
+    trade_at_close INTEGER DEFAULT 0,
+    trade_at_trading_time INTEGER DEFAULT 0,
+    strategy_status INTEGER DEFAULT 0,
+    budget_change_log TEXT DEFAULT '',
+    profit_loss_pct_log TEXT DEFAULT '',
+    profit_loss_log TEXT DEFAULT '',
+    extra_info TEXT DEFAULT '',
+    win_delta_budget REAL DEFAULT 0,
+    loss_delta_budget REAL DEFAULT 0,
+    win_budget_alpha REAL DEFAULT 0,
+    loss_budget_alpha REAL DEFAULT 0,
+    max_budget REAL DEFAULT 0,
+    min_budget REAL DEFAULT 0,
+    multipy_position INTEGER DEFAULT 0,
+    total_profit REAL DEFAULT 0,
+    createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (strategy_name)
+);

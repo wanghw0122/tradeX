@@ -57,8 +57,8 @@ if __name__ == "__main__":
                 budgets_dict[strategy_name] = - traded_amount
             else:  
                 budgets_dict[strategy_name] = budgets_dict[strategy_name] - traded_amount
-            manager.update_data(table_name, {'trade_result': order_status, 'trade_volume': traded_volume, 'trade_price': traded_price, 'trade_amount': traded_amount}, {'id': id})
-        for strategy_name, increment in budgets_dict.items():
-            logger.info(f"更新预算 strategy_name: {strategy_name}, increment: {increment}")
-            manager.update_budget(strategy_name, increment)
+            manager.update_data(table_name, {'trade_result': order_status, 'trade_volume': traded_volume, 'trade_price': traded_price, 'trade_amount': traded_amount, 'left_volume': traded_volume}, {'id': id})
+        # for strategy_name, increment in budgets_dict.items():
+        #     logger.info(f"更新预算 strategy_name: {strategy_name}, increment: {increment}")
+        #     manager.update_budget(strategy_name, increment)
             

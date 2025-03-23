@@ -122,6 +122,39 @@ def is_after_929():
     start_time = now.replace(hour=9, minute=28, second=0, microsecond=0)
     return now > start_time
 
+def is_after_920():
+    now = datetime.now()
+    start_time = now.replace(hour=9, minute=20, second=0, microsecond=0)
+    return now > start_time
+
+def is_after_1300():
+    now = datetime.now()
+    start_time = now.replace(hour=13, minute=0, second=0, microsecond=0)
+    return now > start_time
+
+def is_after_1505():
+    now = datetime.now()
+    start_time = now.replace(hour=15, minute=5, second=0, microsecond=0)
+    return now > start_time
+
+
+def is_before_0930():
+    now = datetime.now()
+    start_time = now.replace(hour=9, minute=30, second=15, microsecond=0)
+    return now < start_time
+
+def is_after_0935():
+    now = datetime.now()
+    start_time = now.replace(hour=9, minute=35, second=0, microsecond=0)
+    return now > start_time
+
+
+def is_between_1500_and_1510():
+    now = datetime.now()
+    start_time = now.replace(hour=15, minute=0, second=0, microsecond=0)
+    end_time = now.replace(hour=15, minute=10, second=0, microsecond=0)
+    return start_time <= now < end_time
+
 def get_trade_dates_by_end(end_date, trade_days = 30):
     import datetime
     end_date_t = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()

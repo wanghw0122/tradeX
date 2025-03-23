@@ -36,6 +36,15 @@ class SQLiteManager:
         self.conn.commit()
         logger.info("Data inserted successfully.")
 
+    def insert_or_update_data(self, table_name, data_dict):
+        columns = ', '.join(data_dict.keys())
+        placeholders = ', '.join(['?' for _ in data_dict])
+        values = tuple(data_dict.values())
+        insert_query = f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})"
+        self.cursor.execute(insert_query, values)
+        self.conn.commit()
+        logger.info("Data inserted or updated successfully.")
+
     def delete_data(self, table_name, condition_dict):
         conditions = ' AND '.join([f"{key} = ?" for key in condition_dict])
         values = tuple(condition_dict.values())

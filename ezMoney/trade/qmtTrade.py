@@ -1,6 +1,7 @@
 import pprint
 import re
-import time, datetime, traceback, sys
+import time, sys
+from arrow import get
 from numpy import true_divide
 from xtquant import xttrader
 from xtquant import xtdata
@@ -9,6 +10,13 @@ from xtquant.xttype import StockAccount
 from xtquant import xtconstant
 from multiprocessing import Manager
 import multiprocessing
+
+import sys
+
+sys.path.append(r"D:\workspace\TradeX\ezMoney")
+
+from date_utils import *
+from sqlite_processor.mysqlite import SQLiteManager
 
 from logger import logger, order_logger
 
@@ -167,6 +175,7 @@ class QMTTrader:
             logger.info('QMT交易接口连接成功')
         self.all_stocks = {}
         self.build_all_stocks()
+        self.sell_stock_infos = {}
 
     def init_order_context(self, flag= True):
         manager = Manager()
@@ -181,7 +190,368 @@ class QMTTrader:
         self.cancel_orders = manager.list()
         self.lock = multiprocessing.Lock()
         self.canceled_orders = []
-    
+
+    def start_sell_listener(self):
+        import threading
+        self.monitor_thread = threading.Thread(target=self.monitor_sell_stock_infos)
+        self.monitor_thread.setDaemon(True)
+        self.monitor_thread.start()
+
+    def monitor_sell_stock_infos(self):
+        """
+        监听 sell_stock_infos 字典的变化
+        """
+        import json
+        db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+        is_trade_day, _ = date.is_trading_day()
+        if not is_trade_day:
+            return
+        monning = date.is_after_920() and not date.is_after_1300()
+        afternoon = date.is_after_1300()
+
+        # self.sell_stock_infos[order_id] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, volume)
+        if afternoon:
+            updated_oids = []
+            while True:
+                if date.is_after_1505() and len(self.sell_stock_infos) > 0:
+                    logger.info(f"sell_stock_infos 发生变化: {self.sell_stock_infos}")
+                    cur_orders_stats = self.get_all_orders(filter_order_ids = list(self.sell_stock_infos.keys()))
+                    for order_id, info in self.sell_stock_infos.items():
+                        stock_code = info[0]
+                        left_volume = info[1]
+                        trade_price = info[2]
+                        o_id = info[3]
+                        strategy_name = info[4]
+                        trade_day = info[5]
+                        reason = info[6]
+                        volume = info[7]
+                        if order_id not in cur_orders_stats:
+                            print(f"order_id {order_id} not in cur_orders_stats")
+                            continue
+                        cur_order_stat = cur_orders_stats[order_id]
+                        order_status = cur_order_stat['order_status']
+                        if cur_order_stat['order_status'] == xtconstant.ORDER_PART_SUCC or cur_order_stat['order_status'] == xtconstant.ORDER_SUCCEEDED:
+                            traded_price = cur_order_stat['traded_price']
+                            traded_volume = cur_order_stat['traded_volume']
+                            order_volume = cur_order_stat['order_volume']
+                            profit = (traded_price - trade_price) * traded_volume
+                            profit_pct = profit / (traded_volume * trade_price)
+                            order_logger.info(f"order_id {order_id} sell success, stock_code {stock_code}, status {order_status}, left_volume {left_volume}, o_id {o_id}, strategy_name {strategy_name}, reason {reason}, volume {volume}, traded_price {traded_price}, traded_volume {traded_volume}")
+                            volume = 0 if volume <= traded_volume else volume - traded_volume
+                            with SQLiteManager(db_name) as manager:
+                                manager.update_data("trade_data", {'profit': profit, 'profit_pct': profit_pct, 'left_volume': volume}, {'order_id': o_id})
+                                updated_oids.append(o_id)
+                        else:
+                            order_logger.info(f"order_id {order_id} sell failed, status {order_status}")
+                            updated_oids.append(o_id)
+                            
+                    break
+                else:
+                    time.sleep(30)
+
+            if updated_oids:
+                order_logger.info(f"准备收益和预算更新，更新ids {updated_oids}")
+                strategy_to_profits = {}
+                strategy_to_logs = {}
+                # 更新收益和预算
+                with SQLiteManager(db_name) as manager:
+                    for oid in updated_oids:
+                        trade_infos = manager.query_data_dict("trade_data", {'order_id': oid})
+                        if trade_infos:
+                            trade_info = trade_infos[0]
+                            date_key = trade_info['date_key']
+                            stock_code = trade_info['stock_code']
+                            strategy_name = trade_info['strategy_name']
+                            profit = trade_info['profit']
+                            profit_pct = trade_info['profit_pct']
+                            left_volume = trade_info['left_volume']
+                            if left_volume > 0:
+                                order_logger.info(f"left_volume > 0, 不更新收益和预算 {left_volume}")
+                                continue
+
+                            profit_info = {
+                                "date": date_key,
+                                "stock_code": stock_code,
+                                "profit": profit,
+                                "profit_pct": profit_pct
+                            }
+                            if strategy_name not in strategy_to_logs:
+                                strategy_to_logs[strategy_name] = []
+                            if strategy_name not in strategy_to_profits:
+                                strategy_to_profits[strategy_name] = 0
+                            strategy_to_logs[strategy_name].append(profit_info)
+                            strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
+                    for strategy_name, profit_infos in strategy_to_logs.items():
+                            
+                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+                            if not strategy_meta_infos:
+                                raise
+                            strategy_meta_info = strategy_meta_infos[0]
+                            win_delta_budget = strategy_meta_info['win_delta_budget']
+                            budget = strategy_meta_info['budget']
+                            loss_delta_budget = strategy_meta_info['loss_delta_budget']
+                            win_budget_alpha = strategy_meta_info['win_budget_alpha']
+                            loss_budget_alpha = strategy_meta_info['loss_budget_alpha']
+                            profit_loss_log = strategy_meta_info['profit_loss_log']
+                            budget_change_log = strategy_meta_info['budget_change_log']
+                            total_profit = strategy_meta_info['total_profit']
+
+                            try:
+                                profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
+                            except json.JSONDecodeError:
+                                profit_loss_log_json = []
+
+                            try:
+                                budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
+                            except json.JSONDecodeError:
+                                budget_change_log_json = []
+                            
+                            profit_loss_log_json.extend(profit_infos)
+                            cur_day_profit = strategy_to_profits[strategy_name] if strategy_name in strategy_to_profits else 0
+                            if cur_day_profit > 0:
+                                add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
+                                budget = budget + add_profit
+                                order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
+                                budget_change_log_json.append({
+                                    "date": date_key,
+                                    "add_budget": add_profit,
+                                    "timetag": "afternoon"
+                                })
+                            elif cur_day_profit < 0:
+                                add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
+                                budget = budget + add_profit
+                                order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
+                                budget_change_log_json.append({
+                                    "date": date_key,
+                                    "add_budget": add_profit,
+                                    "timetag": "afternoon"
+                                })
+                            budget_change_log_json_str = json.dumps(budget_change_log_json)
+                            profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                            total_profit = total_profit + cur_day_profit
+
+                            manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
+        if monning:
+            updated_ids = []
+            updated_oids = []
+            while True:
+                if date.is_before_0930():
+                    time.sleep(1)
+                    continue
+
+                if len(self.sell_stock_infos) <= 0 or date.is_after_0935():
+                    order_logger.info("无监听卖出/任务执行完毕，结束任务")
+                    order_logger.info(f"准备收益和预算更新，更新ids {updated_oids}")
+                    if not updated_oids:
+                        break
+                    strategy_to_profits = {}
+                    strategy_to_logs = {}
+                    # 更新收益和预算
+                    with SQLiteManager(db_name) as manager:
+                        for oid in updated_oids:
+                            trade_infos = manager.query_data_dict("trade_data", {'order_id': oid})
+                            if trade_infos:
+                                trade_info = trade_infos[0]
+                                date_key = trade_info['date_key']
+                                stock_code = trade_info['stock_code']
+                                strategy_name = trade_info['strategy_name']
+                                profit = trade_info['profit']
+                                profit_pct = trade_info['profit_pct']
+                                left_volume = trade_info['left_volume']
+                                if left_volume > 0:
+                                    continue
+
+                                profit_info = {
+                                    "date": date_key,
+                                    "stock_code": stock_code,
+                                    "profit": profit,
+                                    "profit_pct": profit_pct
+                                }
+                                if strategy_name not in strategy_to_logs:
+                                    strategy_to_logs[strategy_name] = []
+                                if strategy_name not in strategy_to_profits:
+                                    strategy_to_profits[strategy_name] = 0
+                                strategy_to_logs[strategy_name].append(profit_info)
+                                strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
+                        for strategy_name, profit_infos in strategy_to_logs.items():
+                            
+                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+                            if not strategy_meta_infos:
+                                raise
+                            strategy_meta_info = strategy_meta_infos[0]
+                            win_delta_budget = strategy_meta_info['win_delta_budget']
+                            budget = strategy_meta_info['budget']
+                            loss_delta_budget = strategy_meta_info['loss_delta_budget']
+                            win_budget_alpha = strategy_meta_info['win_budget_alpha']
+                            loss_budget_alpha = strategy_meta_info['loss_budget_alpha']
+                            profit_loss_log = strategy_meta_info['profit_loss_log']
+                            budget_change_log = strategy_meta_info['budget_change_log']
+                            total_profit = strategy_meta_info['total_profit']
+
+                            try:
+                                profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
+                            except json.JSONDecodeError:
+                                profit_loss_log_json = []
+
+                            try:
+                                budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
+                            except json.JSONDecodeError:
+                                budget_change_log_json = []
+                            
+                            profit_loss_log_json.extend(profit_infos)
+                            cur_day_profit = strategy_to_profits[strategy_name] if strategy_name in strategy_to_profits else 0
+                            if cur_day_profit > 0:
+                                add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
+                                budget = budget + add_profit
+                                order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
+                                budget_change_log_json.append({
+                                    "date": date_key,
+                                    "add_budget": add_profit,
+                                    "timetag": "moning"
+                                })
+                            elif cur_day_profit < 0:
+                                add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
+                                budget = budget + add_profit
+                                order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
+                                budget_change_log_json.append({
+                                    "date": date_key,
+                                    "add_budget": add_profit,
+                                    "timetag": "moning"
+                                })
+                            budget_change_log_json_str = json.dumps(budget_change_log_json)
+                            profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                            total_profit = total_profit + cur_day_profit
+
+                            manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
+
+                    break
+                order_logger.info(f"监听卖出，任务执行。 {self.sell_stock_infos}")
+                cur_orders_stats = self.get_all_orders(filter_order_ids = list(self.sell_stock_infos.keys()))
+                keys_to_delete = []
+                kv_to_merge = {}
+                for order_id, info in self.sell_stock_infos.items():
+                    stock_code = info[0]
+                    left_volume = info[1]
+                    trade_price = info[2]
+                    o_id = info[3]
+                    strategy_name = info[4]
+                    trade_day = info[5]
+                    reason = info[6]
+                    volume = info[7]
+                    if order_id not in cur_orders_stats:
+                        continue
+
+                    cur_order_stat = cur_orders_stats[order_id]
+                    order_status = cur_order_stat['order_status']
+                    if order_status == xtconstant.ORDER_SUCCEEDED:
+                        
+                        traded_price = cur_order_stat['traded_price']
+                        traded_volume = cur_order_stat['traded_volume']
+                        order_volume = cur_order_stat['order_volume']
+                        profit = (traded_price - trade_price) * traded_volume
+                        profit_pct = profit / (traded_volume * trade_price)
+
+                        volume = 0 if volume <= traded_volume else volume - traded_volume
+                        with SQLiteManager(db_name) as manager:
+                            if order_id in updated_ids:
+                                manager.update_data("trade_data", {'profit': profit, 'profit_pct': profit_pct, 'left_volume': volume}, {'order_id': o_id})
+                            else:
+                                origin_dct = manager.query_data_dict("trade_data", {'order_id': o_id})
+                                origin_profit = 0
+                                origin_profit_pct = profit_pct
+                                if origin_dct:
+                                    origin_dct = origin_dct[0]
+                                    origin_profit = origin_dct['profit']
+                                    if origin_profit < -0.99:
+                                        origin_profit = 0
+                                    origin_profit_pct = origin_dct['profit_pct']
+                                    if origin_profit_pct < -0.99:
+                                        origin_profit_pct = profit_pct
+                                manager.update_data("trade_data", {'profit': profit + origin_profit, 'profit_pct': (profit_pct + origin_profit_pct) / 2, 'left_volume': volume}, {'order_id': o_id})
+                        if order_id not in updated_ids:
+                            updated_ids.append(order_id)
+                        if o_id not in updated_oids:
+                            updated_oids.append(o_id)
+                        keys_to_delete.append(order_id)
+                    elif order_status == xtconstant.ORDER_PART_CANCEL or order_status == xtconstant.ORDER_CANCELED:
+                        traded_price = cur_order_stat['traded_price']
+                        traded_volume = cur_order_stat['traded_volume']
+                        order_volume = cur_order_stat['order_volume']
+
+                        if traded_volume > 0 and order_id not in updated_ids:
+                            profit = (traded_price - trade_price) * traded_volume
+                            profit_pct = profit / (traded_volume * trade_price)
+
+                            volume = 0 if volume <= traded_volume else volume - traded_volume
+                            with SQLiteManager(db_name) as manager:
+                                origin_dct = manager.query_data_dict("trade_data", {'order_id': o_id})
+                                origin_profit = 0
+                                origin_profit_pct = profit_pct
+                                if origin_dct:
+                                    origin_dct = origin_dct[0]
+                                    origin_profit = origin_dct['profit']
+                                    if origin_profit < -0.99:
+                                        origin_profit = 0
+                                    origin_profit_pct = origin_dct['profit_pct']
+                                    if origin_profit_pct < -0.99:
+                                        origin_profit_pct = profit_pct
+                                manager.update_data("trade_data", {'profit': profit + origin_profit, 'profit_pct': (profit_pct + origin_profit_pct) / 2, 'left_volume': volume}, {'order_id': o_id})
+                            if order_id not in updated_ids:
+                                updated_ids.append(order_id)
+                            if o_id not in updated_oids:
+                                updated_oids.append(o_id)
+
+                        l_volume = order_volume - traded_volume
+                        if l_volume <= 0:
+                            keys_to_delete.append(order_id)
+                            continue
+                        full_tick_info = xtdata.get_full_tick([stock_code])
+                        if not full_tick_info or stock_code not in full_tick_info:
+                            print(f"stock_code {stock_code} not in full_tick_info")
+                            continue
+                        lastPrice = full_tick_info[stock_code]['lastPrice']
+                        sell_price = lastPrice
+                        if 'bidPrice' in full_tick_info[stock_code]:
+                            bidPrice = full_tick_info[stock_code]['bidPrice']
+                            if len(bidPrice) and bidPrice[0] > 0:
+                                sell_price = bidPrice[0]
+                        if 'max_days' in reason:
+                            sid = self.sell(stock_code, sell_price, l_volume, order_remark=strategy_name)
+                            
+                            if sid > 0:
+                                kv_to_merge[sid] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, l_volume)
+                                keys_to_delete.append(order_id)
+                        elif 'take_profit' in reason:
+                            take_profit_pct = float(reason.split('|')[1])
+                            if lastPrice / trade_price - 1 > take_profit_pct:
+                                sid = self.sell(stock_code, sell_price, l_volume, order_remark=strategy_name)
+                            
+                                if sid > 0:
+                                    kv_to_merge[sid] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, l_volume)
+                                    keys_to_delete.append(order_id)
+                        elif 'stop_loss' in reason:
+
+                            stop_loss_pct = float(reason.split('|')[1])
+                            if lastPrice / trade_price - 1 < stop_loss_pct:
+                                sid = self.sell(stock_code, sell_price, l_volume, order_remark=strategy_name)
+                            
+                                if sid > 0:
+                                    kv_to_merge[sid] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, l_volume)
+                                    keys_to_delete.append(order_id)
+                    elif order_status == xtconstant.ORDER_JUNK:
+                        keys_to_delete.append(order_id)
+                        continue
+                    else:
+                        self.cancel_order(order_id)
+
+                for key in keys_to_delete:
+                    if key in self.sell_stock_infos:
+                        del self.sell_stock_infos[key]
+                for key, value in kv_to_merge.items():
+                    self.sell_stock_infos[key] = value
+
+                time.sleep(5)
+
     def get_orders_dict(self):
         return self.orders_dict
 
@@ -251,19 +621,19 @@ class QMTTrader:
         :param order_remark: 委托备注，默认为空
         :return: 委托ID
         """
+        
         from decimal import Decimal, ROUND_HALF_UP
-        price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+        new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+        
         if sync:
             if order_type == xtconstant.FIX_PRICE:
-                order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
+                order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, new_price, order_remark)
             else:
                 order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, 0, order_remark)
             if order_id < 0:
-                logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
-                order_logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                order_logger.error(f"委托失败，股票代码: {stock_code}, 委托价格: {new_price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
             else:
-                logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
-                order_logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                order_logger.info(f"委托成功，股票代码: {stock_code}, 委托价格: {new_price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
                 try:
                     from sqlite_processor.mysqlite import SQLiteManager
                     from date_utils import date
@@ -271,20 +641,88 @@ class QMTTrader:
                     db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
                     table_name = 'trade_data'
                     with SQLiteManager(db_name) as manager:
-                            manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': order_remark, 'stock_code': stock_code ,'order_type': order_type, 'order_price': price, 'order_volume': volume})
+                            manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': order_remark, 'buy0_or_sell1': 0, 'stock_code': stock_code ,'order_type': order_type, 'order_price': new_price, 'order_volume': volume})
                 except Exception as e:
                     logger.error(f"插入数据失败 {e}")
                     order_logger.error(f"插入数据失败 {e}")
 
                 if orders_dict != None:
-                    orders_dict[order_id] = (stock_code, price, volume, order_type, order_remark, time.time(), buffered)
+                    orders_dict[order_id] = (stock_code, new_price, volume, order_type, order_remark, time.time(), buffered)
                 if orders != None:
                     orders.append(order_id)
             return order_id
         else:
-            seq_id = self.trader.order_stock_async(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, price, order_remark)
-            self.seq_ids_dict[seq_id] = (stock_code, price, volume, order_type, order_remark)
+            seq_id = self.trader.order_stock_async(self.acc, stock_code, xtconstant.STOCK_BUY, volume, order_type, new_price, order_remark)
+            self.seq_ids_dict[seq_id] = (stock_code, new_price, volume, order_type, order_remark)
             return seq_id
+
+
+    def sell_quickly(self, stock_code, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_info = None):
+        """
+        卖出股票
+
+        :param account: 资金账号
+        :param stock_code: 股票代码
+        :param price: 卖出价格
+        :param volume: 卖出数量
+        :param order_type: 委托类型，默认为固定价格委托
+        :param order_remark: 委托备注，默认为空
+        :return: 委托ID
+        """
+        full_tick_info = xtdata.get_full_tick([stock_code])
+        if not full_tick_info:
+            order_logger.error(f"[出售] 获取股票 {stock_code} 行情失败")
+            return
+        price = full_tick_info[stock_code]['lastPrice'] * (1 + buffer)
+        from decimal import Decimal, ROUND_HALF_UP
+        new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+
+        limit_down_price = 0
+
+        if full_tick_info and 'lastClose' in full_tick_info[stock_code]:
+            last_close = full_tick_info[stock_code]['lastClose']
+            print(f"last_close {last_close}")
+            from decimal import Decimal, ROUND_HALF_UP
+            limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+            
+        sell_price = max(new_price, limit_down_price)
+        
+        if sync:
+            if order_type == xtconstant.FIX_PRICE:
+                order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_SELL, volume, order_type, sell_price, order_remark)
+            else:
+                order_id = self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_SELL, volume, order_type, 0, order_remark)
+            if order_id < 0:
+                order_logger.error(f"委托出售失败，股票代码: {stock_code}, 委托价格: {sell_price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+            else:
+                order_logger.info(f"委托出售成功，股票代码: {stock_code}, 委托价格: {sell_price}, 委托类型: {order_type}, 委托数量: {volume}, 委托ID: {order_id}")
+                try:
+                    from sqlite_processor.mysqlite import SQLiteManager
+                    from date_utils import date
+                    date_key = date.get_current_date()
+                    db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+                    table_name = 'trade_data'
+                    with SQLiteManager(db_name) as manager:
+                            manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': order_remark, 'buy0_or_sell1': 1, 'stock_code': stock_code ,'order_type': order_type, 'order_price': sell_price, 'order_volume': volume})
+                except Exception as e:
+                    order_logger.error(f"插入数据失败 {e}")
+                if extra_info:
+                
+                    stock_code = extra_info[0]
+                    left_volume = extra_info[1]
+                    trade_price = extra_info[2]
+                    o_id = extra_info[3]
+                    strategy_name = extra_info[4]
+                    trade_day = extra_info[5]
+                    reason = extra_info[6]
+                    self.sell_stock_infos[order_id] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, volume)
+
+            return order_id
+        else:
+            seq_id = self.trader.order_stock_async(self.acc, stock_code, xtconstant.STOCK_SELL, volume, order_type, sell_price, order_remark)
+            self.seq_ids_dict[seq_id] = (stock_code, sell_price, volume, order_type, order_remark)
+            return seq_id
+
 
 
     def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0, orders_dict = None, orders = None, buffers= [0.0]):
@@ -410,7 +848,7 @@ class QMTTrader:
         :param order_remark: 委托备注，默认为空
         :return: 委托ID
         """
-        return self.trader.order_stock_async(self.acc, stock_code, xtconstant.STOCK_SELL, volume, order_type, price, order_remark)
+        return self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_SELL, volume, order_type, price, order_remark)
 
     def cancel_order(self, order_id, sync = True):
         """

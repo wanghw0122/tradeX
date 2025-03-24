@@ -52,7 +52,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-03-21"
@@ -2134,6 +2134,8 @@ def schedule_sell_stocks_everyday_at_925():
                     manager.update_data("trade_data", {"left_volume": 0}, {"date_key": trade_day})
             return
         
+        order_logger.info(f"股票仓位数据： {position_stocks}")
+
         stock_to_trade_volume = {}
         days_strategy_to_stock_volume = {}
 
@@ -2144,6 +2146,8 @@ def schedule_sell_stocks_everyday_at_925():
             stock_volume = position_stock_info['available_qty']
             if stock_volume > 0:
                 stock_to_trade_volume[stock_code] = stock_volume
+
+        order_logger.info(f"可出售股票详情：{stock_to_trade_volume}")
         
         for trade_day in last_10_trade_days:
             with SQLiteManager(db_name) as manager:
@@ -2335,7 +2339,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 
-    scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=3, id="schedule_sell_stocks_everyday_at_925")
+    scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

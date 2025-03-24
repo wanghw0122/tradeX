@@ -52,10 +52,10 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-21"
+test_date = "2025-03-25"
 
 use_threading_buyer = True
 budget_from_db = True

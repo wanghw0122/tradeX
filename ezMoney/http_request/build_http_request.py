@@ -523,7 +523,7 @@ if __name__ == '__main__':
 
     # print(system_time())
 
-    print(json.dumps(block_category_rank(date = "2025-01-10")))
+    # print(json.dumps(block_category_rank(date = "2025-01-10")))
 
     # print(json.dumps(industry_block_rank(date = "2025-01-10")))
 
@@ -533,7 +533,7 @@ if __name__ == '__main__':
 
     # print(json.dumps(stock_call_auction(code="002666.XSHE", tradeDate="2025-01-10")))
 
-    # print(json.dumps(xiao_cao_environment_second_line_v2(codes=['9A0001','9A0002','9A0003','9B0001','9B0002','9B0003','9C0001'], date="2025-01-10")))
+    print(json.dumps(xiao_cao_environment_second_line_v2(codes=['9A0001','9A0002','9A0003','9B0001','9B0002','9B0003','9C0001'], date="2025-01-10")))
 
     # print(sort_v2(sortId=37, sortType=1, queryType=1, type=0, date="2025-01-10", hpqbState=0, lpdxState=0))
 

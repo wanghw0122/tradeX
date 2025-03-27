@@ -169,7 +169,7 @@ strategies = {
                     'top_fx': 1,
                     'top_cx': 4,
                     'only_fx': False,
-                    'enbale_industry': True,
+                    'enbale_industry': False,
                     'empty_priority': True,
                     'min_trade_amount': 6000000,
                     'block_rank_filter': False,
@@ -318,6 +318,29 @@ strategies = {
                     }
                 ]
             },
+            "高强低吸": {
+                "code": "9G0103",
+                "returnNum": 5,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            },
             "低位高强低吸": {
                 # 10日 高频 前2 有方向 最近强势 创建日期 2025-03-19
                 "code": "9G0124",
@@ -436,6 +459,7 @@ strategies_to_buffer = {
     "低吸-连断低吸": [0.02],
     "低吸-高强中低开低吸": [0.018],
     "低吸-低位高强低吸": [0.015],
+    "低吸-高强低吸": [0.015],
     "低吸-放宽低吸前3": [0.015],
     "低吸-绿盘低吸": [0.015],
     "追涨-小高开追涨": [0.02],
@@ -450,6 +474,7 @@ default_positions = {
     "低吸-中位断板低吸": 0.1,
     "低吸-高强中低开低吸": 0.2,
     "低吸-低位高强低吸": 0.2,
+    "低吸-高强低吸": 0.2,
     "低吸-放宽低吸前3": 0.25,
     "追涨-小高开追涨": 0.2,
     "低吸-绿盘低吸": 0.25,

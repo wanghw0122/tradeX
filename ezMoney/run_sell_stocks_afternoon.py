@@ -49,6 +49,9 @@ def schedule_sell_stocks_everyday_at_1457():
                     continue
                 for trade_day_data in trade_day_datas:
                     strategy_name = trade_day_data['strategy_name']
+                    sub_strategy_name = trade_day_data['sub_strategy_name']
+                    if sub_strategy_name:
+                        strategy_name = f"{strategy_name}:{sub_strategy_name}"
                     stock_code = trade_day_data['stock_code']
                     left_volume = trade_day_data['left_volume']
                     trade_price = trade_day_data['trade_price']
@@ -75,6 +78,9 @@ def schedule_sell_stocks_everyday_at_1457():
                 if not trade_at_close:
                     continue
                 strategy_name = strategy_meta_info['strategy_name']
+                sub_strategy_name = strategy_meta_info['sub_strategy_name']
+                if sub_strategy_name:
+                    strategy_name = f"{strategy_name}:{sub_strategy_name}"
                 budget = strategy_meta_info['budget']
                 stop_loss_pct = strategy_meta_info['stop_loss_pct']
                 take_profit_pct = strategy_meta_info['take_profit_pct']

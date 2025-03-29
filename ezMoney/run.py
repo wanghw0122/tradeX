@@ -232,12 +232,14 @@ strategies = {
             "中位断板低吸": {
                 # 偏中长期，稳定收益 无方向
                 "code": "9G0042",
-                "returnNum": 2,
+                "returnNum": 5,
                 "budget": "zwdbdx",
                 'returnFullInfo': True,
                 'filter_params': [
                     # 中长期 上升趋势强 下降趋势弱， 创建日期 2025-03-19
                     {
+                    'mark': '高频',
+                    'limit': 2,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -254,6 +256,8 @@ strategies = {
                     },
                     # 最近方向表现不错， 夏普高 创建日期 2025-03-20 
                     {
+                    'mark': '低频',
+                    'limit': 2,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -448,30 +452,34 @@ strategies = {
 }
 
 strategies_to_buffer = {
-    "xiao_cao_1j2db": [0.02],
-    "xiao_cao_dwyxdx": [0.015],
-    "低吸-低位孕线低吸": [0.015],
-    "低吸-低位N字低吸": [0.015],
-    "低吸-中位孕线低吸": [0.015],
-    "低吸-首断低吸": [0.015],
-    "低吸-中位低吸": [0.015],
-    "低吸-中位断板低吸": [0.02],
-    "低吸-连断低吸": [0.02],
-    "低吸-高强中低开低吸": [0.018],
-    "低吸-低位高强低吸": [0.015],
-    "低吸-高强低吸": [0.015],
-    "低吸-放宽低吸前3": [0.015],
-    "低吸-绿盘低吸": [0.015],
-    "追涨-小高开追涨": [0.02],
-    "低吸-低位低吸": [0.015],
-    "追涨-断追涨": [0.02],
-    "追涨-中位小高开起爆": [0.02]
+    "xiao_cao_1j2db": [0.025],
+    "xiao_cao_dwyxdx": [0.025],
+    "低吸-低位孕线低吸": [0.025],
+    "低吸-低位N字低吸": [0.025],
+    "低吸-中位孕线低吸": [0.025],
+    "低吸-首断低吸": [0.025],
+    "低吸-中位低吸": [0.025],
+    "低吸-中位断板低吸": [0.03],
+    "低吸-中位断板低吸:低频": [0.03],
+    "低吸-中位断板低吸:高频": [0.03],
+    "低吸-连断低吸": [0.03],
+    "低吸-高强中低开低吸": [0.035],
+    "低吸-低位高强低吸": [0.035],
+    "低吸-高强低吸": [0.035],
+    "低吸-放宽低吸前3": [0.025],
+    "低吸-绿盘低吸": [0.025],
+    "追涨-小高开追涨": [0.035],
+    "低吸-低位低吸": [0.025],
+    "追涨-断追涨": [0.03],
+    "追涨-中位小高开起爆": [0.03]
 }
 
 default_positions = {
     "低吸-低位孕线低吸": 0.25,
     "低吸-连断低吸": 0.2,
     "低吸-中位断板低吸": 0.1,
+    "低吸-中位断板低吸:低频": 0.1,
+    "低吸-中位断板低吸:高频": 0.1,
     "低吸-高强中低开低吸": 0.2,
     "低吸-低位高强低吸": 0.2,
     "低吸-高强低吸": 0.2,
@@ -1239,6 +1247,8 @@ def get_target_codes_by_all_strategies(retry_times=3):
             position = 0
             auction_codes = []
             auction_codes_dict = {}
+            multi_configs = False
+            multi_config_code_dict = {}
             if 'xiao_cao_env' in item:
                 xiaocao_envs = item['xiao_cao_env'][0]
                 position = get_position(xiaocao_envs)
@@ -1250,7 +1260,20 @@ def get_target_codes_by_all_strategies(retry_times=3):
                 real_item_dict = {}
                 if 'xiaocao_category_info' in item:
                     xiaocao_category_infos = item['xiaocao_category_info']
-                    real_item_dict = direction_filter_fuc(real_item_list, xiaocao_category_infos, params=get_filter_params(key))
+                    params = get_filter_params(key)
+                    if params and len(params) > 1:
+                        multi_configs = True
+                        for param in params:
+                            limit = param['limit']
+                            mark = param['mark']
+                            item_dict = direction_filter_fuc(real_item_list[:limit], xiaocao_category_infos, params=[param])
+                            multi_config_code_dict[key+':'+mark] = {}
+                            for code, pos in item_dict.items():
+                                if not code or len(code) == 0 or pos <= 0:
+                                    continue
+                                multi_config_code_dict[key+':'+mark][code.split('.')[0]] = pos
+                    else:
+                        real_item_dict = direction_filter_fuc(real_item_list, xiaocao_category_infos, params=params)
                 else:
                     if type(real_item_list[0]) != str:
                         real_item_list = [t.code for t in real_item_list]
@@ -1258,21 +1281,25 @@ def get_target_codes_by_all_strategies(retry_times=3):
                         
                         for code in real_item_list:
                             real_item_dict[code] = 1/lr
-                for code, pos in real_item_dict.items():
-                    if not code or len(code) == 0 or pos <= 0:
-                        continue
-                    auction_codes.append(code.split('.')[0])
-                    auction_codes_dict[code.split('.')[0]] = pos
-            if len(auction_codes_dict):
-                rslt_dct[key] = auction_codes_dict
-                for code in auction_codes:
-                    if code in codes_to_strategies:
-                        if key not in codes_to_strategies[code]:
-                            codes_to_strategies[code].append(key)
-                    else:
-                        codes_to_strategies[code] = [key]
-            else:
-                rslt_dct[key] = {}
+                if not multi_configs:
+                    for code, pos in real_item_dict.items():
+                        if not code or len(code) == 0 or pos <= 0:
+                            continue
+                        auction_codes.append(code.split('.')[0])
+                        auction_codes_dict[code.split('.')[0]] = pos
+            if multi_configs and len(multi_config_code_dict):
+                rslt_dct.update(multi_config_code_dict)
+            if not multi_configs:
+                if len(auction_codes_dict):
+                    rslt_dct[key] = auction_codes_dict
+                    # for code in auction_codes:
+                    #     if code in codes_to_strategies:
+                    #         if key not in codes_to_strategies[code]:
+                    #             codes_to_strategies[code].append(key)
+                    #     else:
+                    #         codes_to_strategies[code] = [key]
+                else:
+                    rslt_dct[key] = {}
         return rslt_dct, position
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
@@ -1437,8 +1464,15 @@ def consumer_to_buy(q, orders_dict, orders):
                 mark_info = data[3]
                 code_info = data[0]
                 strategy_name = code_info.split('|')[0]
+                sub_strategy_name = ''
+                if ':' in strategy_name:
+                    sub_strategy_name = strategy_name.split(':')[1]
+                    strategy_name = strategy_name.split(':')[0]
                 with SQLiteManager(db_name) as manager:
-                    all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name, 'strategy_status': 1}, columns="*")
+                    if sub_strategy_name:
+                        all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name,'strategy_status': 1, 'sub_strategy_name': sub_strategy_name}, columns="*")
+                    else:
+                        all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name, 'strategy_status': 1}, columns="*")
                     if not all_data:
                         order_logger.error(f"strategy_budget not found in db")
                         continue
@@ -1452,6 +1486,7 @@ def consumer_to_buy(q, orders_dict, orders):
                         total_assert = total_assert * data[1]
                     c_cash = min(total_assert, cash)
                     code_id = code_info.split('|')[1]
+                    strategy_name = code_info.split('|')[0]
                     order_id = qmt_trader.buy_quickly(code_id, c_cash, order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffers=buffers)
                     if order_id < 0:
                         order_id = qmt_trader.buy_quickly(code_id, c_cash,  order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
@@ -1760,6 +1795,7 @@ def consumer_to_subscribe(qq):
     from xtquant import xtdata
     xtdata.connect(port=58611)
     subscribe_ids = []
+    subscribed_codes = []
     while True:
         try:
             data = qq.get()
@@ -1769,6 +1805,9 @@ def consumer_to_subscribe(qq):
                 code = qmt_trader.all_stocks[code]
                 if not code:
                     logger.error(f"[subscribe] 股票代码不存在: {data}")
+                    continue
+                if code in subscribed_codes:
+                    logger.error(f"[subscribe] 股票代码已经订阅: {data}")
                     continue
                 period = 'tick'
                 def calculate_seconds_difference(specified_time):
@@ -1789,7 +1828,8 @@ def consumer_to_subscribe(qq):
                     continue
                 else:
                     logger.info(f"[subscribe] subscribe_quote success: {data}")
-                subscribe_ids.append(id)
+                    subscribed_codes.append(code)
+                    subscribe_ids.append(id)
             elif type(data) == str and data == 'end':
                 for id in subscribe_ids:
                     xtdata.unsubscribe_quote(id)
@@ -2108,6 +2148,9 @@ def update_trade_budgets():
 
             for trade_data_info in all_trade_data_info:
                 strategy_name = trade_data_info['strategy_name']
+                sub_strategy_name = trade_data_info['sub_strategy_name']
+                if sub_strategy_name:
+                    strategy_name = strategy_name + "_" + sub_strategy_name
                 stock_code = trade_data_info['stock_code']
                 trade_price = trade_data_info['trade_price']
                 trade_amout = trade_data_info['trade_amount']
@@ -2232,6 +2275,9 @@ def schedule_sell_stocks_everyday_at_925():
                     continue
                 for trade_day_data in trade_day_datas:
                     strategy_name = trade_day_data['strategy_name']
+                    sub_strategy_name = trade_day_data['sub_strategy_name']
+                    if sub_strategy_name:
+                        strategy_name = strategy_name + ":" + sub_strategy_name
                     stock_code = trade_day_data['stock_code']
                     left_volume = trade_day_data['left_volume']
                     trade_price = trade_day_data['trade_price']
@@ -2258,6 +2304,9 @@ def schedule_sell_stocks_everyday_at_925():
                 if not trade_at_open:
                     continue
                 strategy_name = strategy_meta_info['strategy_name']
+                sub_strategy_name = strategy_meta_info['sub_strategy_name']
+                if sub_strategy_name:
+                    strategy_name = strategy_name + ":" + sub_strategy_name
                 budget = strategy_meta_info['budget']
                 stop_loss_pct = strategy_meta_info['stop_loss_pct']
                 take_profit_pct = strategy_meta_info['take_profit_pct']

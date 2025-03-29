@@ -262,6 +262,9 @@ class QMTTrader:
                             date_key = trade_info['date_key']
                             stock_code = trade_info['stock_code']
                             strategy_name = trade_info['strategy_name']
+                            sub_strategy_name = trade_info['sub_strategy_name']
+                            if sub_strategy_name:
+                                strategy_name = f"{strategy_name}:{sub_strategy_name}"
                             profit = trade_info['profit']
                             profit_pct = trade_info['profit_pct']
                             left_volume = trade_info['left_volume']
@@ -282,8 +285,13 @@ class QMTTrader:
                             strategy_to_logs[strategy_name].append(profit_info)
                             strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
                     for strategy_name, profit_infos in strategy_to_logs.items():
-                            
-                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+                            sub_strategy_name = ''
+                            if ':' in strategy_name:
+                                sub_strategy_name = strategy_name.split(':')[1]
+                                query_strategy_name = strategy_name.split(':')[0]
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': query_strategy_name, 'sub_strategy_name': sub_strategy_name})
+                            else:
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
                             if not strategy_meta_infos:
                                 raise
                             strategy_meta_info = strategy_meta_infos[0]
@@ -330,7 +338,12 @@ class QMTTrader:
                             profit_loss_log_json_str = json.dumps(profit_loss_log_json)
                             total_profit = total_profit + cur_day_profit
 
-                            manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
+                            if ':' in strategy_name:
+                                sub_strategy_name = strategy_name.split(':')[1]
+                                query_strategy_name = strategy_name.split(':')[0]
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
+                            else:
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
         if monning:
             updated_ids = []
             updated_oids = []
@@ -355,6 +368,9 @@ class QMTTrader:
                                 date_key = trade_info['date_key']
                                 stock_code = trade_info['stock_code']
                                 strategy_name = trade_info['strategy_name']
+                                sub_strategy_name = trade_info['sub_strategy_name']
+                                if sub_strategy_name:
+                                    strategy_name = f"{strategy_name}:{sub_strategy_name}"
                                 profit = trade_info['profit']
                                 profit_pct = trade_info['profit_pct']
                                 left_volume = trade_info['left_volume']
@@ -374,8 +390,12 @@ class QMTTrader:
                                 strategy_to_logs[strategy_name].append(profit_info)
                                 strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
                         for strategy_name, profit_infos in strategy_to_logs.items():
-                            
-                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+                            if ':' in strategy_name:
+                                sub_strategy_name = strategy_name.split(':')[1]
+                                query_strategy_name = strategy_name.split(':')[0]
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
+                            else:
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
                             if not strategy_meta_infos:
                                 raise
                             strategy_meta_info = strategy_meta_infos[0]
@@ -421,8 +441,12 @@ class QMTTrader:
                             budget_change_log_json_str = json.dumps(budget_change_log_json)
                             profit_loss_log_json_str = json.dumps(profit_loss_log_json)
                             total_profit = total_profit + cur_day_profit
-
-                            manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
+                            if ':' in strategy_name:
+                                sub_strategy_name = strategy_name.split(':')[1]
+                                query_strategy_name = strategy_name.split(':')[0]
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
+                            else:
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
 
                     break
                 order_logger.info(f"监听卖出，任务执行。 {self.sell_stock_infos}")
@@ -640,7 +664,13 @@ class QMTTrader:
                     date_key = date.get_current_date()
                     db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
                     table_name = 'trade_data'
+                    
                     with SQLiteManager(db_name) as manager:
+                        if order_remark and ':' in order_remark:
+                            strategy_name = order_remark.split(':')[0]
+                            sub_strategy_name = order_remark.split(':')[1]
+                            manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': strategy_name, 'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 0,'stock_code': stock_code,'order_type': order_type, 'order_price': new_price, 'order_volume': volume})
+                        else:
                             manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': order_remark, 'buy0_or_sell1': 0, 'stock_code': stock_code ,'order_type': order_type, 'order_price': new_price, 'order_volume': volume})
                 except Exception as e:
                     logger.error(f"插入数据失败 {e}")
@@ -703,6 +733,11 @@ class QMTTrader:
                     db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
                     table_name = 'trade_data'
                     with SQLiteManager(db_name) as manager:
+                        if order_remark and ':' in order_remark:
+                            set_strategy_name = order_remark.split(':')[0]
+                            sub_strategy_name = order_remark.split(':')[1]
+                            manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 1,'stock_code': stock_code,'order_type': order_type, 'order_price': sell_price, 'order_volume': volume})
+                        else:
                             manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': order_remark, 'buy0_or_sell1': 1, 'stock_code': stock_code ,'order_type': order_type, 'order_price': sell_price, 'order_volume': volume})
                 except Exception as e:
                     order_logger.error(f"插入数据失败 {e}")

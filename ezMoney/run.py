@@ -1,6 +1,6 @@
 import multiprocessing
 import os
-from typing import ItemsView
+
 
 
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -15,6 +15,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import time
 from run_roll_back import *
 
+import pandas as pd
+
 import datetime
 # 设置环境变量
 from multiprocessing import Queue
@@ -22,7 +24,10 @@ from multiprocessing import Queue
 import threading
 import queue
 
-threading_q = queue.Queue(20)
+from sqlite_processor.mysqlite import SQLiteManager
+
+
+threading_q = queue.Queue(100)
 
 
 global q
@@ -52,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-03-25"
@@ -232,7 +237,7 @@ strategies = {
             "中位断板低吸": {
                 # 偏中长期，稳定收益 无方向
                 "code": "9G0042",
-                "returnNum": 5,
+                "returnNum": 10,
                 "budget": "zwdbdx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -301,16 +306,18 @@ strategies = {
             "高强中低开低吸": {
                 # 10日 高频 前2 有方向 最近强势 创建日期 2025-03-19
                 "code": "9G0128",
-                "returnNum": 3,
+                "returnNum": 10,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '第一高频',
+                    'limit': 3,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
-                    'top_fx': 2,
-                    'top_cx': 3,
+                    'top_fx': 50,
+                    'top_cx': 50,
                     'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': False,
@@ -319,7 +326,76 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': False
-                    }
+                    },
+                    {
+                    'mark': '板块前2',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '方向前2',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 50,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '方向板块前2',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '方向板块前1',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+
                 ]
             },
             "高强低吸": {
@@ -507,6 +583,34 @@ def get_filter_params(strategy_name, strategies= strategies):
     else:
         return strategies[strategy_name]['filter_params']
     
+
+class OfflineStockQuery:
+    def __init__(self):
+        self.database = None
+        self.load_database()
+    
+    def load_database(self, filepath=r"D:\workspace\TradeX\ezMoney\sqlite_db\stock_database.csv"):
+        """加载本地数据库"""
+        try:
+            self.database = pd.read_csv(filepath, dtype={'代码': str})
+            self.database.set_index('代码', inplace=True)
+        except FileNotFoundError:
+            raise Exception("本地数据库文件不存在，请先运行生成程序")
+
+    def get_stock_name(self, stock_code):
+        """通过股票代码查询名称"""
+        # 规范输入格式
+
+        prefix = 'sh' if stock_code.startswith(('6', '9')) else 'sz'
+        code = f"{prefix}{stock_code}"
+        
+        try:
+            return self.database.loc[code, '名称']
+        except KeyError:
+            return ''  # 未找到对应代码
+
+
+offlineStockQuery = OfflineStockQuery()
 
 def time_str_between_925(time_str):
     if '-' in time_str:
@@ -1116,8 +1220,6 @@ def direction_filter_fuc(candicates, category_infos, params):
     if not res:
         return {}
     
-
-    
     for c, ppos in res:
         if c in res_dict:
             res_dict[c] = res_dict[c] + ppos
@@ -1266,8 +1368,9 @@ def get_target_codes_by_all_strategies(retry_times=3):
                         for param in params:
                             limit = param['limit']
                             mark = param['mark']
-                            item_dict = direction_filter_fuc(real_item_list[:limit], xiaocao_category_infos, params=[param])
                             multi_config_code_dict[key+':'+mark] = {}
+                            item_dict = direction_filter_fuc(real_item_list[:limit], xiaocao_category_infos, params=[param])
+                            
                             for code, pos in item_dict.items():
                                 if not code or len(code) == 0 or pos <= 0:
                                     continue
@@ -1292,12 +1395,6 @@ def get_target_codes_by_all_strategies(retry_times=3):
             if not multi_configs:
                 if len(auction_codes_dict):
                     rslt_dct[key] = auction_codes_dict
-                    # for code in auction_codes:
-                    #     if code in codes_to_strategies:
-                    #         if key not in codes_to_strategies[code]:
-                    #             codes_to_strategies[code].append(key)
-                    #     else:
-                    #         codes_to_strategies[code] = [key]
                 else:
                     rslt_dct[key] = {}
         return rslt_dct, position
@@ -1419,6 +1516,7 @@ def strategy_schedule_job():
                     return
                 logger.info(f"[producer] 连续2次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
                 order_logger.info(f"[producer] 连续2次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
+                bid_info = {}
                 for code_info, (position, mark_info) in m_rslt.items():
                     if code_info in final_results:
                         continue
@@ -1426,18 +1524,22 @@ def strategy_schedule_job():
                     code_strategy = code_info.split('|')[0]
                     
                     buffers = []
+                    if ':' in code_strategy:
+                        code_strategy = code_strategy.split(':')[0]
                     if code_strategy in strategies_to_buffer and len(strategies_to_buffer[code_strategy]) > 0:
                         logger.info(f"[producer] 股票 {code} 有策略{code_strategy} 有buffer {strategies_to_buffer[code_strategy]}")
                         buffers.extend(strategies_to_buffer[code_strategy])
                     buffers.sort()
                     
-                    if use_threading_buyer:
-                        threading_q.put((code_info, position, buffers, mark_info))
-                    else:
-                        q.put((code_info, position, buffers, mark_info))
+                    bid_info[code_info] = (code_info, position, buffers, mark_info)
                     qq.put((code, position))
                     final_results[code_info] = position
                     order_logger.info(f"发单准备买入股票 code - {code} , position - {position}.")
+                if use_threading_buyer:
+                    threading_q.put(bid_info)
+                else:
+                    q.put(bid_info)
+                
     except Exception as e:
         error_time = error_time + 1
         if error_time > 20:
@@ -1492,6 +1594,130 @@ def consumer_to_buy(q, orders_dict, orders):
                         order_id = qmt_trader.buy_quickly(code_id, c_cash,  order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
                         if order_id < 0:
                             order_id = qmt_trader.buy_quickly(code_id, c_cash, order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
+            elif type(data) == dict and len(data) > 0:
+                # bid_info[code_info] = (code_info, position, buffers, mark_info)
+                code_to_order_info_dict = {}
+                for code_info, (code_info, position, buffers, mark_info) in data.items():
+                    strategy_name = code_info.split('|')[0]
+                    sub_strategy_name = ''
+                    if ':' in strategy_name:
+                        sub_strategy_name = strategy_name.split(':')[1]
+                        strategy_name = strategy_name.split(':')[0]
+                    code = code_info.split('|')[1]
+                    if code in qmt_trader.all_stocks:
+                        code = qmt_trader.all_stocks[code]
+                    with SQLiteManager(db_name) as manager:
+                        if sub_strategy_name:
+                            all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name,'strategy_status': 1,'sub_strategy_name': sub_strategy_name}, columns="*")
+                        else:
+                            all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name,'strategy_status': 1}, columns="*")
+                        if not all_data:
+                            order_logger.error(f"strategy_budget not found in db")
+                            continue
+                        total_assert = all_data[0]['budget']
+                        multipy_position = all_data[0]['multipy_position']
+                        max_budget = all_data[0]['max_budget']
+                        min_budget = all_data[0]['min_budget']
+                        total_assert = min(total_assert, max_budget)
+                        total_assert = max(total_assert, min_budget)
+                        if multipy_position > 0:
+                            total_assert = total_assert * position
+                        c_cash = min(total_assert, cash)
+                        if buffers and len(buffers) > 0:
+                            max_buffer = max(buffers)
+                        else:
+                            max_buffer = 0
+                        if code in code_to_order_info_dict:
+                            code_to_order_info_dict[code].append((c_cash, strategy_name, sub_strategy_name, max_buffer))
+                        else:
+                            code_to_order_info_dict[code] = [(c_cash, strategy_name, sub_strategy_name, max_buffer)]
+                order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
+                code_to_buy_price_dict = {}
+                code_to_order_volume_dict = {}
+                code_to_total_buy_volume_dict = {}
+                for code, order_info_list in code_to_order_info_dict.items():
+                    buy_buffer= 0
+                    buy_volume = 0
+                    full_tick_info = qmt_trader.get_full_tick_info(code)
+                    if not full_tick_info:
+                        order_logger.error(f"get_full_tick_info error! no cache {full_tick_info}, code {code}")
+                        continue
+                    
+                    for order_info in order_info_list:
+                        c_cash = order_info[0]
+                        strategy_name = order_info[1]
+                        sub_strategy_name = order_info[2]
+                        max_buffer = order_info[3]
+                        buy_buffer = max(buy_buffer, max_buffer)
+                        buy_vol = qmt_trader.get_stock_buy_vol(c_cash, full_tick_info)
+                        if buy_vol <= 0:
+                            order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
+                            continue
+                        buy_volume = buy_volume + buy_vol
+                        if code in code_to_order_volume_dict:
+                            code_to_order_volume_dict[code].append((strategy_name, sub_strategy_name, buy_vol))
+                        else:
+                            code_to_order_volume_dict[code] = [(strategy_name, sub_strategy_name, buy_vol)]
+                    code_to_buy_price_dict[code] = qmt_trader.get_stock_buy_price(full_tick_info, buy_buffer)
+                    code_to_total_buy_volume_dict[code] = buy_volume
+
+                order_logger.info(f"code_to_buy_price_dict: {code_to_buy_price_dict}")
+                order_logger.info(f"code_to_order_volume_dict: {code_to_order_volume_dict}")
+                order_logger.info(f"code_to_total_buy_volume_dict: {code_to_total_buy_volume_dict}")
+
+                for code, buy_volume in code_to_total_buy_volume_dict.items():
+                    order_volume_infos = code_to_order_volume_dict[code]
+                    if not order_volume_infos:
+                        order_logger.error(f"order_volume_info not found in db")
+                        continue
+                    stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
+                    if not stock_name:
+                        stock_name = ''
+                    order_remark_list = []
+                    for order_volume_info in order_volume_infos:
+                        strategy_name = order_volume_info[0]
+                        if strategy_name not in order_remark_list:
+                            order_remark_list.append(strategy_name)
+                    order_remark =  ','.join(order_remark_list)
+                    buy_price = code_to_buy_price_dict[code]
+                    order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price, remark=order_remark)
+                    if order_id <= 0:
+                        order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price, remark=order_remark)
+                        if order_id <= 0:
+                            order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price, remark=order_remark)
+                    if order_id <= 0:
+                        order_logger.error(f"委托失败，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
+                    else:
+                        order_logger.info(f"委托成功，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
+
+                        for order_volume_info in order_volume_infos:
+                            strategy_name = order_volume_info[0]
+                            sub_strategy_name = order_volume_info[1]
+                            order_volume = order_volume_info[2]
+                            stock_code = code
+                            order_type = xtconstant.FIX_PRICE
+                            volume = order_volume
+                            new_price = buy_price
+                            
+                            try:
+                                from date_utils import date
+                                date_key = date.get_current_date()
+                                table_name = 'trade_data'
+                                
+                                with SQLiteManager(r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db') as manager:
+                                    if sub_strategy_name:
+                                        manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': strategy_name, 'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 0,'stock_code': stock_code,'order_type': order_type, 'order_price': new_price, 'order_volume': volume, 'stock_name': stock_name})
+                                    else:
+                                        manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': strategy_name, 'buy0_or_sell1': 0, 'stock_code': stock_code ,'order_type': order_type, 'order_price': new_price, 'order_volume': volume, 'stock_name': stock_name})
+                            except Exception as e:
+                                logger.error(f"插入数据失败 {e}")
+                                order_logger.error(f"插入数据失败 {e}")
+
+                        if orders_dict != None:
+                            orders_dict[order_id] = (code, buy_price, buy_volume, order_type, order_volume_infos, time.time(), True)
+                        if orders != None:
+                            orders.append(order_id)
+                        
             elif type(data) == str and data == 'end':
                 break
             else:
@@ -1548,7 +1774,6 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
         price = order_info[1]
         volume = order_info[2]
         order_type = order_info[3]
-        order_remark = order_info[4]
         time_stamp = order_info[5]
         buffered = order_info[6]
         order_id_to_price_dict[order_id] = price
@@ -1780,7 +2005,10 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                             continue
 
                         order_logger.info(f"[consumer_to_rebuy] 股票撤单，有买入量: {stock_code}  - {left_volume} ")
-                        c_order_id = qmt_trader.buy(stock_code, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_remark=order_remark, sync=True)
+                        stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                        if not stock_name:
+                            stock_name = ''
+                        c_order_id = qmt_trader.rebuy(stock_code, stock_name, 0, left_volume, order_type=xtconstant.MARKET_PEER_PRICE_FIRST, order_volume_infos=order_remark, sync=True)
                         if c_order_id > 0:
                             budgets_list = [budget_info for budget_info in budgets_list if budget_info[1] != o_id]
                             del orders_to_rebuy[index]
@@ -1891,7 +2119,7 @@ def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q):
                             lastClose = data['lastClose']
                             volume = data['volume']
                             amount = data['amount']
-                            pvolume = data['pvolume']
+                            pvolume = data['pvolume'] if data['pvolume'] > 0 else 1
                             askPrice = data['askPrice']
                             bidPrice = data['bidPrice']
                             askVol = data['askVol']
@@ -2282,11 +2510,12 @@ def schedule_sell_stocks_everyday_at_925():
                     left_volume = trade_day_data['left_volume']
                     trade_price = trade_day_data['trade_price']
                     order_id = trade_day_data['order_id']
+                    row_id =  trade_day_data['id']
                     if trade_day not in days_strategy_to_stock_volume:
                         days_strategy_to_stock_volume[trade_day] = {}
                     if strategy_name not in days_strategy_to_stock_volume[trade_day]:
                         days_strategy_to_stock_volume[trade_day][strategy_name] = []
-                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id))
+                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id))
 
         if not days_strategy_to_stock_volume:
             order_logger.info("无数据可出售")
@@ -2340,14 +2569,15 @@ def schedule_sell_stocks_everyday_at_925():
                             left_volume = strategy_stock_volume_info[1]
                             trade_price = strategy_stock_volume_info[2]
                             order_id = strategy_stock_volume_info[3]
-                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days'))
+                            row_id = strategy_stock_volume_info[4]
+                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id))
                     else:
                         for strategy_stock_volume_info in strategy_stock_volumes:
                             stock_code = strategy_stock_volume_info[0]
                             left_volume = strategy_stock_volume_info[1]
                             trade_price = strategy_stock_volume_info[2]
                             order_id = strategy_stock_volume_info[3]
-
+                            row_id = strategy_stock_volume_info[4]
                             full_tick = xtdata.get_full_tick([stock_code])
         
                             if not full_tick or len(full_tick) == 0:
@@ -2366,19 +2596,27 @@ def schedule_sell_stocks_everyday_at_925():
                             current_price = full_tick[stock_code]['lastPrice']
                             cur_profit = current_price / trade_price - 1
                             if cur_profit > take_profit_pct:
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}'))
+                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id))
                             elif cur_profit < stop_loss_pct:
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}'))
+                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id))
                             else:
                                 continue
+        
+        sells_candidates = sorted(sells_candidates, key=lambda x: x[7], reverse=True)
 
         if not sells_candidates:
             order_logger.info("无数据可出售")
             return
+        
         for sells_candidate in sells_candidates:
             logger.info(f"准备出售前数据 {sells_candidate}")
         
         logger.info(f"持仓所有可出售数据 {stock_to_trade_volume}")
+
+        codes_to_sell_infos = {}
+
+        codes_to_sell_volume = {}
+
         with SQLiteManager(db_name) as manager:
             for sells_candidate in sells_candidates:
                 stock_code = sells_candidate[0]
@@ -2388,6 +2626,7 @@ def schedule_sell_stocks_everyday_at_925():
                 strategy_name = sells_candidate[4]
                 trade_day = sells_candidate[5]
                 reason = sells_candidate[6]
+                row_id = sells_candidate[7]
 
                 if left_volume <= 0:
                     continue
@@ -2398,31 +2637,52 @@ def schedule_sell_stocks_everyday_at_925():
                 all_volume = stock_to_trade_volume[stock_code]
                 if all_volume <= 0:
                     order_logger.info(f"股票 {stock_code} 已被出售")
-                    manager.update_data("trade_data", {"left_volume": 0}, {"order_id": order_id})
+                    manager.update_data("trade_data", {"left_volume": 0}, {"id": row_id})
                     continue
                 if left_volume > all_volume:
                     order_logger.info(f"股票 {stock_code} 准备出售 {all_volume}")
-                    manager.update_data("trade_data", {"left_volume": all_volume}, {"order_id": order_id})
-                    oid = qmt_trader.sell_quickly(stock_code, all_volume, order_remark= strategy_name,  buffer=-0.002, extra_info = sells_candidate)
-                    if oid > 0:
-                        stock_to_trade_volume[stock_code] = 0
+                    manager.update_data("trade_data", {"left_volume": all_volume}, {"id": row_id})
+                    if stock_code in codes_to_sell_volume:
+                        codes_to_sell_volume[stock_code] = codes_to_sell_volume[stock_code] + all_volume
+                    else:
+                        codes_to_sell_volume[stock_code] = all_volume
+                    if stock_code in codes_to_sell_infos:
+                        codes_to_sell_infos[stock_code].append((stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, all_volume))
+                    else:
+                        codes_to_sell_infos[stock_code] = [(stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, all_volume)]
+                    # oid = qmt_trader.sell_quickly(stock_code, all_volume, order_remark= strategy_name,  buffer=-0.002, extra_info = sells_candidate)
+                    # if oid > 0:
+                    stock_to_trade_volume[stock_code] = 0
                     continue
                 if left_volume <= all_volume:
                     order_logger.info(f"股票 {stock_code} 准备出售 {left_volume}")
-                    oid = qmt_trader.sell_quickly(stock_code, left_volume, order_remark= strategy_name,  buffer=-0.002, extra_info = sells_candidate)
-                    if oid > 0:
-                        stock_to_trade_volume[stock_code] = stock_to_trade_volume[stock_code] - left_volume
+                    if stock_code in codes_to_sell_volume:
+                        codes_to_sell_volume[stock_code] = codes_to_sell_volume[stock_code] + left_volume
+                    else:
+                        codes_to_sell_volume[stock_code] = left_volume
+                    if stock_code in codes_to_sell_infos:
+                        codes_to_sell_infos[stock_code].append((stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, left_volume))
+                    else:
+                        codes_to_sell_infos[stock_code] = [(stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, left_volume)]
+
+                    # oid = qmt_trader.sell_quickly(stock_code, left_volume, order_remark= strategy_name,  buffer=-0.002, extra_info = sells_candidate)
+                    # if oid > 0:
+                    stock_to_trade_volume[stock_code] = stock_to_trade_volume[stock_code] - left_volume
                     continue
         logger.info(f"出售后 left volume {stock_to_trade_volume}")
+
+        for code, sell_volume in codes_to_sell_volume.items():
+            extra_infos = codes_to_sell_infos[code]
+            stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+            if not stock_name:
+                stock_name = ''
+            qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.003, extra_infos = extra_infos)
 
     except Exception as e:
         order_logger.error(f"早盘出售 出现错误: {e}")
 
 
 if __name__ == "__main__":
-
-    # schedule_sell_stocks_everyday_at_925()
-    # exit(0)
 
     from xtquant import xtdatacenter as xtdc
     xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")

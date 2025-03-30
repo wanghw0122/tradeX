@@ -205,13 +205,10 @@ class QMTTrader:
         import json
         db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
         is_trade_day, _ = date.is_trading_day()
-        # if not is_trade_day:
-        #     return
+        if not is_trade_day:
+            return
         monning = date.is_after_920() and not date.is_after_1300()
         afternoon = date.is_after_1300()
-
-        monning = True
-        afternoon = False
 
         # self.sell_stock_infos[order_id] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, volume)
         if afternoon:

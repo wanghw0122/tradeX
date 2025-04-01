@@ -1574,6 +1574,38 @@ def strategy_schedule_job():
 
 
 def consumer_to_buy(q, orders_dict, orders):
+
+    def get_order_infos(order_id):
+        i = 0
+        order_infos = qmt_trader.get_all_orders(filter_order_ids = [order_id])
+        while not order_infos and i < 10:
+            time.sleep(1)
+            order_infos = qmt_trader.get_all_orders(filter_order_ids = [order_id])
+            i = i + 1
+        return order_infos
+
+    def reorder(order_id, k):
+        if k >= 10:
+            return
+        order_infos = get_order_infos(order_id)
+        if not order_infos:
+            order_logger.error(f"reorder error no order_infos! order_id {order_id}")
+            return
+        order_status = order_infos[order_id]['order_status']
+        if order_status != xtconstant.ORDER_JUNK:
+            order_logger.error(f"reorder error! order_id {order_id} order_status {order_status}")
+            return
+        order_logger.info(f"reorder order_id {order_id} status = 废单")
+        order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price - 0.01 * k * k, remark=order_remark)
+        if order_id <= 0:
+            order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price - 0.01 * k * k, remark=order_remark)
+            if order_id <= 0:
+                order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price - 0.01 * k * k, remark=order_remark)
+        if order_id <= 0:
+            order_logger.error(f"reorder error! order_id {order_id}")
+            return
+        reorder(order_id, k + 1)
+    
     if not buy:
         return
     while True:
@@ -1621,7 +1653,6 @@ def consumer_to_buy(q, orders_dict, orders):
                         if order_id < 0:
                             order_id = qmt_trader.buy_quickly(code_id, c_cash, order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
             elif type(data) == dict and len(data) > 0:
-                # bid_info[code_info] = (code_info, position, buffers, mark_info)
                 code_to_order_info_dict = {}
                 for code_info, (code_info, position, buffers, mark_info) in data.items():
                     strategy_name = code_info.split('|')[0]
@@ -1715,6 +1746,9 @@ def consumer_to_buy(q, orders_dict, orders):
                         order_logger.error(f"委托失败，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
                     else:
                         order_logger.info(f"委托成功，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
+    
+                        order_logger.info(f"reorder order_id {order_id}")
+                        reorder(order_id, 1)
                         
                         for order_volume_info in order_volume_infos:
                             strategy_name = order_volume_info[0]
@@ -1778,6 +1812,7 @@ def get_cancel_budgets(orders_dict, budgets_list):
 
 
 def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
+    
     if not orders_dict or len(orders_dict) == 0:
         logger.error(f"[consumer_to_rebuy] 无订单 {orders_dict}")
         return
@@ -1946,7 +1981,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 
                 for order_id, order_status_info in stock_order_statuses.items():
                     order_status_p = order_status_info['order_status']
-                    if order_status_p == xtconstant.ORDER_SUCCEEDED or order_status_p == xtconstant.ORDER_PART_CANCEL or order_status_p == xtconstant.ORDER_CANCELED or order_status_p ==  xtconstant.ORDER_JUNK or order_status_p == xtconstant.ORDER_REPORTED_CANCEL or order_status_p == xtconstant.ORDER_PARTSUCC_CANCEL:
+                    if order_status_p == xtconstant.ORDER_SUCCEEDED or order_status_p == xtconstant.ORDER_PART_CANCEL or order_status_p == xtconstant.ORDER_CANCELED or order_status_p == xtconstant.ORDER_REPORTED_CANCEL or order_status_p == xtconstant.ORDER_PARTSUCC_CANCEL:
                         if order_id not in uncomplete_orders[stock_code]:
                             continue
                         uncomplete_orders[stock_code].remove(order_id)
@@ -1957,7 +1992,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                     continue
                 current_time = datetime.datetime.now().timestamp()
                 time_difference =  current_time - (tick_time / 1000)
-                if time_difference > 1.5 or diff > 1.5:
+                if time_difference > 5 or diff > 5:
                     order_logger.error(f"[consumer_to_rebuy] 股票代码超时: {stock_code} curdiff - {time_difference} diff - {diff}")
                     continue
                 
@@ -1974,6 +2009,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 if cur_uncomplete_orders and len(cur_uncomplete_orders) > 0:
                     for order_id in cur_uncomplete_orders:
                         if order_id not in order_id_to_price_dict:
+                            continue
+                        if order_id in stock_order_statuses and stock_order_statuses[order_id]['order_status'] == xtconstant.ORDER_JUNK:
+                            qmt_trader.add_cancel_order(order_id)
                             continue
                         order_price = order_id_to_price_dict[order_id]
                         price_diff = lastPrice / order_price - 1
@@ -2744,7 +2782,7 @@ if __name__ == "__main__":
 
     # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=1, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
     # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 

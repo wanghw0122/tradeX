@@ -57,10 +57,10 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-03-25"
+test_date = "2025-03-31"
 
 use_threading_buyer = True
 budget_from_db = True
@@ -177,10 +177,10 @@ strategies = {
                     'enbale_industry': False,
                     'empty_priority': True,
                     'min_trade_amount': 6000000,
-                    'block_rank_filter': False,
+                    'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     }
                 ]
             },
@@ -229,7 +229,7 @@ strategies = {
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     }
                 ]
             },
@@ -257,7 +257,7 @@ strategies = {
                     'block_rank_filter': False,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     },
                     # 最近方向表现不错， 夏普高 创建日期 2025-03-20 
                     {
@@ -275,7 +275,7 @@ strategies = {
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False 
+                    'except_is_track': True 
                     }
                 ]
             },
@@ -1089,9 +1089,9 @@ def direction_filter_fuc(candicates, category_infos, params):
                     num = block['num']
                     prePctChangeRate = block['prePctChangeRate']
                     numChange = block['numChange']
-                    isPpp = 1 if block['isPpp'] else 0
-                    isTrack = 1 if block['isTrack'] else 0
-                    block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp, isTrack))
+                    isPpp_b = 1 if block['isPpp'] else 0
+                    isTrack_b = 1 if block['isTrack'] else 0
+                    block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
             if except_is_track and isTrack == 1:
                 category_dict[categoryCode]['rank'] = 101
                 continue

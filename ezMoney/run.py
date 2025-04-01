@@ -1076,7 +1076,7 @@ def direction_filter_fuc(candicates, category_infos, params):
                 category_dict[categoryCode]['blocks'].append(categoryCode)
             else:
                 category_dict[categoryCode]['industry'] = 0
-            category_dict[categoryCode]['rank'] = index
+            
             
             if blockRankList and len(blockRankList) > 0:
                 for block in blockRankList:
@@ -1092,6 +1092,13 @@ def direction_filter_fuc(candicates, category_infos, params):
                     isPpp = 1 if block['isPpp'] else 0
                     isTrack = 1 if block['isTrack'] else 0
                     block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp, isTrack))
+            if except_is_track and isTrack == 1:
+                category_dict[categoryCode]['rank'] = 101
+                continue
+            if except_is_ppp and isPpp == 1:
+                category_dict[categoryCode]['rank'] = 101
+                continue
+            category_dict[categoryCode]['rank'] = index
             index = index + 1
         block_list.sort(key=lambda x: x[1], reverse=True)
         

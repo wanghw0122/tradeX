@@ -57,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
 test_date = "2025-03-31"
@@ -1243,6 +1243,7 @@ def direction_filter_fuc(candicates, category_infos, params):
                             code_to_index_dict[code]['max_industry_code_rank'] = i_min_rank_filter
                 code_to_index_dict[code]['max_block_code_rank'] = min_rank_filter
 
+        order_logger.info("direction_filter_fuc code_to_index_dict:{}".format(code_to_index_dict))
         c_res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
         if c_res and len(c_res) > 0:
             apos = 1 / len(c_res)
@@ -1600,7 +1601,7 @@ def consumer_to_buy(q, orders_dict, orders):
             return
         order_status = order_infos[order_id]['order_status']
         if order_status != xtconstant.ORDER_JUNK:
-            order_logger.error(f"reorder error! order_id {order_id} order_status {order_status}")
+            order_logger.info(f"reorder success order_id {order_id} order_status {order_status}")
             return
         order_logger.info(f"reorder order_id {order_id} status = 废单")
         order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price - 0.01 * k * k, remark=order_remark)

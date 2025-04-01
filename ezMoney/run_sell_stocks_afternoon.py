@@ -10,6 +10,36 @@ qmt_trader = QMTTrader(path, acc_id)
 qmt_trader.callback.set_qmt(qmt_trader)
 db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
 
+
+
+class OfflineStockQuery:
+    def __init__(self):
+        self.database = None
+        self.load_database()
+    
+    def load_database(self, filepath=r"D:\workspace\TradeX\ezMoney\sqlite_db\stock_database.csv"):
+        """加载本地数据库"""
+        try:
+            self.database = pd.read_csv(filepath, dtype={'代码': str})
+            self.database.set_index('代码', inplace=True)
+        except FileNotFoundError:
+            raise Exception("本地数据库文件不存在，请先运行生成程序")
+
+    def get_stock_name(self, stock_code):
+        """通过股票代码查询名称"""
+        # 规范输入格式
+
+        prefix = 'sh' if stock_code.startswith(('6', '9')) else 'sz'
+        code = f"{prefix}{stock_code}"
+        
+        try:
+            return self.database.loc[code, '名称']
+        except KeyError:
+            return ''  # 未找到对应代码
+
+
+offlineStockQuery = OfflineStockQuery()
+
 def schedule_sell_stocks_everyday_at_1457():
     try:
         is_trade, pre_trade_date = date.is_trading_day()
@@ -219,7 +249,10 @@ def schedule_sell_stocks_everyday_at_1457():
         
         for code, sell_volume in codes_to_sell_volume.items():
             extra_infos = codes_to_sell_infos[code]
-            qmt_trader.sell_quickly(code, sell_volume, order_remark= "sell",  buffer=-0.003, extra_infos = extra_infos)
+            stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
+            if not stock_name:
+                stock_name = ''
+            qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.003, extra_infos = extra_infos)
     except Exception as e:
         print(f'exception: {e}')
 

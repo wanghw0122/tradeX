@@ -57,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-03-25"
@@ -1723,6 +1723,9 @@ def consumer_to_buy(q, orders_dict, orders):
                 order_logger.info(f"code_to_total_buy_volume_dict: {code_to_total_buy_volume_dict}")
 
                 for code, buy_volume in code_to_total_buy_volume_dict.items():
+                    if code not in code_to_order_volume_dict or buy_volume <= 0:
+                        order_logger.error(f"code not found in code_to_order_volume_dict")
+                        continue
                     order_volume_infos = code_to_order_volume_dict[code]
                     if not order_volume_infos:
                         order_logger.error(f"order_volume_info not found in db")
@@ -1812,7 +1815,9 @@ def get_cancel_budgets(orders_dict, budgets_list):
 
 
 def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
-    
+
+    time.sleep(0.1)
+
     if not orders_dict or len(orders_dict) == 0:
         logger.error(f"[consumer_to_rebuy] 无订单 {orders_dict}")
         return

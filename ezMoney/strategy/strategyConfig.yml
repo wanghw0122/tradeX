@@ -36,19 +36,19 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
-            logged: true
+            logged: false
             index: 1
             params: {}
           - name: "limiter_filter"
             desc: "限制数量"
-            logged: true
+            logged: false
             index: 0
             params:
               limit: 100
       - name: "xiao_cao_index_v2"
         step: 3
         desc: "获取明细数据"
-        logged: true
+        logged: false
         cached: true
         params:
           hpqbState: 0
@@ -59,18 +59,18 @@ Strategies:
           - name: "change_item_filter"
             index: 0
             desc: "转换格式"
-            logged: true
+            logged: false
             params: {}
           - name: "stock_type_filter"
             index: 1
             desc: "过滤弱"
-            logged: true
+            logged: false
             params:
               isWeak: 1
           - name: "stock_type_filter"
             index: 2
             desc: "过滤首板"
-            logged: true
+            logged: false
             params:
               ylimitupdays: 1
           - name: "openPctChangeRate_filter"
@@ -81,13 +81,13 @@ Strategies:
           - name: "jw_filter"
             index: 4
             desc: "过滤竞王分"
-            logged: true
+            logged: false
             params:
               xcjwScore: 200
           - name: "jl_filter"
             index: 5
             desc: "过滤接力分"
-            logged: true
+            logged: false
             params:
               xcjlScore: 0
   - name: "xiao_cao_1j2db"
@@ -101,13 +101,13 @@ Strategies:
       - name: "check_user_alive"
         step: 0
         desc: "用户状态检查"
-        logged: true
+        logged: false
         cached: true
         params: {}
       - name: "system_time"
         step: 1
         desc: "获取系统时间"
-        logged: true
+        logged: false
         params:
           formatter: "%Y-%m-%d"
         cached: false
@@ -125,19 +125,19 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
-            logged: true
+            logged: false
             index: 1
             params: {}
           - name: "limiter_filter"
             desc: "限制数量"
-            logged: true
+            logged: false
             index: 0
             params:
               limit: 100
       - name: "xiao_cao_index_v2"
         step: 3
         desc: "获取明细数据"
-        logged: true
+        logged: false
         cached: true
         params:
           hpqbState: 0
@@ -148,18 +148,18 @@ Strategies:
           - name: "change_item_filter"
             index: 0
             desc: "转换格式"
-            logged: true
+            logged: false
             params: {}
           - name: "stock_type_filter"
             index: 1
             desc: "过滤弱"
-            logged: true
+            logged: false
             params:
               isWeak: 1
           - name: "stock_type_filter"
             index: 2
             desc: "过滤首板"
-            logged: true
+            logged: false
             params:
               ylimitupdays: 1
           # - name: "open_pct_filter"
@@ -170,13 +170,13 @@ Strategies:
           - name: "jw_filter"
             index: 3
             desc: "过滤竞王分"
-            logged: true
+            logged: false
             params:
               xcjwScore: 300
           - name: "jl_filter"
             index: 4
             desc: "过滤接力分"
-            logged: true
+            logged: false
             params:
               xcjlScore: 0
   - name: "xiao_cao_dwyxdx"
@@ -190,13 +190,13 @@ Strategies:
       - name: "check_user_alive"
         step: 0
         desc: "用户状态检查"
-        logged: true
+        logged: false
         cached: true
         params: {}
       - name: "system_time"
         step: 1
         desc: "获取系统时间"
-        logged: true
+        logged: false
         params:
           formatter: "%Y-%m-%d"
         cached: false
@@ -214,7 +214,7 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
-            logged: true
+            logged: false
             index: 1
             params: {}
           - name: "limiter_filter"
@@ -226,7 +226,7 @@ Strategies:
       - name: "xiao_cao_index_v2"
         step: 3
         desc: "获取明细数据"
-        logged: true
+        logged: false
         cached: true
         params:
           hpqbState: 0
@@ -237,18 +237,18 @@ Strategies:
           - name: "change_item_filter"
             index: 0
             desc: "转换格式"
-            logged: true
+            logged: false
             params: {}
           - name: "stock_type_filter"
             index: 1
             desc: "过滤低位趋势"
-            logged: true
+            logged: false
             params:
               isLow: 1
           - name: "st_filter"
             index: 2
             desc: "过滤st的股票"
-            logged: true
+            logged: false
             params: {}
           # - name: "open_pct_filter"
           #   index: 1
@@ -258,23 +258,23 @@ Strategies:
           - name: "first_bottom_filter"
             index: 3
             desc: "过滤首次跌停"
-            logged: true
+            logged: false
             params: {}
           - name: "jw_filter"
             index: 5
             desc: "过滤竞王分"
-            logged: true
+            logged: false
             params:
               xcjwScore: 150
           - name: "yx_filter"
             index: 6
             desc: "过滤孕线"
-            logged: true
+            logged: false
             params: {}
           - name: "dx_filter"
             index: 7
             desc: "过滤低吸"
-            logged: true
+            logged: false
             params:
               xcdxScore: 1
   - name: "xiao_cao_dwndx"
@@ -288,13 +288,13 @@ Strategies:
       - name: "check_user_alive"
         step: 0
         desc: "用户状态检查"
-        logged: true
+        logged: false
         cached: true
         params: {}
       - name: "system_time"
         step: 1
         desc: "获取系统时间"
-        logged: true
+        logged: false
         params:
           formatter: "%Y-%m-%d"
         cached: false
@@ -312,19 +312,19 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
-            logged: true
+            logged: false
             index: 1
             params: {}
           - name: "limiter_filter"
             desc: "限制数量"
-            logged: true
+            logged: false
             index: 0
             params:
               limit: 60
       - name: "xiao_cao_index_v2"
         step: 3
         desc: "获取明细数据"
-        logged: true
+        logged: false
         cached: true
         params:
           hpqbState: 0
@@ -335,18 +335,18 @@ Strategies:
           - name: "change_item_filter"
             index: 0
             desc: "转换格式"
-            logged: true
+            logged: false
             params: {}
           - name: "stock_type_filter"
             index: 1
             desc: "过滤低位趋势"
-            logged: true
+            logged: false
             params:
               isLow: 1
           - name: "st_filter"
             index: 2
             desc: "过滤st的股票"
-            logged: true
+            logged: false
             params: {}
           # - name: "open_pct_filter"
           #   index: 1
@@ -356,23 +356,23 @@ Strategies:
           - name: "first_bottom_filter"
             index: 3
             desc: "过滤首次跌停"
-            logged: true
+            logged: false
             params: {}
           - name: "n_filter"
             index: 4
             desc: "过滤n字"
-            logged: true
+            logged: false
             params: {}
           - name: "jw_filter"
             index: 5
             desc: "过滤竞王分"
-            logged: true
+            logged: false
             params:
               xcjwScore: 150
           - name: "dx_filter"
             index: 6
             desc: "过滤低吸"
-            logged: true
+            logged: false
             params:
               xcdxScore: 1
   - name: "xiao_cao_dwdx_a"
@@ -386,13 +386,13 @@ Strategies:
       - name: "check_user_alive"
         step: 0
         desc: "用户状态检查"
-        logged: true
+        logged: false
         cached: true
         params: {}
       - name: "system_time"
         step: 1
         desc: "获取系统时间"
-        logged: true
+        logged: false
         params:
           formatter: "%Y-%m-%d"
         cached: false
@@ -410,19 +410,19 @@ Strategies:
         filters:
           - name: "keys_10cm_filter"
             desc: "过滤key为10cm"
-            logged: true
+            logged: false
             index: 1
             params: {}
           - name: "limiter_filter"
             desc: "限制数量"
-            logged: true
+            logged: false
             index: 0
             params:
               limit: 2
       - name: "xiao_cao_index_v2"
         step: 3
         desc: "获取明细数据"
-        logged: true
+        logged: false
         cached: true
         params:
           hpqbState: 0
@@ -433,18 +433,18 @@ Strategies:
           - name: "change_item_filter"
             index: 0
             desc: "转换格式"
-            logged: true
+            logged: false
             params: {}
           - name: "stock_type_filter"
             index: 1
             desc: "过滤低位趋势"
-            logged: true
+            logged: false
             params:
               isLow: 1
           - name: "st_filter"
             index: 2
             desc: "过滤st的股票"
-            logged: true
+            logged: false
             params: {}
           # - name: "open_pct_filter"
           #   index: 1
@@ -454,12 +454,12 @@ Strategies:
           - name: "first_bottom_filter"
             index: 3
             desc: "过滤首次跌停"
-            logged: true
+            logged: false
             params: {}
           - name: "jw_filter"
             index: 4
             desc: "过滤竞王分"
-            logged: true
+            logged: false
             params:
               xcjwScore: 200
   - name: "xiao_mods_info"
@@ -495,7 +495,7 @@ Strategies:
       - name: "build_category_rank_sort_list"
         step: 1
         desc: "构建小草板块"
-        logged: true
+        logged: false
         cached: true
         lruCached: false
         params:
@@ -584,12 +584,12 @@ Strategies:
           - name: "change_item_filter"
             index: 0
             desc: "转换格式"
-            logged: true
+            logged: false
             params: {}
           - name: "st_filter"
             index: 2
             desc: "过滤st的股票"
-            logged: true
+            logged: false
             params: {}
           # - name: "open_pct_filter"
           #   index: 1
@@ -599,17 +599,17 @@ Strategies:
           - name: "first_bottom_filter"
             index: 3
             desc: "过滤首次跌停"
-            logged: true
+            logged: false
           - name: "jw_filter"
             index: 4
             desc: "过滤竞王分"
-            logged: true
+            logged: false
             params:
               xcjwScore: 300
           - name: "item_code_filter"
             index: 5
             desc: "转换格式"
-            logged: true
+            logged: false
   - name: "低吸"
     type: "小草低吸"
     status: 1
@@ -651,7 +651,7 @@ Strategies:
       - name: "get_code_by_block_rank"
         step: 3
         desc: "获取股票数据"
-        logged: true
+        logged: false
         cached: true
         params:
           blockCodeList: ""
@@ -744,7 +744,7 @@ Strategies:
       - name: "get_code_by_block_rank"
         step: 3
         desc: "获取股票数据"
-        logged: true
+        logged: false
         cached: true
         params:
           blockCodeList: ""
@@ -833,7 +833,7 @@ Strategies:
       - name: "get_code_by_block_rank"
         step: 3
         desc: "获取股票数据"
-        logged: true
+        logged: false
         cached: true
         params:
           blockCodeList: ""

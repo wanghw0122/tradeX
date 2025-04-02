@@ -57,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-03-31"
@@ -784,7 +784,7 @@ def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered
                 union_codes = set(filter_industry_codes).union(set(filter_block_codes))
                 filter_codes = list(set(filter_category_codes).intersection(union_codes))
                 if len(filter_codes) > 1:
-                    filter_codes = get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes)
+                    # filter_codes = get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes)
                     for code in codes:
                         if code in filter_codes:
                             return [code]
@@ -825,7 +825,7 @@ def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered
                 union_codes = set(filter_industry_codes).union(set(filter_block_codes))
                 filter_codes = list(set(filter_category_codes).intersection(union_codes))
                 if len(filter_codes) > 1:
-                    filter_codes = get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes)
+                    # filter_codes = get_min_block_code_items_from_filter_codes(code_to_index_dict, filter_codes)
                     for code in codes:
                         if code in filter_codes:
                             return [code]

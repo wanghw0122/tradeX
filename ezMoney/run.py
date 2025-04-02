@@ -57,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
 test_date = "2025-03-31"
@@ -172,7 +172,7 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 1,
-                    'top_cx': 4,
+                    'top_cx': 3,
                     'only_fx': False,
                     'enbale_industry': False,
                     'empty_priority': True,
@@ -361,6 +361,23 @@ strategies = {
                     'except_is_track': False
                     },
                     {
+                    'mark': '强方向前2',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 50,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
                     'mark': '方向板块前2',
                     'limit': 3,
                     'filtered': True,
@@ -394,7 +411,23 @@ strategies = {
                     'except_is_ppp': True,
                     'except_is_track': False
                     },
-
+                    {
+                    'mark': '方向板块前3',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 3,
+                    'top_cx': 3,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
                 ]
             },
             "高强低吸": {

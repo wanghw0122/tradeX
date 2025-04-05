@@ -1034,190 +1034,191 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         i_min_rank = min(i_min_rank, rank_this)
                                         trade_df.loc[idx, 'max_industry_code_rank'] = i_min_rank
                                 trade_df.loc[idx, 'max_block_code_rank'] = min_rank
-                            for idx, row in combined_df.iterrows():
-                                block_category = row['block_category']
-                                date_key = row['date_key']
-                                ranked_category_dict = get_ranked_new_category_infos(date_key, gap = gap, except_is_ppp=except_is_ppp, except_is_track=except_is_track)
-                                min_rank = 100
-                                if not block_category:
-                                    continue
-                                for block_code in block_category.split(','):
-                                    if block_code in ranked_category_dict:
-                                        rank_this = ranked_category_dict[block_code]
-                                        min_rank = min(min_rank, rank_this)
-                                combined_df.loc[idx, 'max_block_category_rank'] = min_rank
+                        for idx, row in trade_df.iterrows():
+                            block_category = row['block_category']
+                            date_key = row['date_key']
+                            ranked_category_dict = get_ranked_new_category_infos(date_key, gap = gap, except_is_ppp=except_is_ppp, except_is_track=except_is_track)
+                            min_rank = 100
+                            if not block_category:
+                                continue
+                            for block_code in block_category.split(','):
+                                if block_code in ranked_category_dict:
+                                    rank_this = ranked_category_dict[block_code]
+                                    min_rank = min(min_rank, rank_this)
+                            trade_df.loc[idx, 'max_block_category_rank'] = min_rank
                 
-                for max_stock_rank in max_stock_ranks:
-                    trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
+                        for max_stock_rank in max_stock_ranks:
+                            trade_df = trade_df[trade_df['stock_rank'] <= max_stock_rank]
 
-                    for filter_fuc in filter_funcs:
-                        for filter_param in filter_params:
-                            params_list = generate_filter_params(filter_param)
-                            for param_dict in params_list:
-                                import warnings
-                                df = None
-                                # 临时忽略 DeprecationWarning 警告
-                                param_dict['all_stocks'] = all_stocks
-                                with warnings.catch_warnings():
-                                    warnings.filterwarnings("ignore", category=DeprecationWarning)
-                                    df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
+                            for filter_fuc in filter_funcs:
+                                for filter_param in filter_params:
+                                    params_list = generate_filter_params(filter_param)
+                                    for param_dict in params_list:
+                                        import warnings
+                                        df = None
+                                        # 临时忽略 DeprecationWarning 警告
+                                        param_dict['all_stocks'] = all_stocks
+                                        with warnings.catch_warnings():
+                                            warnings.filterwarnings("ignore", category=DeprecationWarning)
+                                            df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
 
-                                # df = df.drop(['block_category_info'], axis=1)
-                                # 将索引设置为 date_key 列
-                                if len(df) < 1:
-                                    continue
+                                        # df = df.drop(['block_category_info'], axis=1)
+                                        # 将索引设置为 date_key 列
+                                        if len(df) < 1:
+                                            continue
 
-                                df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
-                                df['real_open'] = -1
+                                        df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
+                                        df['real_open'] = -1
 
-                                for i in range(1, 11):
-                                    df[f'close_{i}'] = -1
-                                    df[f'low_{i}'] = -1
-                                
-                                for idx, row in df.iterrows():
-                                    stock_code = row['stock_code']
-                                    if stock_code.split('.')[0] not in all_stocks:
-                                        df.loc[idx, 'real_open'] = -1
-                                        continue
-                                    stock_code = all_stocks[stock_code.split('.')[0]]
-                                    date_key = row['date_key']
-                                    n_data_key = date_key
-                                    if '-' in n_data_key:
-                                        n_data_key = n_data_key.replace('-', '')
+                                        for i in range(1, 11):
+                                            df[f'close_{i}'] = -1
+                                            df[f'low_{i}'] = -1
+                                        
+                                        for idx, row in df.iterrows():
+                                            stock_code = row['stock_code']
+                                            if stock_code.split('.')[0] not in all_stocks:
+                                                df.loc[idx, 'real_open'] = -1
+                                                continue
+                                            stock_code = all_stocks[stock_code.split('.')[0]]
+                                            date_key = row['date_key']
+                                            n_data_key = date_key
+                                            if '-' in n_data_key:
+                                                n_data_key = n_data_key.replace('-', '')
 
-                                    real_open_price = get_real_open_price(stock_code, date_key)
-                                    df.loc[idx, 'real_open'] = real_open_price
+                                            real_open_price = get_real_open_price(stock_code, date_key)
+                                            df.loc[idx, 'real_open'] = real_open_price
 
-                                df = df[df['real_open'] > 0]
-                                
-                                n_last_100_trade_days = sorted(last_100_trade_days, reverse=False)
-                                for date_key, row in df.iterrows():
-                                    stock_code = row['stock_code']
-                                    stock_code = all_stocks[stock_code.split('.')[0]]
-                                    date_key_index = n_last_100_trade_days.index(date_key)
-                                    after_trade_days = n_last_100_trade_days[date_key_index+1:date_key_index+11]
-                                    for idx, day in enumerate(after_trade_days):
-                                        open_price, close_price, _, _ = get_stock_open_close_price(stock_code, day, day)
-                                        if open_price > 0:
-                                            df.loc[date_key, f'low_{idx+1}'] = open_price
-                                            df.loc[date_key, f'close_{idx+1}'] = close_price
+                                        df = df[df['real_open'] > 0]
+                                        
+                                        n_last_100_trade_days = sorted(last_100_trade_days, reverse=False)
+                                        for date_key, row in df.iterrows():
+                                            stock_code = row['stock_code']
+                                            stock_code = all_stocks[stock_code.split('.')[0]]
+                                            date_key_index = n_last_100_trade_days.index(date_key)
+                                            after_trade_days = n_last_100_trade_days[date_key_index+1:date_key_index+11]
+                                            for idx, day in enumerate(after_trade_days):
+                                                open_price, close_price, _, _ = get_stock_open_close_price(stock_code, day, day)
+                                                if open_price > 0:
+                                                    df.loc[date_key, f'low_{idx+1}'] = open_price
+                                                    df.loc[date_key, f'close_{idx+1}'] = close_price
 
-                                df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
-                                df['r_return'] = df['r_return']-0.001
-                                df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
-                                df['r_close_return'] = df['r_close_return']-0.001
+                                        df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
+                                        df['r_return'] = df['r_return']-0.001
+                                        df['r_close_return'] = df['next_day_close_price']/df['real_open'] - 1
+                                        df['r_close_return'] = df['r_close_return']-0.001
 
-                                min_date_key = df['date_key'].min()
+                                        min_date_key = df['date_key'].min()
 
-                                if min_date_key not in last_100_trade_days:
-                                    print(f'min_date_key: {min_date_key}')
-                                    raise
-                                min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
+                                        if min_date_key not in last_100_trade_days:
+                                            print(f'min_date_key: {min_date_key}')
+                                            raise
+                                        min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
 
-                                trade_frequency = min_date_trade_days / len(df)
+                                        trade_frequency = min_date_trade_days / len(df)
 
 
-                                import datetime
-                                if not isinstance(min_date_key, datetime.datetime):
-                                    min_date_key = pd.to_datetime(min_date_key)
+                                        import datetime
+                                        if not isinstance(min_date_key, datetime.datetime):
+                                            min_date_key = pd.to_datetime(min_date_key)
 
-                                # 获取当前日期
-                                current_date = datetime.datetime.now()
-                                time_interval = current_date - min_date_key
-                                first_trade_interval = time_interval.days
+                                        # 获取当前日期
+                                        current_date = datetime.datetime.now()
+                                        time_interval = current_date - min_date_key
+                                        first_trade_interval = time_interval.days
 
-                                trade_avg_days = first_trade_interval / len(df)
+                                        trade_avg_days = first_trade_interval / len(df)
 
-                                df = df.set_index('date_key')
-                                # 对索引进行排序
-                                df = df.sort_index()
-                                for sell_use_open in sell_use_opens:
-                                    for sell_day in sell_days:
-                                        for zhisun_line in zhisun_lines:
-                                            for zhiying_line in zhiying_lines:
-                                                extra_info = f'zhisun_{sell_day}_{zhisun_line}_{zhiying_line}'
-                                                ndf = df.copy()
-                                                ndf = ndf[ndf['real_open'] > 0]
-                                                for date_key, row in ndf.iterrows():
-                                                    real_open = row['real_open']
-                                                    ndf.at[date_key, 'sy'] = -100
-                                                    ndf.at[date_key,'sell_day'] = -1
-                                                    for i in range(1, sell_day+1):
-                                                        if sell_use_open:
-                                                            cs = row[f'low_{i}']
-                                                            if cs < 0:
-                                                                if i == 1:
+                                        df = df.set_index('date_key')
+                                        # 对索引进行排序
+                                        df = df.sort_index()
+                                        for sell_use_open in sell_use_opens:
+                                            for sell_day in sell_days:
+                                                for zhisun_line in zhisun_lines:
+                                                    for zhiying_line in zhiying_lines:
+                                                        extra_info = f'zhisun_{sell_day}_{zhisun_line}_{zhiying_line}'
+                                                        print(f'extra_info: {extra_info}')
+                                                        ndf = df.copy()
+                                                        ndf = ndf[ndf['real_open'] > 0]
+                                                        for date_key, row in ndf.iterrows():
+                                                            real_open = row['real_open']
+                                                            ndf.at[date_key, 'sy'] = -100
+                                                            ndf.at[date_key,'sell_day'] = -1
+                                                            for i in range(1, sell_day+1):
+                                                                if sell_use_open:
+                                                                    cs = row[f'low_{i}']
+                                                                    if cs < 0:
+                                                                        if i == 1:
+                                                                            continue
+                                                                        else:
+                                                                            cs = row[f'low_{i-1}']
+                                                                    if cs < 0:
+                                                                        continue
+                                                                    sy = cs / real_open - 1
+                                                                    if sy < zhisun_line:
+                                                                        ndf.at[date_key, 'sy'] = sy
+                                                                        ndf.at[date_key,'sell_day'] = i
+                                                                        break
+                                                                    if sy > zhiying_line:
+                                                                        ndf.at[date_key,'sy'] = sy
+                                                                        ndf.at[date_key,'sell_day'] = i
+                                                                        break
+
+                                                                cs = row[f'close_{i}']
+                                                                if cs < 0:
+                                                                    if i == 1:
+                                                                        continue
+                                                                    else:
+                                                                        cs = row[f'close_{i-1}']
+                                                                if cs < 0:
                                                                     continue
-                                                                else:
-                                                                    cs = row[f'low_{i-1}']
-                                                            if cs < 0:
-                                                                continue
-                                                            sy = cs / real_open - 1
-                                                            if sy < zhisun_line:
-                                                                ndf.at[date_key, 'sy'] = sy
-                                                                ndf.at[date_key,'sell_day'] = i
-                                                                break
-                                                            if sy > zhiying_line:
-                                                                ndf.at[date_key,'sy'] = sy
-                                                                ndf.at[date_key,'sell_day'] = i
-                                                                break
-
-                                                        cs = row[f'close_{i}']
-                                                        if cs < 0:
-                                                            if i == 1:
-                                                                continue
-                                                            else:
-                                                                cs = row[f'close_{i-1}']
-                                                        if cs < 0:
+                                                                if i == sell_day:
+                                                                    cs = row[f'close_{i}']
+                                                                    ndf.at[date_key,'sy'] = cs / real_open - 1
+                                                                    ndf.at[date_key,'sell_day'] = i
+                                                                    break
+                                                                sy = cs / real_open - 1
+                                                                if sy < zhisun_line:
+                                                                    ndf.at[date_key, 'sy'] = sy
+                                                                    ndf.at[date_key,'sell_day'] = i
+                                                                    break
+                                                                if sy > zhiying_line:
+                                                                    ndf.at[date_key,'sy'] = sy
+                                                                    ndf.at[date_key,'sell_day'] = i
+                                                                    break
+                                                        ndf = ndf[ndf['sy'] > -99]
+                                                        if len(ndf) == 0:
                                                             continue
-                                                        if i == sell_day:
-                                                            cs = row[f'close_{i}']
-                                                            ndf.at[date_key,'sy'] = cs / real_open - 1
-                                                            ndf.at[date_key,'sell_day'] = i
-                                                            break
-                                                        sy = cs / real_open - 1
-                                                        if sy < zhisun_line:
-                                                            ndf.at[date_key, 'sy'] = sy
-                                                            ndf.at[date_key,'sell_day'] = i
-                                                            break
-                                                        if sy > zhiying_line:
-                                                            ndf.at[date_key,'sy'] = sy
-                                                            ndf.at[date_key,'sell_day'] = i
-                                                            break
-                                                ndf = ndf[ndf['sy'] > -99]
-                                                if len(ndf) == 0:
-                                                    continue
-                                                r= caculate_returns(ndf,'sy',_print = False, save_to_file=False, file_path='results.txt', extra_info=extra_info, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
-                                                
-                                                import json
-                                                codes_dict = df['stock_name'].to_dict()
-                                                json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
-
-                                                
-                                                r['交易策略'] =  strategy_name
-                                                r['交易子策略'] =  sub_strategy_name
-                                                r['交易明细'] =  json_codes_data
-                                                r['最近交易日数'] = trade_days
-                                                
-                                                
-                                                r['开盘卖'] = sell_use_open
-                                                r['交易日候选数'] = max_stock_rank
-                                                
-                                                if 'all_stocks' in param_dict:
-                                                    del param_dict['all_stocks']
-                                                r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
-                                                if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
-                                                    r['强方向过滤'] = 1
-                                                else:
-                                                    r['强方向过滤'] = 0
-
-                                                r['except_is_ppp'] = except_is_ppp
-                                                r['except_is_track'] = except_is_track
-                                                writer.add(r)
+                                                        r= caculate_returns(ndf,'sy',_print = False, save_to_file=False, file_path='results.txt', extra_info=extra_info, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
                                                         
-                                                del r
-                            gc.collect()
-                                        # return
+                                                        import json
+                                                        codes_dict = df['stock_name'].to_dict()
+                                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+                                                        
+                                                        r['交易策略'] =  strategy_name
+                                                        r['交易子策略'] =  sub_strategy_name
+                                                        r['交易明细'] =  json_codes_data
+                                                        r['最近交易日数'] = trade_days
+                                                        
+                                                        
+                                                        r['开盘卖'] = sell_use_open
+                                                        r['交易日候选数'] = max_stock_rank
+                                                        
+                                                        if 'all_stocks' in param_dict:
+                                                            del param_dict['all_stocks']
+                                                        r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                                        if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                                            r['强方向过滤'] = 1
+                                                        else:
+                                                            r['强方向过滤'] = 0
+
+                                                        r['except_is_ppp'] = except_is_ppp
+                                                        r['except_is_track'] = except_is_track
+                                                        writer.add(r)
+                                                                
+                                                        del r
+                                    gc.collect()
+                                                # return
 
 
         writer.flush()

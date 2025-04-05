@@ -1189,7 +1189,7 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                                         ndf = ndf[ndf['sy'] > -99]
                                                         if len(ndf) == 0:
                                                             continue
-                                                        r= caculate_returns(ndf,'sy',_print = False, save_to_file=False, file_path='results.txt', extra_info=extra_info, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
+                                                        r= caculate_returns(ndf,'sy', extra_info=extra_info, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
                                                         
                                                         import json
                                                         codes_dict = df['stock_name'].to_dict()

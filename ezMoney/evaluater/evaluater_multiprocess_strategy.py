@@ -1091,16 +1091,17 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         df = df[df['real_open'] > 0]
                                         
                                         n_last_100_trade_days = sorted(last_100_trade_days, reverse=False)
-                                        for date_key, row in df.iterrows():
+                                        for index, row in df.iterrows():
                                             stock_code = row['stock_code']
+                                            date_key = row['date_key']
                                             stock_code = all_stocks[stock_code.split('.')[0]]
                                             date_key_index = n_last_100_trade_days.index(date_key)
                                             after_trade_days = n_last_100_trade_days[date_key_index+1:date_key_index+11]
                                             for idx, day in enumerate(after_trade_days):
                                                 open_price, close_price, _, _ = get_stock_open_close_price(stock_code, day, day)
                                                 if open_price > 0:
-                                                    df.loc[date_key, f'low_{idx+1}'] = open_price
-                                                    df.loc[date_key, f'close_{idx+1}'] = close_price
+                                                    df.loc[index, f'low_{idx+1}'] = open_price
+                                                    df.loc[index, f'close_{idx+1}'] = close_price
 
                                         df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
                                         df['r_return'] = df['r_return']-0.001

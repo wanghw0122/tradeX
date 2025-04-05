@@ -4,7 +4,7 @@ from re import A
 from tkinter import E
 from typing import ItemsView
 from venv import logger
-
+import time
 from py import log
 import uuid
 from filelock import FileLock
@@ -644,7 +644,7 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503',
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [7, 15, 30, 50, 100]
+trade_days_rang = [7, 15, 50, 100]
 gaps = [0]
 # 候选排名筛选
 max_stock_ranks = [5, 3, 2]
@@ -679,8 +679,8 @@ filter_params = [
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,3,4,50],
-        'top_cx': [1,2,3,4,50],
+        'top_fx': [1,2,3,50],
+        'top_cx': [1,2,3,50],
         'only_fx': [False, True],
         'enbale_industry': [False],
         'filter_amount': [6000000, 8000000, 10000000, 12000000]
@@ -1056,6 +1056,7 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                 for filter_param in filter_params:
                                     params_list = generate_filter_params(filter_param)
                                     for param_dict in params_list:
+                                        start_time = time.time()
                                         import warnings
                                         df = None
                                         # 临时忽略 DeprecationWarning 警告
@@ -1063,7 +1064,9 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         with warnings.catch_warnings():
                                             warnings.filterwarnings("ignore", category=DeprecationWarning)
                                             df = trade_df.groupby(['date_key', 'strategy_name', 'sub_strategy_name']).apply(filter_fuc, **param_dict).reset_index(drop=True)
-
+                                        end_time = time.time()
+                                        elapsed_time = end_time - start_time
+                                        print(f"filter 函数执行耗时: {elapsed_time} 秒 - {sub_strategy_name}")
                                         # df = df.drop(['block_category_info'], axis=1)
                                         # 将索引设置为 date_key 列
                                         if len(df) < 1:
@@ -1153,9 +1156,10 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         min_hc = -100
                                         min_hc_info = ""
                                         min_hc_r = {}
-                                        print(f'len(df): {df.tail(2)}')
+                                        
                                         codes_dict = df['stock_name'].to_dict()
                                         json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                        start_time = time.time()
                                         for sell_use_open in sell_use_opens:
                                             for sell_day in sell_days:
                                                 for zhisun_line in zhisun_lines:
@@ -1303,7 +1307,10 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         writer.add(max_return_r)
                                         writer.add(max_ykb_r)
                                         writer.add(min_hc_r)
-                                        print(f"add writer once. {strategy_name}")
+                                        end_time = time.time()
+                                        elapsed_time = end_time - start_time
+                                        print(f"卖出搜索函数执行耗时: {elapsed_time} 秒 - {sub_strategy_name}")
+                                        print(f"add writer once. {strategy_name}-{sub_strategy_name}")
                                                 
                                     gc.collect()
 
@@ -1362,9 +1369,9 @@ if __name__ == '__main__':
     if not filter_strategy_names:
         filter_strategy_names = ['低吸', '追涨', '接力', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a']
     
-    # filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨']
+    filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨', '中位孕线低吸', 'N', '孕线']
 
-    filter_sub_strategy_names = ['低位孕线低吸']
+    # filter_sub_strategy_names = ['低位孕线低吸']
     for config in configs:
        strategy_name=config['strategy_name']
        sub_tasks = config['sub_tasks']

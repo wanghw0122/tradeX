@@ -980,6 +980,7 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
             else:
                 query = "select * from %s where (strategy_name = '%s' and stock_rank <= %s) " % (db_name, strategy_name, 20)
             df = pd.read_sql_query(query, conn)
+            df = df.dropna(axis=1, how='all')
             combined_df = pd.concat([combined_df, df], axis=0)
         conn.close()
         combined_df = combined_df.reset_index(drop=True)

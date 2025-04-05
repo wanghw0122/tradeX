@@ -887,6 +887,7 @@ def get_ranked_category_infos(date_key, except_is_ppp = True, except_is_track = 
     return rank_dict
 
 
+@lru_cache(maxsize=1024)
 def get_ranked_new_category_infos(date_key, except_is_ppp = True, except_is_track = True, gap = 10):
     # build_http_request.check_user_alive()
     categoryRankList = category_rank_class.build_category_rank_sort_list(date_key)
@@ -1137,7 +1138,6 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                                 for zhisun_line in zhisun_lines:
                                                     for zhiying_line in zhiying_lines:
                                                         extra_info = f'zhisun_{sell_day}_{zhisun_line}_{zhiying_line}'
-                                                        print(f'extra_info: {extra_info}')
                                                         ndf = df.copy()
                                                         ndf = ndf[ndf['real_open'] > 0]
                                                         for date_key, row in ndf.iterrows():

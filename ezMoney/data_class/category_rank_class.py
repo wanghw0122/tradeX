@@ -76,7 +76,7 @@ def build_category_rank_list(date = get_current_date()):
     return categoryRankList
 
 
-@lru_cache(maxsize=1000)
+@lru_cache(maxsize=10000)
 def build_category_rank_sort_list(date = get_current_date()):
     rslt = build_http_request.block_category_rank(date = date)
     categoryRankList = []

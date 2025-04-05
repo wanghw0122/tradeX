@@ -644,10 +644,10 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503',
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [5, 10, 15, 20, 30, 50, 100]
+trade_days_rang = [7, 15, 30, 50, 100]
 gaps = [0]
 # 候选排名筛选
-max_stock_ranks = [10, 5, 3, 2, 1]
+max_stock_ranks = [5, 3, 2]
 
 # 方向前几
 
@@ -657,8 +657,8 @@ filter_funcs = [group_filter_fx]
 # 计算的return
 # return_names = ['r_return', 'r_close_return']
 
-block_rank_filter =  True
-rerank_category = True
+# block_rank_filter =  True
+# rerank_category = True
 sell_use_opens = [True, False]
 except_is_ppps = [True, False]
 except_is_tracks = [True, False]
@@ -673,7 +673,7 @@ filter_params = [
         'top_cx': 2,
         'only_fx': False,
         'enbale_industry': False,
-        'filter_amount': [6000000, 7000000, 8000000, 9000000, 10000000, 12000000]
+        'filter_amount': [6000000, 8000000, 10000000, 12000000]
     },
     {
         'filtered': True,
@@ -683,7 +683,7 @@ filter_params = [
         'top_cx': [1,2,3,4,50],
         'only_fx': [False, True],
         'enbale_industry': [False],
-        'filter_amount': [6000000, 7000000, 8000000, 9000000, 10000000, 12000000]
+        'filter_amount': [6000000, 8000000, 10000000, 12000000]
     }
 ]
 
@@ -695,7 +695,7 @@ zhiying_lines = [0, 0.01,0.015,0.02,0.025, 0.03,0.035, 0.04,0.045, 0.05,0.055, 0
 
 class ResultWriter:
     """批量结果写入器"""
-    def __init__(self, output_path, batch_size=5000):
+    def __init__(self, output_path, batch_size=500):
         self.buffer = []
         self.output_path = output_path
         self.batch_size = batch_size
@@ -1136,11 +1136,31 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         df = df.set_index('date_key')
                                         # 对索引进行排序
                                         df = df.sort_index()
+
+                                        max_rate = -100
+                                        max_rate_info = ""
+
+                                        max_rate_r = {}
+
+                                        max_return = -100
+                                        max_return_info = ""
+                                        max_return_r = {}
+
+                                        max_ykb = -100
+                                        max_ykb_info = ""
+                                        max_ykb_r = {}
+
+                                        min_hc = -100
+                                        min_hc_info = ""
+                                        min_hc_r = {}
+                                        print(f'len(df): {df.tail(2)}')
+                                        codes_dict = df['stock_name'].to_dict()
+                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
                                         for sell_use_open in sell_use_opens:
                                             for sell_day in sell_days:
                                                 for zhisun_line in zhisun_lines:
                                                     for zhiying_line in zhiying_lines:
-                                                        extra_info = f'zhisun_{sell_day}_{zhisun_line}_{zhiying_line}'
+                                                        extra_info = f'zhisun_{sell_day}_{zhisun_line}_{zhiying_line}_{sell_use_open}'
                                                         ndf = df.copy()
                                                         ndf = ndf[ndf['real_open'] > 0]
                                                         for date_key, row in ndf.iterrows():
@@ -1193,36 +1213,99 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                                         if len(ndf) == 0:
                                                             continue
                                                         r= caculate_returns(ndf,'sy', extra_info=extra_info, trade_frequcy=trade_frequency, trade_avg_days=trade_avg_days, total_days=first_trade_interval)
-                                                        
-                                                        import json
-                                                        codes_dict = df['stock_name'].to_dict()
-                                                        json_codes_data = json.dumps(codes_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                                        if r['胜率'] > max_rate:
+                                                            max_rate_info = extra_info
+                                                            max_rate = max(max_rate, r['胜率'])
+                                                            max_rate_r = r.copy()
+                                                            max_rate_r['开盘卖'] = sell_use_open
+                                                            max_rate_r['交易日候选数'] = max_stock_rank
+                                                            max_rate_r['交易策略'] =  strategy_name
+                                                            max_rate_r['交易子策略'] =  sub_strategy_name
+                                                            max_rate_r['交易明细'] =  json_codes_data
+                                                            max_rate_r['最近交易日数'] = trade_days
 
-                                                        
-                                                        r['交易策略'] =  strategy_name
-                                                        r['交易子策略'] =  sub_strategy_name
-                                                        r['交易明细'] =  json_codes_data
-                                                        r['最近交易日数'] = trade_days
-                                                        
-                                                        
-                                                        r['开盘卖'] = sell_use_open
-                                                        r['交易日候选数'] = max_stock_rank
-                                                        
-                                                        if 'all_stocks' in param_dict:
-                                                            del param_dict['all_stocks']
-                                                        r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
-                                                        if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
-                                                            r['强方向过滤'] = 1
-                                                        else:
-                                                            r['强方向过滤'] = 0
+                                                            if 'all_stocks' in param_dict:
+                                                                del param_dict['all_stocks']
+                                                            max_rate_r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                                            if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                                                max_rate_r['强方向过滤'] = 1
+                                                            else:
+                                                                max_rate_r['强方向过滤'] = 0
 
-                                                        r['except_is_ppp'] = except_is_ppp
-                                                        r['except_is_track'] = except_is_track
-                                                        writer.add(r)
-                                                                
-                                                        del r
+                                                            max_rate_r['except_is_ppp'] = except_is_ppp
+                                                            max_rate_r['except_is_track'] = except_is_track
+                                                        if r['加和的收益'] > max_return:
+                                                            max_return_info = extra_info
+                                                            max_return = max(max_return, r['加和的收益'])
+                                                            max_return_r = r.copy()
+                                                            max_return_r['开盘卖'] = sell_use_open
+                                                            max_return_r['交易日候选数'] = max_stock_rank
+                                                            max_return_r['交易策略'] =  strategy_name
+                                                            max_return_r['交易子策略'] =  sub_strategy_name
+                                                            max_return_r['交易明细'] =  json_codes_data
+                                                            max_return_r['最近交易日数'] = trade_days
+
+                                                            if 'all_stocks' in param_dict:
+                                                                del param_dict['all_stocks']
+                                                            max_return_r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                                            if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                                                max_return_r['强方向过滤'] = 1
+                                                            else:
+                                                                max_return_r['强方向过滤'] = 0
+
+                                                            max_return_r['except_is_ppp'] = except_is_ppp
+                                                            max_return_r['except_is_track'] = except_is_track
+
+                                                        if r['夏普比率'] > max_ykb:
+                                                            max_ykb_info = extra_info
+                                                            max_ykb = max(max_ykb, r['夏普比率'])
+                                                            max_ykb_r = r.copy()
+                                                            max_ykb_r['开盘卖'] = sell_use_open
+                                                            max_ykb_r['交易日候选数'] = max_stock_rank
+                                                            max_ykb_r['交易策略'] =  strategy_name
+                                                            max_ykb_r['交易子策略'] =  sub_strategy_name
+                                                            max_ykb_r['交易明细'] =  json_codes_data
+                                                            max_ykb_r['最近交易日数'] = trade_days
+
+                                                            if 'all_stocks' in param_dict:
+                                                                del param_dict['all_stocks']
+                                                            max_ykb_r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                                            if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                                                max_ykb_r['强方向过滤'] = 1
+                                                            else:
+                                                                max_ykb_r['强方向过滤'] = 0
+
+                                                            max_ykb_r['except_is_ppp'] = except_is_ppp
+                                                            max_ykb_r['except_is_track'] = except_is_track
+                                                        if r['加和的最大回撤'] > min_hc:
+                                                            min_hc_info = extra_info
+                                                            min_hc = max(min_hc, r['加和的最大回撤'])
+                                                            min_hc_r = r.copy()
+                                                            min_hc_r['开盘卖'] = sell_use_open
+                                                            min_hc_r['交易日候选数'] = max_stock_rank
+                                                            min_hc_r['交易策略'] =  strategy_name
+                                                            min_hc_r['交易子策略'] =  sub_strategy_name
+                                                            min_hc_r['交易明细'] =  json_codes_data
+                                                            min_hc_r['最近交易日数'] = trade_days
+
+                                                            if 'all_stocks' in param_dict:
+                                                                del param_dict['all_stocks']
+                                                            min_hc_r['过滤参数'] = json.dumps(param_dict, ensure_ascii=False, indent=4, cls=NpEncoder)
+                                                            if param_dict['filtered'] and param_dict['fx_filtered'] and param_dict['only_fx']:
+                                                                min_hc_r['强方向过滤'] = 1
+                                                            else:
+                                                                min_hc_r['强方向过滤'] = 0
+
+                                                            min_hc_r['except_is_ppp'] = except_is_ppp
+                                                            min_hc_r['except_is_track'] = except_is_track
+
+                                        writer.add(max_rate_r)
+                                        writer.add(max_return_r)
+                                        writer.add(max_ykb_r)
+                                        writer.add(min_hc_r)
+                                        print(f"add writer once. {strategy_name}")
+                                                
                                     gc.collect()
-                                                # return
 
 
         writer.flush()
@@ -1262,7 +1345,8 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
             if arg == 'a':
-                filter_strategy_names.extend(['低吸', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a'])
+                # filter_strategy_names.extend(['低吸', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a'])
+                filter_strategy_names.extend(['低吸'])
                 total_args = total_args + '低吸'
             elif arg == 'b':
                 filter_strategy_names.append('追涨')
@@ -1278,7 +1362,9 @@ if __name__ == '__main__':
     if not filter_strategy_names:
         filter_strategy_names = ['低吸', '追涨', '接力', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a']
     
+    # filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨']
 
+    filter_sub_strategy_names = ['低位孕线低吸']
     for config in configs:
        strategy_name=config['strategy_name']
        sub_tasks = config['sub_tasks']
@@ -1288,6 +1374,8 @@ if __name__ == '__main__':
        for sub_task in sub_tasks:
             sub_strategy_name = sub_task['name']
             if sub_strategy_name:
+                if sub_strategy_name not in filter_sub_strategy_names:
+                    continue
                 if strategy_name in m:
                     m[strategy_name].append(sub_strategy_name)
                 else:

@@ -1070,16 +1070,16 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                             continue
 
                                         df = df[(df['open_price'] > 0) & (df['next_day_open_price'] > 0) & (df['next_day_close_price'] > 0)]
-                                        df['real_open'] = -1
+                                        df['real_open'] = -1.0
 
                                         for i in range(1, 11):
-                                            df[f'close_{i}'] = -1
-                                            df[f'low_{i}'] = -1
+                                            df[f'close_{i}'] = -1.0
+                                            df[f'low_{i}'] = -1.0
                                         
                                         for idx, row in df.iterrows():
                                             stock_code = row['stock_code']
                                             if stock_code.split('.')[0] not in all_stocks:
-                                                df.loc[idx, 'real_open'] = -1
+                                                df.loc[idx, 'real_open'] = -1.0
                                                 continue
                                             stock_code = all_stocks[stock_code.split('.')[0]]
                                             date_key = row['date_key']
@@ -1102,10 +1102,10 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                             for idx, day in enumerate(after_trade_days):
                                                 open_price, close_price, _, _ = get_stock_open_close_price(stock_code, day, day)
                                                 if open_price > 0:
-                                                    with warnings.catch_warnings():
-                                                        warnings.filterwarnings("ignore", category=DeprecationWarning)
-                                                        df.loc[index, f'low_{idx+1}'] = open_price
-                                                        df.loc[index, f'close_{idx+1}'] = close_price
+                                                    # with warnings.catch_warnings():
+                                                    #     warnings.filterwarnings("ignore", category=FutureWarning)
+                                                    df.loc[index, f'low_{idx+1}'] = open_price
+                                                    df.loc[index, f'close_{idx+1}'] = close_price
 
                                         df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
                                         df['r_return'] = df['r_return']-0.001
@@ -1145,7 +1145,7 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                                         ndf = ndf[ndf['real_open'] > 0]
                                                         for date_key, row in ndf.iterrows():
                                                             real_open = row['real_open']
-                                                            ndf.at[date_key, 'sy'] = -100
+                                                            ndf.at[date_key, 'sy'] = -100.0
                                                             ndf.at[date_key,'sell_day'] = -1
                                                             for i in range(1, sell_day+1):
                                                                 if sell_use_open:

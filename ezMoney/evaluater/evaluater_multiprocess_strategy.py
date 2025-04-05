@@ -1101,8 +1101,10 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                             for idx, day in enumerate(after_trade_days):
                                                 open_price, close_price, _, _ = get_stock_open_close_price(stock_code, day, day)
                                                 if open_price > 0:
-                                                    df.loc[index, f'low_{idx+1}'] = open_price
-                                                    df.loc[index, f'close_{idx+1}'] = close_price
+                                                    with warnings.catch_warnings():
+                                                        warnings.filterwarnings("ignore", category=DeprecationWarning)
+                                                        df.loc[index, f'low_{idx+1}'] = open_price
+                                                        df.loc[index, f'close_{idx+1}'] = close_price
 
                                         df['r_return'] = df['next_day_open_price']/df['real_open'] - 1
                                         df['r_return'] = df['r_return']-0.001

@@ -153,10 +153,12 @@ data/*
 sqlite_db/
 sqlite_db/*
 ezMoney/sqlite_db/strategy_data.db
-ezMoney/evaluater/
-ezMoney/evaluater/*
 ezMoney/evaluater/eval_20250311/
 ezMoney/evaluater/eval_20250311/*
 ezMoney/evaluater/eval/*
 ezMoney/evaluater/eval
 ezMoney/evaluater/eval_202539
+ezMoney/evaluater/eval_results/
+ezMoney/evaluater/eval_results/*
+ezMoney/evaluater/eval_results/eval_20250311/
+ezMoney/evaluater/eval_results/eval_20250311/*

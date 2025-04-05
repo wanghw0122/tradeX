@@ -1,0 +1,146 @@
+# 当天特征
+
+###个股特征
+
+#### 小草个股特征
+openPrice 开盘价
+openPctChangeRate 开盘涨幅
+ylimitupdays 
+limitupdays
+jsjl 接力分
+xcjw 竞王分
+jssb 起爆分
+cjs 低吸分
+relaxJssb
+relaxCjs
+directionCjs
+dwcjs
+lastDayLimitUpTime
+firstLimitUpDays
+isGestationLine
+isBrokenPlate
+isSmallHighOpen
+isMiddleHighOpen、
+isLargeLowOpen
+isWeak
+isLongShadow
+isDownLongShadow
+isUpBroken
+isFirstUpBroken
+isDownBroken
+isFirstDownBroken
+isHalf
+isBottom
+isPreSt
+isMedium
+isHigh
+isMeso
+isLow
+isFall
+isPlummet
+isStrengthHigh
+isStrengthMiddle
+isStrengthLow
+isStrengthIncrease
+isStrengthReduct
+shortLineScore
+shortLineScoreChange
+ybreakLimitUpDays
+
+
+
+
+######小草行业
+
+1. 行业排名
+2. 行业分
+
+######个股因子特征
+
+- 价格动量因子
+    - 短期动量（5日/10日收益率）
+
+    - 缺口因子（开盘价相对前收盘涨跌幅）
+
+    - 振幅收敛因子（昨日振幅/近5日平均振幅）
+
+    - 突破因子（价格突破布林带上轨/下轨）
+
+    - 涨停基因因子（近20日涨停次数）
+
+    - 压力位和支撑位因子
+
+- 量能类异动类因子
+   - 量比因子（当前成交量/过去5日同时段均值）
+
+   - 隔夜挂单变化率（集合竞价挂单量变化）
+   
+   - 大单净量（近3日大单买入占比）
+   
+   - 筹码集中度（自由流通股本换手率）
+
+- 市场情绪
+  - 同花顺/东方财富热度指数
+  
+  - 板块轮动强度（所属板块3日涨幅排名）
+
+  - 涨停家数市场占比
+
+  - 融资融券余额变化
+  
+  - 连板情绪因子
+
+  - 高位情绪因子
+
+- 基本面因子
+
+  - 市值
+
+  - 市盈率
+
+  - 流动市值
+
+- 事件驱动因子
+  - 业绩预告超预期标记
+
+  - 限售解禁比例
+
+  - 高管增减持信号
+
+  - 机构调研密度变化
+
+- 微观结构
+  - 订单簿不平衡度
+
+  - 开盘跳空缺口未补天数
+
+  - 波动率收缩因子（ATR变化率）
+
+  - 流动性因子（近5日均成交金额）
+
+
+
+###大盘特征
+
+- 指数涨跌幅因子
+
+- 上证、深成指数因子、10cm指数因子
+
+- 
+
+####大盘指数特征
+
+## 行业特征
+- 小草行业
+ 行业涨幅、行业排名、行业内排名
+- 申万行业
+- T行业
+
+
+#历史特征
+
+大盘
+
+个股
+
+行业

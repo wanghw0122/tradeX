@@ -644,7 +644,7 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503',
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [7, 15, 50, 100]
+trade_days_rang = [100]
 gaps = [0]
 # 候选排名筛选
 max_stock_ranks = [5, 3, 2]
@@ -659,8 +659,7 @@ filter_funcs = [group_filter_fx]
 
 # block_rank_filter =  True
 # rerank_category = True
-sell_use_opens = [True, False]
-except_is_ppps = [True, False]
+except_is_ppps = [True]
 except_is_tracks = [True, False]
 # gap10_generate = [False, True]
 
@@ -687,10 +686,10 @@ filter_params = [
     }
 ]
 
-sell_use_opens = [True, False]
+sell_use_opens = [True]
 sell_days = [1,2,3,4,5,6,7]
-zhisun_lines  = [-0.01, -0.02,-0.03,-0.035,-0.04,-0.045,-0.05,-0.055,-0.06,-0.065,-0.07,-0.075,-0.08, -0.085, -0.09, -0.095, -0.10,-0.11,-0.12,-0.13,-0.14,-0.15]
-zhiying_lines = [0, 0.01,0.015,0.02,0.025, 0.03,0.035, 0.04,0.045, 0.05,0.055, 0.06, 0.065,0.07, 0.08, 0.09, 0.1]
+zhisun_lines  = [-0.01, -0.02,-0.03,-0.04,-0.05,-0.06,-0.07,-0.08, -0.09, -0.10,-0.11,-0.12,-0.13,-0.14,-0.15]
+zhiying_lines = [0, 0.01,0.02, 0.03, 0.04, 0.05, 0.06,0.07, 0.08, 0.09, 0.1]
 
 
 class ResultWriter:
@@ -770,7 +769,7 @@ def generate_filter_params(m):
                     })        
     return res
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=10240)
 def get_real_open_price(stock_code, datekey):
     import datetime
 
@@ -931,6 +930,8 @@ def get_ranked_new_category_infos(date_key, except_is_ppp = True, except_is_trac
         prev_num = num
     return rank_dict
 
+
+@lru_cache(maxsize=10240)
 def get_stock_open_close_price(auction_code, date, next_date):
     if '-' in date or '-' in next_date:
         n_date = date.replace('-', '')

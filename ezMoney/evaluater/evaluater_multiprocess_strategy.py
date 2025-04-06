@@ -1372,7 +1372,7 @@ if __name__ == '__main__':
     
     filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨', '中位孕线低吸', 'N', '孕线']
 
-    # filter_sub_strategy_names = ['低位孕线低吸']
+    filter_sub_strategy_names = []
     for config in configs:
        strategy_name=config['strategy_name']
        sub_tasks = config['sub_tasks']
@@ -1442,22 +1442,22 @@ if __name__ == '__main__':
     
     sve_df = pd.DataFrame(all_results)        
 
-    sve_df = sve_df.drop_duplicates(subset=['交易策略', '交易子策略', '交易明细', '最近交易日数', '强方向过滤', '交易日候选数', '过滤函数', '过滤参数'], keep='last')
-    column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '开盘卖', '止损止盈', '强方向过滤', '交易日候选数','except_is_ppp', 'except_is_track', '过滤函数', '过滤参数', '最大回撤','加和的最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','加和的收益','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
+    sve_df = sve_df.drop_duplicates(subset=['交易策略', '交易子策略', '交易明细', '最近交易日数', '强方向过滤', '交易日候选数', '过滤参数'], keep='last')
+    column_order = ['交易策略', '交易子策略', '交易明细', '最近交易日数', '开盘卖', '止损止盈', '强方向过滤', '交易日候选数','except_is_ppp', 'except_is_track', '平均卖天数', '过滤参数', '最大回撤','加和的最大回撤', '夏普比率', '总收益率', '波动率', '年化收益率', '总盈亏','加和的收益','成功次数','失败次数', '总天数','总交易次数','交易频率','自然日交易间隔','胜率','平均盈利','平均亏损','最大盈利','最大亏损','盈亏比','凯利公式最佳仓位']
     sve_df = sve_df[column_order]
 
     # 假设 df 已经定义
     # 按照 交易策略、交易子策略、最近交易日数 进行分组
     grouped = sve_df.groupby(['交易策略', '交易子策略', '最近交易日数'])
 
-    for rg in [(0 , 1.5), (1.5, 3), (3, 5)]:
+    for rg in [(0 , 1.5), (1.5, 3), (3, 5), (5,7), (7,10), (10, 50)]:
         for sd in [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8)]:
             min_freq, max_freq = rg
             min_sd, max_sd = sd
             # 筛选出交易频率在指定范围内的数据
-            filtered_df = grouped.apply(lambda x: x[(x['交易频率'] > min_freq) & (x['交易频率'] <= max_freq)]).reset_index(drop=True)
+            filtered_df = grouped.apply(lambda x: x[(x['自然日交易间隔'] > min_freq) & (x['自然日交易间隔'] <= max_freq)]).reset_index(drop=True)
             # 过滤平均卖出天数在指定范围内的数据
-            filtered_df = filtered_df[(filtered_df['平均卖出天数'] >= min_sd) & (filtered_df['平均卖出天数'] < max_sd)]
+            filtered_df = filtered_df[(filtered_df['平均卖天数'] >= min_sd) & (filtered_df['平均卖天数'] < max_sd)]
             # 重置索引
             filtered_df = filtered_df.reset_index(drop=True)
 

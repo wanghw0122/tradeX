@@ -57,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-03-31"
@@ -163,11 +163,13 @@ strategies = {
             # 长期玩 回撤不高 创建日期 2025-03-19
             "低位孕线低吸": {
                 "code": "9G0086",
-                "returnNum": 2,
+                "returnNum": 10,
                 "budget": "ydx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '第一高频',
+                    'limit': 2,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -181,7 +183,24 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': True
-                    }
+                    },
+                    {
+                    'mark': '高频',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 50,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
                 ]
             },
             # "连断低吸": {
@@ -209,78 +228,101 @@ strategies = {
             #     ]
             # },
             # 交易频率2 15日最强
-            "放宽低吸前3": {
-                # 15日 亮眼 有方向 最近强势 创建日期 2025-03-19
-                "code": "9G0099",   
-                "returnNum": 10,
-                "budget": "ndx",
-                'returnFullInfo': True,
-                'filter_params': [
-                    {
-                    "filtered": True,
-                    "fx_filtered": True,
-                    "topn": 1,
-                    "top_fx": 2,
-                    "top_cx": 15,
-                    "only_fx": True,
-                    "enbale_industry": False,
-                    "empty_priority": False,
-                    "min_trade_amount": 10000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': True
-                    }
-                ]
-            },
+            # "放宽低吸前3": {
+            #     # 15日 亮眼 有方向 最近强势 创建日期 2025-03-19
+            #     "code": "9G0099",   
+            #     "returnNum": 10,
+            #     "budget": "ndx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         "filtered": True,
+            #         "fx_filtered": True,
+            #         "topn": 1,
+            #         "top_fx": 2,
+            #         "top_cx": 15,
+            #         "only_fx": True,
+            #         "enbale_industry": False,
+            #         "empty_priority": False,
+            #         "min_trade_amount": 10000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': True
+            #         }
+            #     ]
+            # },
     
-            "中位断板低吸": {
-                # 偏中长期，稳定收益 无方向
-                "code": "9G0042",
-                "returnNum": 10,
-                "budget": "zwdbdx",
-                'returnFullInfo': True,
-                'filter_params': [
-                    # 中长期 上升趋势强 下降趋势弱， 创建日期 2025-03-19
-                    {
-                    'mark': '高频',
-                    'limit': 2,
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'topn': 1,
-                    'top_fx': 1,
-                    'top_cx': 2,
-                    'only_fx': False,
-                    'enbale_industry': False,
-                    'empty_priority': True,
-                    'min_trade_amount': 9000000,
-                    'block_rank_filter': False,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': True
-                    },
-                    # 最近方向表现不错， 夏普高 创建日期 2025-03-20 
-                    {
-                    'mark': '低频',
-                    'limit': 2,
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'topn': 1,
-                    'top_fx': 1,
-                    'top_cx': 50,
-                    'only_fx': True,
-                    'enbale_industry': False,
-                    'empty_priority': True,
-                    'min_trade_amount': 6000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': True 
-                    }
-                ]
-            },
-            "中位高强中低开低吸": {
-                "code": "9G0155",
+            # "中位断板低吸": {
+            #     # 偏中长期，稳定收益 无方向
+            #     "code": "9G0042",
+            #     "returnNum": 10,
+            #     "budget": "zwdbdx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         # 中长期 上升趋势强 下降趋势弱， 创建日期 2025-03-19
+            #         {
+            #         'mark': '高频',
+            #         'limit': 2,
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 1,
+            #         'top_cx': 2,
+            #         'only_fx': False,
+            #         'enbale_industry': False,
+            #         'empty_priority': True,
+            #         'min_trade_amount': 9000000,
+            #         'block_rank_filter': False,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': True
+            #         },
+            #         # 最近方向表现不错， 夏普高 创建日期 2025-03-20 
+            #         {
+            #         'mark': '低频',
+            #         'limit': 2,
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 1,
+            #         'top_cx': 50,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': True,
+            #         'min_trade_amount': 6000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': True 
+            #         }
+            #     ]
+            # },
+            # "中位高强中低开低吸": {
+            #     "code": "9G0155",
+            #     "returnNum": 3,
+            #     "budget": "zwdbdx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 2,
+            #         'top_cx': 2,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': False,
+            #         'min_trade_amount': 8000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': False
+            #         }
+            #     ]
+            # },
+            "中位孕线低吸": {
+                "code": "9G0085",
                 "returnNum": 3,
                 "budget": "zwdbdx",
                 'returnFullInfo': True,
@@ -289,16 +331,16 @@ strategies = {
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
-                    'top_fx': 2,
-                    'top_cx': 2,
+                    'top_fx': 3,
+                    'top_cx': 1,
                     'only_fx': True,
                     'enbale_industry': False,
-                    'empty_priority': False,
-                    'min_trade_amount': 8000000,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     }
                 ]
             },
@@ -449,34 +491,227 @@ strategies = {
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     }
                 ]
             },
-            # "低位高强低吸": {
-            #     # 10日 高频 前2 有方向 最近强势 创建日期 2025-03-19
-            #     "code": "9G0124",
-            #     "returnNum": 5,
-            #     "budget": "ddx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 1,
-            #         'top_cx': 1,
-            #         'only_fx': False,
-            #         'enbale_industry': False,
-            #         'empty_priority': False,
-            #         'min_trade_amount': 6000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': False
-            #         }
-            #     ]
-            # },
+            "低位高强低吸": {
+                "code": "9G0124",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'mark': '第一高频',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 50,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    # 最近还行
+                    'mark': '高频',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 3,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '中高频',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '中频',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '中低频',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 3,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '中低频2',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '中低频3',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+
+                    {
+                    'mark': '高频2',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 50,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+
+                    #  最近表现一般
+                    # {
+                    # 'mark': '高频3',
+                    # 'limit': 5,
+                    # 'filtered': True,
+                    # 'fx_filtered': True,
+                    # 'topn': 1,
+                    # 'top_fx': 2,
+                    # 'top_cx': 50,
+                    # 'only_fx': True,
+                    # 'enbale_industry': False,
+                    # 'empty_priority': True,
+                    # 'min_trade_amount': 6000000,
+                    # 'block_rank_filter': True,
+                    # 'gap': 0,
+                    # 'except_is_ppp': True,
+                    # 'except_is_track': True
+                    # },
+                    {
+                    'mark': '中低频4',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '中低频5',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 50,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+
+                    {
+                    'mark': '高频3',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 50,
+                    'top_cx': 2,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
+            },
             "绿盘低吸": {
                 # 30日 中频 前2 有方向 最近强势 创建日期 2025-03-20
                 "code": "9G0002",
@@ -497,35 +732,35 @@ strategies = {
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
-                    }
-                ]
-            },
-
-            "中位低吸": {
-                # 15日 中频 前2 有方向 胜率 60% 最近强势 创建日期 2025-03-20
-                "code": "9G0026",
-                "returnNum": 3,
-                "budget": "ddx",
-                'returnFullInfo': True,
-                'filter_params': [
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'topn': 1,
-                    'top_fx': 3,
-                    'top_cx': 1,
-                    'only_fx': True,
-                    'enbale_industry': False,
-                    'empty_priority': True,
-                    'min_trade_amount': 8000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     }
                 ]
             }
+
+            # "中位低吸": {
+            #     # 15日 中频 前2 有方向 胜率 60% 最近强势 创建日期 2025-03-20
+            #     "code": "9G0026",
+            #     "returnNum": 3,
+            #     "budget": "ddx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 3,
+            #         'top_cx': 1,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': True,
+            #         'min_trade_amount': 8000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': False
+            #         }
+            #     ]
+            # }
         }
     }
     ,
@@ -554,30 +789,31 @@ strategies = {
                     'except_is_track': False
                     }
                 ]
-            },
-            "低位中强追涨": {
-                "code": "9G0116",
-                "returnNum": 2,
-                "budget": "ddx",
-                'returnFullInfo': True,
-                'filter_params': [
-                    {
-                    'filtered': True,
-                    'fx_filtered': True,
-                    'topn': 1,
-                    'top_fx': 50,
-                    'top_cx': 50,
-                    'only_fx': True,
-                    'enbale_industry': False,
-                    'empty_priority': False,
-                    'min_trade_amount': 6000000,
-                    'block_rank_filter': True,
-                    'gap': 0,
-                    'except_is_ppp': True,
-                    'except_is_track': False
-                    }
-                ]
             }
+            # ,
+            # "低位中强追涨": {
+            #     "code": "9G0116",
+            #     "returnNum": 2,
+            #     "budget": "ddx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 50,
+            #         'top_cx': 50,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': False,
+            #         'min_trade_amount': 6000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': False
+            #         }
+            #     ]
+            # }
         }
     }
 }
@@ -622,7 +858,8 @@ default_positions = {
     "追涨-低位中强追涨": 0.2,
     "低吸-绿盘低吸": 0.25,
     "低吸-中位低吸": 0.25,
-    "追涨-中位小高开起爆": 0.1
+    "追涨-中位小高开起爆": 0.1,
+    "低吸-中位孕线低吸": 0.25
 }
 
 ##########################strategy configs ################

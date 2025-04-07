@@ -644,7 +644,7 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503',
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [100]
+trade_days_rang = [100, 20]
 gaps = [0]
 # 候选排名筛选
 max_stock_ranks = [5, 3, 2]
@@ -672,23 +672,23 @@ filter_params = [
         'top_cx': 2,
         'only_fx': False,
         'enbale_industry': False,
-        'filter_amount': [6000000, 8000000, 10000000, 12000000]
+        'filter_amount': [6000000, 8000000, 10000000]
     },
     {
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,3,50],
-        'top_cx': [1,2,3,50],
+        'top_fx': [1,2,50],
+        'top_cx': [1,2,50],
         'only_fx': [False, True],
         'enbale_industry': [False],
-        'filter_amount': [6000000, 8000000, 10000000, 12000000]
+        'filter_amount': [6000000, 8000000, 10000000]
     }
 ]
 
 sell_use_opens = [True]
 sell_days = [1,2,3,4,5,6,7]
-zhisun_lines  = [-0.01, -0.02,-0.03,-0.04,-0.05,-0.06,-0.07,-0.08, -0.09, -0.10,-0.11,-0.12,-0.13,-0.14,-0.15]
+zhisun_lines  = [-0.01, -0.02,-0.03,-0.04,-0.05,-0.06,-0.07,-0.08, -0.09, -0.10,-0.11,-0.12]
 zhiying_lines = [0, 0.01,0.02, 0.03, 0.04, 0.05, 0.06,0.07, 0.08, 0.09, 0.1]
 
 
@@ -1370,9 +1370,9 @@ if __name__ == '__main__':
     if not filter_strategy_names:
         filter_strategy_names = ['低吸', '追涨', '接力', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a']
     
-    filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨', '中位孕线低吸', 'N', '孕线']
+    # filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨', '中位孕线低吸', 'N', '孕线']
 
-    filter_sub_strategy_names = []
+    # filter_sub_strategy_names = []
     for config in configs:
        strategy_name=config['strategy_name']
        sub_tasks = config['sub_tasks']
@@ -1382,8 +1382,8 @@ if __name__ == '__main__':
        for sub_task in sub_tasks:
             sub_strategy_name = sub_task['name']
             if sub_strategy_name:
-                if sub_strategy_name not in filter_sub_strategy_names:
-                    continue
+                # if sub_strategy_name not in filter_sub_strategy_names:
+                    # continue
                 if strategy_name in m:
                     m[strategy_name].append(sub_strategy_name)
                 else:

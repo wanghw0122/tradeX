@@ -60,7 +60,9 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-03-31"
+test_date = "2025-04-07"
+buy_total_coef = 0.4
+sell_at_monning = False
 
 use_threading_buyer = True
 budget_from_db = True
@@ -1610,7 +1612,7 @@ def direction_filter_fuc(candicates, category_infos, params):
                             code_to_index_dict[code]['max_industry_code_rank'] = i_min_rank_filter
                 code_to_index_dict[code]['max_block_code_rank'] = min_rank_filter
 
-        order_logger.info("direction_filter_fuc code_to_index_dict:{}".format(code_to_index_dict))
+        # order_logger.info("direction_filter_fuc code_to_index_dict:{}".format(code_to_index_dict))
         c_res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
         if c_res and len(c_res) > 0:
             apos = 1 / len(c_res)
@@ -2092,6 +2094,9 @@ def consumer_to_buy(q, orders_dict, orders):
                             code_to_order_volume_dict[code] = [(strategy_name, sub_strategy_name, buy_vol)]
                     code_to_buy_price_dict[code] = qmt_trader.get_stock_buy_price(full_tick_info, buy_buffer)
                     code_to_total_buy_volume_dict[code] = buy_volume
+
+                for code, buy_volume in code_to_total_buy_volume_dict.items():
+                    code_to_total_buy_volume_dict[code] = int(buy_volume // 100 * buy_total_coef) * 100
 
                 order_logger.info(f"code_to_buy_price_dict: {code_to_buy_price_dict}")
                 order_logger.info(f"code_to_order_volume_dict: {code_to_order_volume_dict}")
@@ -2902,6 +2907,8 @@ def update_trade_budgets():
 
 
 def schedule_sell_stocks_everyday_at_925():
+    if not sell_at_monning:
+        return
     try:
         is_trade, pre_trade_date = date.is_trading_day()
         if not is_trade:

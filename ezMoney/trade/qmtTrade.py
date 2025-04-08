@@ -854,7 +854,7 @@ class QMTTrader:
             return seq_id
 
 
-    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None):
+    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True):
         """
         卖出股票
 
@@ -870,6 +870,7 @@ class QMTTrader:
         if not full_tick_info:
             order_logger.error(f"[出售] 获取股票 {stock_code} 行情失败")
             return
+        lastPrice = full_tick_info[stock_code]['lastPrice']
         price = full_tick_info[stock_code]['lastPrice'] * (1 + buffer)
         from decimal import Decimal, ROUND_HALF_UP
         new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
@@ -881,6 +882,11 @@ class QMTTrader:
             print(f"last_close {last_close}")
             from decimal import Decimal, ROUND_HALF_UP
             limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+            limit_up_price = float(Decimal(str(last_close * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+            if not up_sell and lastPrice - limit_up_price < 0.01:
+                order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
+                return 0
+
             
         sell_price = max(new_price, limit_down_price)
         

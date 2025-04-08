@@ -5,7 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="404f9bf0-e8f4-4e60-85c7-543785cee120" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/ezMoney/evaluater/evaluater_multiprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/ezMoney/evaluater/evaluater_multiprocess.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,6 +71,8 @@
       <workItem from="1741319105334" duration="4870000" />
       <workItem from="1741574405931" duration="1195000" />
       <workItem from="1741662870814" duration="14877000" />
+      <workItem from="1742869927436" duration="5000" />
+      <workItem from="1742870122234" duration="22000" />
     </task>
     <servers />
   </component>

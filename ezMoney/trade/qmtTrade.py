@@ -883,7 +883,7 @@ class QMTTrader:
             from decimal import Decimal, ROUND_HALF_UP
             limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
             limit_up_price = float(Decimal(str(last_close * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-            if not up_sell and lastPrice - limit_up_price < 0.01:
+            if not up_sell and abs(lastPrice - limit_up_price) < 0.01:
                 order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
                 return 0
 

@@ -60,8 +60,8 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-04-07"
-buy_total_coef = 0.33
+test_date = "2025-04-03"
+buy_total_coef = 0.7
 sell_at_monning = True
 
 use_threading_buyer = True
@@ -388,6 +388,7 @@ strategies = {
                     'except_is_track': False
                     },
                     {
+                    # 曲线完美
                     'mark': '方向前2',
                     'limit': 3,
                     'filtered': True,
@@ -854,13 +855,65 @@ strategies = {
             # }
         }
     }
+    # ,
+    # "追涨": {
+    #     "sub_strategies": {
+    #         # 收益不错 有方向 最近强势 ，创建日期 2025-03-19
+    #         "小高开追涨": {
+    #             "code": "9G0019",
+    #             "returnNum": 5,
+    #             "budget": "ddx",
+    #             'returnFullInfo': True,
+    #             'filter_params': [
+    #                 {
+    #                 'filtered': True,
+    #                 'fx_filtered': True,
+    #                 'topn': 1,
+    #                 'top_fx': 2,
+    #                 'top_cx': 50,
+    #                 'only_fx': True,
+    #                 'enbale_industry': False,
+    #                 'empty_priority': False,
+    #                 'min_trade_amount': 10000000,
+    #                 'block_rank_filter': True,
+    #                 'gap': 0,
+    #                 'except_is_ppp': True,
+    #                 'except_is_track': False
+    #                 }
+    #             ]
+    #         }
+    #         # ,
+    #         # "低位中强追涨": {
+    #         #     "code": "9G0116",
+    #         #     "returnNum": 2,
+    #         #     "budget": "ddx",
+    #         #     'returnFullInfo': True,
+    #         #     'filter_params': [
+    #         #         {
+    #         #         'filtered': True,
+    #         #         'fx_filtered': True,
+    #         #         'topn': 1,
+    #         #         'top_fx': 50,
+    #         #         'top_cx': 50,
+    #         #         'only_fx': True,
+    #         #         'enbale_industry': False,
+    #         #         'empty_priority': False,
+    #         #         'min_trade_amount': 6000000,
+    #         #         'block_rank_filter': True,
+    #         #         'gap': 0,
+    #         #         'except_is_ppp': True,
+    #         #         'except_is_track': False
+    #         #         }
+    #         #     ]
+    #         # }
+    #     }
+    # }
     ,
-    "追涨": {
+    "接力": {
         "sub_strategies": {
-            # 收益不错 有方向 最近强势 ，创建日期 2025-03-19
-            "小高开追涨": {
-                "code": "9G0019",
-                "returnNum": 5,
+            "一进二弱转强": {
+                "code": "9G0003",
+                "returnNum": 3,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -868,43 +921,20 @@ strategies = {
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
-                    'top_fx': 2,
-                    'top_cx': 50,
-                    'only_fx': True,
+                    'top_fx': 50,
+                    'top_cx': 2,
+                    'only_fx': False,
                     'enbale_industry': False,
-                    'empty_priority': False,
-                    'min_trade_amount': 10000000,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': False
+                    'except_is_track': True
                     }
                 ]
             }
-            # ,
-            # "低位中强追涨": {
-            #     "code": "9G0116",
-            #     "returnNum": 2,
-            #     "budget": "ddx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 50,
-            #         'top_cx': 50,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': False,
-            #         'min_trade_amount': 6000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': False
-            #         }
-            #     ]
-            # }
+          
         }
     }
 }
@@ -935,7 +965,8 @@ strategies_to_buffer = {
     "低吸-低位高强中低开低吸": [0.025],
     "低吸-低位中强中低开低吸": [0.025],
     "低吸-中强中低开低吸": [0.025],
-    "低吸-首红断低吸": [0.025]
+    "低吸-首红断低吸": [0.025],
+    "接力-一进二弱转强": [0.025]
 }
 
 default_positions = {
@@ -958,7 +989,8 @@ default_positions = {
     "低吸-低位高强中低开低吸": 0.2,
     "低吸-低位中强中低开低吸": 0.2,
     "低吸-中强中低开低吸": 0.2,
-    "低吸-首红断低吸": 0.25
+    "低吸-首红断低吸": 0.25,
+    "接力-一进二弱转强": 0.25
 }
 
 ##########################strategy configs ################

@@ -2188,7 +2188,7 @@ def consumer_to_buy(q, orders_dict, orders):
                     code_to_total_buy_volume_dict[code] = buy_volume
 
                 for code, buy_volume in code_to_total_buy_volume_dict.items():
-                    code_to_total_buy_volume_dict[code] = int(buy_volume // 100 * buy_total_coef) * 100
+                    code_to_total_buy_volume_dict[code] = int(round(buy_volume // 100 * buy_total_coef)) * 100
 
                 order_logger.info(f"code_to_buy_price_dict: {code_to_buy_price_dict}")
                 order_logger.info(f"code_to_order_volume_dict: {code_to_order_volume_dict}")

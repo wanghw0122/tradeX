@@ -395,7 +395,7 @@ def group_filter_fx(group, filtered = True, fx_filtered = True, topn = 3, top_fx
                     rank_one_row['close_real_return'] = rank_one_row['close_return'] - hd_pct
                     return rank_one_row
             else:
-                category_filtered = group[(group['max_block_category_rank'] <= top_fx) & ((group['max_block_code_rank'] <= top_cx) | (group['max_industry_code_rank'] <= top_cx))]
+                category_filtered = group[(group['max_block_category_rank'] <= top_fx) & ((group['max_block_code_rank'] <= top_cx) | ((group['max_industry_code_rank'] <= top_cx) & (group['max_industry_code_rank'] > 0)))]
                 if len(category_filtered) == 0:
                     if only_fx:
                         return group[group['max_block_category_rank'] < min_category_rank]

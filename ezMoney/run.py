@@ -406,6 +406,24 @@ strategies = {
                     'except_is_track': False
                     },
                     {
+                    # 曲线完美
+                    'mark': '方向前1',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 50,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
                     'mark': '强方向前2',
                     'limit': 3,
                     'filtered': True,
@@ -827,6 +845,29 @@ strategies = {
                     'except_is_track': True
                     }
                 ]
+            },
+            "绿盘低吸": {
+                "code": "9G0002",
+                "returnNum": 5,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 50,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
             }
 
             # "中位低吸": {
@@ -1181,7 +1222,7 @@ def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered
             if empty_priority:
                 filter_category_codes = get_max_block_category_rank_rang(code_to_index_dict, rmax=top_fx)
                 filter_block_codes = get_max_block_code_rank_rang(code_to_index_dict, rmax=top_cx)
-                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmax=top_cx)
+                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmin=0, rmax=top_cx)
                 union_codes = set(filter_industry_codes).union(set(filter_block_codes))
                 filter_codes = list(set(filter_category_codes).intersection(union_codes))
                 if len(filter_codes) > 1:
@@ -1222,7 +1263,7 @@ def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered
             if empty_priority:
                 filter_category_codes = get_max_block_category_rank_rang(code_to_index_dict, rmax=top_fx)
                 filter_block_codes = get_max_block_code_rank_rang(code_to_index_dict, rmax=top_cx)
-                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmax=top_cx)
+                filter_industry_codes = get_max_industry_code_rank_rang(code_to_index_dict, rmin=0, rmax=top_cx)
                 union_codes = set(filter_industry_codes).union(set(filter_block_codes))
                 filter_codes = list(set(filter_category_codes).intersection(union_codes))
                 if len(filter_codes) > 1:

@@ -652,7 +652,7 @@ max_stock_ranks = [5, 3, 2]
 # 方向前几
 
 # 过滤函数
-filter_funcs = [group_filter_fx]
+filter_funcs = [group_filter]
 
 # 计算的return
 # return_names = ['r_return', 'r_close_return']

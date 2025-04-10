@@ -544,11 +544,11 @@ class QMTTrader:
                                 assert origin_volume > 0
 
                                 manager.update_data("trade_data", {'profit': profit + origin_profit, 'profit_pct': (profit_pct + origin_profit_pct) / 2, 'left_volume': origin_volume-volume}, {'id': row_id})
-                            
+                            if row_id not in updated_oids:
+                                updated_oids.append(row_id)
                         if order_id not in updated_ids:
                             updated_ids.append(order_id)
-                        if row_id not in updated_oids:
-                            updated_oids.append(row_id)
+                        
                         keys_to_delete.append(order_id)
                     elif order_status == xtconstant.ORDER_PART_CANCEL or order_status == xtconstant.ORDER_CANCELED:
                         traded_price = cur_order_stat['traded_price']

@@ -2337,6 +2337,9 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
             if not need_listen_stocks or len(need_listen_stocks) == 0:
                 order_logger.error(f"[consumer_to_rebuy] 无需要监听的股票 结束任务")
                 break
+            if is_after_940():
+                order_logger.error(f"[consumer_to_rebuy] 已过交易时间，结束任务")
+                break
             data = tick_queue.get()
             order_logger.info(f"[consumer] Consumed: {data}")
             # update 撤单dict

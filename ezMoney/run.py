@@ -3219,7 +3219,7 @@ def schedule_sell_stocks_everyday_at_925():
 
         for code, sell_volume in codes_to_sell_volume.items():
             extra_infos = codes_to_sell_infos[code]
-            stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+            stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
             if not stock_name:
                 stock_name = ''
             qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.003, extra_infos = extra_infos)

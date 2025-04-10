@@ -61,7 +61,7 @@ do_test = False
 buy = True
 subscribe = True
 test_date = "2025-04-03"
-buy_total_coef = 0.75
+buy_total_coef = 0.7
 sell_at_monning = True
 
 use_threading_buyer = True
@@ -726,6 +726,23 @@ strategies = {
                     'enbale_industry': False,
                     'empty_priority': True,
                     'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '高频4',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 50,
+                    'top_cx': 2,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,

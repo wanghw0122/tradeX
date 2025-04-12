@@ -644,15 +644,15 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503',
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [100, 20]
+trade_days_rang = [100, 20, 10]
 gaps = [0]
 # 候选排名筛选
-max_stock_ranks = [5, 3, 2]
+max_stock_ranks = [10, 5, 3, 2]
 
 # 方向前几
 
 # 过滤函数
-filter_funcs = [group_filter]
+filter_funcs = [group_filter_fx]
 
 # 计算的return
 # return_names = ['r_return', 'r_close_return']
@@ -678,11 +678,11 @@ filter_params = [
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,50],
-        'top_cx': [1,2,50],
+        'top_fx': [1,2,3,50],
+        'top_cx': [1,2,3,50],
         'only_fx': [False, True],
         'enbale_industry': [False],
-        'filter_amount': [6000000, 8000000, 10000000]
+        'filter_amount': [6000000, 8000000, 10000000,12000000]
     }
 ]
 

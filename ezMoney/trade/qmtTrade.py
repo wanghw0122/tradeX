@@ -550,7 +550,7 @@ class QMTTrader:
                             updated_ids.append(order_id)
                         
                         keys_to_delete.append(order_id)
-                    elif order_status == xtconstant.ORDER_PART_CANCEL or order_status == xtconstant.ORDER_CANCELED:
+                    elif order_status == xtconstant.ORDER_PART_CANCEL or order_status == xtconstant.ORDER_CANCELED or order_status == xtconstant.ORDER_JUNK:
                         traded_price = cur_order_stat['traded_price']
                         traded_volume = cur_order_stat['traded_volume']
                         order_volume = cur_order_stat['order_volume']
@@ -663,8 +663,8 @@ class QMTTrader:
                             if sid > 0:
                                 kv_to_merge[sid] = left_sell_order_infos
                         keys_to_delete.append(order_id)
-                    elif order_status == xtconstant.ORDER_JUNK:
-                        keys_to_delete.append(order_id)
+                    # elif order_status == xtconstant.ORDER_JUNK:
+                    #     keys_to_delete.append(order_id)
                     else:
                         self.cancel_order(order_id)
 

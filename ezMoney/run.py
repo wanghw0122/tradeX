@@ -61,7 +61,7 @@ do_test = False
 buy = True
 subscribe = True
 test_date = "2025-04-03"
-buy_total_coef = 0.75
+buy_total_coef = 1.0
 sell_at_monning = True
 
 use_threading_buyer = True
@@ -3239,7 +3239,7 @@ def schedule_sell_stocks_everyday_at_925():
             stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
             if not stock_name:
                 stock_name = ''
-            qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.003, extra_infos = extra_infos)
+            qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.0035, extra_infos = extra_infos)
 
     except Exception as e:
         order_logger.error(f"早盘出售 出现错误: {e}")

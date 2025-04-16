@@ -60,7 +60,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-04-03"
+test_date = "2025-04-16"
 buy_total_coef = 1.0
 sell_at_monning = True
 

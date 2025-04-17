@@ -809,7 +809,7 @@ strategies = {
                     'only_fx': False,
                     'enbale_industry': False,
                     'empty_priority': True,
-                    'min_trade_amount': 8000000,
+                    'min_trade_amount': 7500000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,

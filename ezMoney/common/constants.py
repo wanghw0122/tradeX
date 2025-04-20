@@ -83,6 +83,8 @@ from decimal import Decimal, ROUND_HALF_UP
 #     "9G0101": "二进三以上弱转强"
 # }
 
+st_stocks = ['002306.SZ']
+
 mods_code_to_name_dict = {
     '9G0092': '低位小高开起爆',
     '9G0091': '中位小高开起爆',
@@ -332,9 +334,13 @@ class StockStatus:
 db_path= r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
 
 
-def get_limit_price(price):
-    limit_down_price = float(Decimal(str(price * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-    limit_up_price = float(Decimal(str(price * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+def get_limit_price(price, stock_code = ''):
+    if stock_code and stock_code in st_stocks:
+        limit_down_price = float(Decimal(str(price * 0.95)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+        limit_up_price = float(Decimal(str(price * 1.05)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+    else:
+        limit_down_price = float(Decimal(str(price * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+        limit_up_price = float(Decimal(str(price * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
     return limit_down_price, limit_up_price
 
 

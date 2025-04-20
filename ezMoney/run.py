@@ -30,7 +30,6 @@ from monitor.monitor import StockMonitor
 
 threading_q = queue.Queue(100)
 
-
 global q
 global qq
 q = Queue(10)
@@ -3480,7 +3479,7 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                         monitor_data_update_dict['stop_loss_price'] = stop_loss_price
                         monitor_data_update_dict['stop_loss_pct'] = stop_loss_pct
                     
-                    limit_down_price, limit_up_price = constants.get_limit_price(float(last_close_price))
+                    limit_down_price, limit_up_price = constants.get_limit_price(float(last_close_price), stock_code= stock_code)
 
                     monitor_data_update_dict['limit_down_price'] = limit_down_price
                     monitor_data_update_dict['limit_up_price'] = limit_up_price
@@ -3531,7 +3530,7 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                         monitor_data_update_dict['stop_loss_price'] = stop_loss_price
                         monitor_data_update_dict['stop_loss_pct'] = stop_loss_pct
                     
-                    limit_down_price, limit_up_price = constants.get_limit_price(float(last_close_price))
+                    limit_down_price, limit_up_price = constants.get_limit_price(float(last_close_price), stock_code=stock_code)
 
                     monitor_data_update_dict['limit_down_price'] = limit_down_price
                     monitor_data_update_dict['limit_up_price'] = limit_up_price
@@ -3604,6 +3603,10 @@ def start_monitor_monning():
 
 
 if __name__ == "__main__":
+
+    # schedule_update_sell_stock_infos_everyday_at_925()
+
+    # exit(0)
 
     from xtquant import xtdatacenter as xtdc
     xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")

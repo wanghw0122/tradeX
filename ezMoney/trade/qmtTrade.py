@@ -10,6 +10,7 @@ from xtquant.xttype import StockAccount
 from xtquant import xtconstant
 from multiprocessing import Manager
 import multiprocessing
+from common import constants
 
 import sys
 
@@ -673,8 +674,7 @@ class QMTTrader:
                         if full_tick_info and 'lastClose' in full_tick_info[stock_code] and 'lastPrice' in full_tick_info[stock_code]:
                             lastPrice = full_tick_info[stock_code]['lastPrice']
                             last_close = full_tick_info[stock_code]['lastClose']
-                            from decimal import Decimal, ROUND_HALF_UP
-                            limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+                            limit_down_price, limit_up_price = constants.get_limit_price(last_close, stock_code=stock_code)
                             if abs(lastPrice - limit_down_price) < 0.01:
                                 order_logger.info(f"股票 {stock_code} 价格跌停了，不进行撤单")
                             else:
@@ -898,9 +898,7 @@ class QMTTrader:
             if full_tick_info and 'lastClose' in full_tick_info[stock_code]:
                 last_close = full_tick_info[stock_code]['lastClose']
                 print(f"last_close {last_close}")
-                from decimal import Decimal, ROUND_HALF_UP
-                limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-                limit_up_price = float(Decimal(str(last_close * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+                limit_down_price, limit_up_price =  constants.get_limit_price(last_close, stock_code=stock_code)
                 if not up_sell and abs(lastPrice - limit_up_price) < 0.01:
                     order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
                     return 0

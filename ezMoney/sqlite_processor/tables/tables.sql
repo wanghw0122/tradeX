@@ -254,8 +254,7 @@ CREATE TABLE IF NOT EXISTS strategy_monitor_config (
     last_close_price_hc_pct REAL DEFAULT -0.005,
     last_day_sell_thres REAL DEFAULT 0.06,
     extra_info TEXT DEFAULT '',
-    monitor_status INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (strategy_name, sub_strategy_name, stock_code, origin_order_id)
+    UNIQUE (strategy_name, sub_strategy_name)
 )

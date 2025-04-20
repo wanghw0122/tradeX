@@ -193,7 +193,7 @@ class StockMonitor(object):
             self.current_min_increase = (self.current_min_price - self.last_close_price) / self.last_close_price
 
             if self.limit_up_price < 0 or self.limit_down_price < 0:
-                limit_down_price_0, limit_up_price_0 = constants.get_limit_price(self.last_close_price)
+                limit_down_price_0, limit_up_price_0 = constants.get_limit_price(self.last_close_price, stock_code=self.stock_code)
                 self.limit_up_price = limit_up_price_0
                 self.limit_down_price = limit_down_price_0
 

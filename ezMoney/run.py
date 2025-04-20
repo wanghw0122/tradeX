@@ -14,7 +14,7 @@ from date_utils import date
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 from run_roll_back import *
-
+from common import constants
 import pandas as pd
 
 import datetime
@@ -26,6 +26,7 @@ import queue
 
 from sqlite_processor.mysqlite import SQLiteManager
 
+from monitor.monitor import StockMonitor
 
 threading_q = queue.Queue(100)
 
@@ -2867,6 +2868,10 @@ def is_after_940():
     target_time = now.replace(hour=9, minute=40, second=0, microsecond=0)
     return now > target_time
 
+def is_after_1140():
+    now = datetime.datetime.now()
+    target_time = now.replace(hour=11, minute=40, second=0, microsecond=0)
+    return now > target_time
 
 def cancel_orders():
     global cancel_time
@@ -3245,6 +3250,357 @@ def schedule_sell_stocks_everyday_at_925():
         order_logger.error(f"早盘出售 出现错误: {e}")
 
 
+
+def schedule_update_sell_stock_infos_everyday_at_925():
+    if not sell_at_monning:
+        return
+    try:
+        is_trade, pre_trade_date = date.is_trading_day()
+        if not is_trade:
+            logger.info("[update_sell_stocks]非交易日，不更新预算。")
+            return
+        last_10_trade_days = date.get_trade_dates_by_end(pre_trade_date, 10)
+
+        if not last_10_trade_days:
+            order_logger.info("[update_sell_stocks]获取最近10个交易日失败")
+            return
+        last_10_trade_days.sort()
+
+        position_stocks =  qmt_trader.get_tradable_stocks()
+
+        if not position_stocks:
+            order_logger.info("[update_sell_stocks]无股票可出售 更新所有left volume 为0")
+            with SQLiteManager(db_name) as manager:
+                for trade_day in last_10_trade_days:
+                    manager.update_data("trade_data", {"left_volume": 0}, {"date_key": trade_day})
+            return
+        
+        order_logger.info(f"[update_sell_stocks]股票仓位数据： {position_stocks}")
+
+        stock_to_trade_volume = {}
+        days_strategy_to_stock_volume = {}
+
+        for position_stock_info in position_stocks:
+            if not position_stock_info:
+                continue
+            stock_code = position_stock_info['stock_code']
+            stock_volume = position_stock_info['available_qty']
+            if stock_volume > 0:
+                stock_to_trade_volume[stock_code] = stock_volume
+
+        order_logger.info(f"[update_sell_stocks]可出售股票详情：{stock_to_trade_volume}")
+        
+        for trade_day in last_10_trade_days:
+            with SQLiteManager(db_name) as manager:
+                trade_day_datas = manager.query_data_dict("trade_data", {"date_key": trade_day, "buy0_or_sell1": 0})
+                trade_day_datas = [trade_day_data for trade_day_data in trade_day_datas if trade_day_data['left_volume'] > 0 and trade_day_data['stock_code'] in stock_to_trade_volume]
+                if not trade_day_datas:
+                    order_logger.info(f"[update_sell_stocks]无数据可出售 {trade_day}")
+                    continue
+                for trade_day_data in trade_day_datas:
+                    strategy_name = trade_day_data['strategy_name']
+                    sub_strategy_name = trade_day_data['sub_strategy_name']
+                    if sub_strategy_name:
+                        strategy_name = strategy_name + ":" + sub_strategy_name
+                    stock_code = trade_day_data['stock_code']
+                    left_volume = trade_day_data['left_volume']
+                    trade_price = trade_day_data['trade_price']
+                    order_id = trade_day_data['order_id']
+                    row_id =  trade_day_data['id']
+                    if trade_day not in days_strategy_to_stock_volume:
+                        days_strategy_to_stock_volume[trade_day] = {}
+                    if strategy_name not in days_strategy_to_stock_volume[trade_day]:
+                        days_strategy_to_stock_volume[trade_day][strategy_name] = []
+                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id))
+
+        if not days_strategy_to_stock_volume:
+            order_logger.info("[update_sell_stocks]无数据可出售")
+            return
+
+        strategy_meta_dict = {}
+        with SQLiteManager(db_name) as manager:
+            all_strategy_meta_infos = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_status': 1}, columns="*")
+            if not all_strategy_meta_infos:
+                order_logger.info(f"策略 没有数据， 跳过更新")
+                return
+
+            for strategy_meta_info in all_strategy_meta_infos:
+                trade_at_open = strategy_meta_info['trade_at_open']
+                if not trade_at_open:
+                    continue
+                strategy_name = strategy_meta_info['strategy_name']
+                sub_strategy_name = strategy_meta_info['sub_strategy_name']
+                if sub_strategy_name:
+                    strategy_name = strategy_name + ":" + sub_strategy_name
+                budget = strategy_meta_info['budget']
+                stop_loss_pct = strategy_meta_info['stop_loss_pct']
+                take_profit_pct = strategy_meta_info['take_profit_pct']
+                max_trade_days = strategy_meta_info['max_trade_days']
+
+                strategy_meta_dict[strategy_name] = {
+                    'budget': budget,
+                    'stop_loss_pct': stop_loss_pct,
+                    'take_profit_pct': take_profit_pct,
+                    'max_trade_days': max_trade_days
+                }
+        ll = len(last_10_trade_days)
+
+        sells_candidates = []
+        for idx, trade_day in enumerate(last_10_trade_days):
+            gap_days = ll - idx
+            if trade_day in days_strategy_to_stock_volume:
+                for strategy_name, strategy_stock_volumes in days_strategy_to_stock_volume[trade_day].items():
+                    if strategy_name not in strategy_meta_dict:
+                        order_logger.info(f"[update_sell_stocks] 策略 {strategy_name} 没有数据， 跳过更新")
+                        continue
+                    strategy_meta_info = strategy_meta_dict[strategy_name]
+                    budget = strategy_meta_info['budget']
+                    stop_loss_pct = strategy_meta_info['stop_loss_pct']
+                    take_profit_pct = strategy_meta_info['take_profit_pct']
+                    max_trade_days = strategy_meta_info['max_trade_days']
+                    
+                    for strategy_stock_volume_info in strategy_stock_volumes:
+                        stock_code = strategy_stock_volume_info[0]
+                        left_volume = strategy_stock_volume_info[1]
+                        trade_price = strategy_stock_volume_info[2]
+                        order_id = strategy_stock_volume_info[3]
+                        row_id = strategy_stock_volume_info[4]
+                        full_tick = xtdata.get_full_tick([stock_code])
+    
+                        if not full_tick or len(full_tick) == 0:
+                            order_logger.error(f"[update_sell_stocks] 获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+                            continue
+                        elif stock_code not in full_tick:
+                            order_logger.error(f"[update_sell_stocks] 获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+                            continue
+                        elif 'lastPrice' not in full_tick[stock_code]:
+                            order_logger.error(f"[update_sell_stocks] 获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+                            continue
+                        elif 'lastClose' not in full_tick[stock_code]:
+                            order_logger.error(f"[update_sell_stocks] 获取全推行情失败 {stock_code}, 全推行情： {full_tick}")
+                            continue
+                        
+                        current_price = full_tick[stock_code]['lastPrice']
+                        last_close_price = full_tick[stock_code]['lastClose']
+                        cur_profit = current_price / trade_price - 1
+                        if cur_profit > take_profit_pct:
+                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days))
+                        elif cur_profit < stop_loss_pct:
+                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days))
+                        else:
+                            if gap_days >= max_trade_days:
+                                order_logger.info(f"[update_sell_stocks] 策略 {strategy_name} 最大交易天数 {max_trade_days} 已超过 {gap_days} 天")
+                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days))
+                                continue
+                            else:
+                                continue
+        
+        sells_candidates = sorted(sells_candidates, key=lambda x: x[7], reverse=True)
+
+        if not sells_candidates:
+            order_logger.info("[update_sell_stocks] 无数据可出售")
+            return
+        
+        for sells_candidate in sells_candidates:
+            logger.info(f"[update_sell_stocks] 准备出售前数据 {sells_candidate}")
+        
+        logger.info(f"[update_sell_stocks] 持仓所有可出售数据 {stock_to_trade_volume}")
+
+        with SQLiteManager(db_name) as manager:
+            for sells_candidate in sells_candidates:
+                stock_code = sells_candidate[0]
+                left_volume = sells_candidate[1]
+                trade_price = sells_candidate[2]
+                order_id = sells_candidate[3]
+                strategy_name = sells_candidate[4]
+                trade_day = sells_candidate[5]
+                reason = sells_candidate[6]
+                row_id = sells_candidate[7]
+                cur_profit = sells_candidate[8]
+                current_price = sells_candidate[9]
+                last_close_price = sells_candidate[10]
+                gap_days = sells_candidate[11]
+                max_trade_days = sells_candidate[12]
+
+                if left_volume <= 0:
+                    continue
+
+                if stock_code not in stock_to_trade_volume:
+                    order_logger.info(f"[update_sell_stocks] 股票 {stock_code} 已被出售")
+                    continue
+                all_volume = stock_to_trade_volume[stock_code]
+                if all_volume <= 0:
+                    order_logger.info(f"[update_sell_stocks] 股票 {stock_code} 已被出售")
+                    manager.update_data("trade_data", {"left_volume": 0}, {"id": row_id})
+                    continue
+                if left_volume > all_volume:
+                    order_logger.info(f"[update_sell_stocks] 股票 {stock_code} 准备出售 {all_volume}")
+                    manager.update_data("trade_data", {"left_volume": all_volume}, {"id": row_id})
+
+                    
+                    monitor_type = -1
+                    if 'take_profit' in reason:
+                        monitor_type = constants.STOP_PROFIT_TRADE_TYPE
+                    elif 'stop_loss' in reason:
+                        monitor_type = constants.STOP_LOSS_TRADE_TYPE
+                    elif 'max_days' in reason:
+                        monitor_type = constants.LAST_TRADE_DAY_TRADE_TYPE
+                    if monitor_type == -1:
+                        order_logger.error(f"[update_sell_stocks] 股票 {stock_code} 监控类型错误 {reason}")
+                        continue
+
+                    monitor_data_update_dict = {
+                        "origin_order_id": order_id,
+                        "origin_row_id": row_id,
+                        "date_key": date.get_current_date(),
+                        "strategy_name": strategy_name,
+                        "stock_code": stock_code,
+                        "trade_price": trade_price,
+                        "trade_date": trade_day,
+                        "profit_pct": cur_profit,
+                        "left_volume": all_volume,
+                        "open_price": current_price,
+                        "last_close_price": last_close_price,
+                        "current_price": current_price,
+                        "monitor_type": monitor_type,
+                        "max_trade_days": max_trade_days,
+                        "current_trade_days": gap_days,
+                        "monitor_status": 1
+                    }
+                    if monitor_type == constants.STOP_PROFIT_TRADE_TYPE:
+                        take_profit_pct = reason.split('|')[1]
+                        take_profit_price = trade_price * (1 + float(take_profit_pct))
+                        monitor_data_update_dict['take_profit_price'] = take_profit_price
+                        monitor_data_update_dict['take_profit_pct'] = take_profit_pct
+                    elif monitor_type == constants.STOP_LOSS_TRADE_TYPE:
+                        stop_loss_pct = reason.split('|')[1]
+                        stop_loss_price = trade_price * (1 + float(stop_loss_pct))
+                        monitor_data_update_dict['stop_loss_price'] = stop_loss_price
+                        monitor_data_update_dict['stop_loss_pct'] = stop_loss_pct
+                    
+                    limit_down_price, limit_up_price = constants.get_limit_price(float(last_close_price))
+
+                    monitor_data_update_dict['limit_down_price'] = limit_down_price
+                    monitor_data_update_dict['limit_up_price'] = limit_up_price
+
+                    manager.insert_data("monitor_data", monitor_data_update_dict)
+                    stock_to_trade_volume[stock_code] = 0
+                    continue
+                if left_volume <= all_volume:
+                    order_logger.info(f"股票 {stock_code} 准备出售 {left_volume}")
+
+                    monitor_type = -1
+                    if 'take_profit' in reason:
+                        monitor_type = constants.STOP_PROFIT_TRADE_TYPE
+                    elif 'stop_loss' in reason:
+                        monitor_type = constants.STOP_LOSS_TRADE_TYPE
+                    elif 'max_days' in reason:
+                        monitor_type = constants.LAST_TRADE_DAY_TRADE_TYPE
+                    if monitor_type == -1:
+                        order_logger.error(f"[update_sell_stocks] 股票 {stock_code} 监控类型错误 {reason}")
+                        continue
+
+                    monitor_data_update_dict = {
+                        "origin_order_id": order_id,
+                        "origin_row_id": row_id,
+                        "date_key": date.get_current_date(),
+                        "strategy_name": strategy_name,
+                        "stock_code": stock_code,
+                        "trade_price": trade_price,
+                        "trade_date": trade_day,
+                        "profit_pct": cur_profit,
+                        "left_volume": left_volume,
+                        "open_price": current_price,
+                        "last_close_price": last_close_price,
+                        "current_price": current_price,
+                        "monitor_type": monitor_type,
+                        "max_trade_days": max_trade_days,
+                        "current_trade_days": gap_days,
+                        "monitor_status": 1
+                    }
+                    if monitor_type == constants.STOP_PROFIT_TRADE_TYPE:
+                        take_profit_pct = reason.split('|')[1]
+                        take_profit_price = trade_price * (1 + float(take_profit_pct))
+                        monitor_data_update_dict['take_profit_price'] = take_profit_price
+                        monitor_data_update_dict['take_profit_pct'] = take_profit_pct
+                    elif monitor_type == constants.STOP_LOSS_TRADE_TYPE:
+                        stop_loss_pct = reason.split('|')[1]
+                        stop_loss_price = trade_price * (1 + float(stop_loss_pct))
+                        monitor_data_update_dict['stop_loss_price'] = stop_loss_price
+                        monitor_data_update_dict['stop_loss_pct'] = stop_loss_pct
+                    
+                    limit_down_price, limit_up_price = constants.get_limit_price(float(last_close_price))
+
+                    monitor_data_update_dict['limit_down_price'] = limit_down_price
+                    monitor_data_update_dict['limit_up_price'] = limit_up_price
+
+                    manager.insert_data("monitor_data", monitor_data_update_dict)
+                    stock_to_trade_volume[stock_code] = stock_to_trade_volume[stock_code] - left_volume
+                    continue
+        logger.info(f"出售后 left volume {stock_to_trade_volume}")
+
+        # for code, sell_volume in codes_to_sell_volume.items():
+        #     extra_infos = codes_to_sell_infos[code]
+        #     stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
+        #     if not stock_name:
+        #         stock_name = ''
+        #     qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.0035, extra_infos = extra_infos, up_sell=True)
+
+    except Exception as e:
+        order_logger.error(f"早盘出售 出现错误: {e}")
+
+
+def start_monitor_monning():
+    if not sell_at_monning:
+        return
+    try:
+        is_trade, pre_trade_date = date.is_trading_day()
+        if not is_trade:
+            strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
+            return
+        current_date = date.get_current_date()
+        monitor_stock_codes = []
+        code_to_monitor_dict = {}
+        with SQLiteManager(db_name) as manager:
+            query_data_results = manager.query_data_dict("monitor_data", condition_dict={'date_key': current_date, 'monitor_status': 1})
+            if not query_data_results:
+                strategy_logger.error("[start_monitor_monning] 无监听任务。")
+                return
+            for data_result in query_data_results:
+                stock_code = data_result['stock_code']
+                # stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                # if not stock_name:
+                #     stock_name = ''
+                if stock_code and stock_code not in monitor_stock_codes:
+                    monitor_stock_codes.append(stock_code)
+        
+        if monitor_stock_codes:
+            for stock_code in monitor_stock_codes:
+                stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                if not stock_name:
+                    stock_name = ''
+                stock_monitor = StockMonitor(stock_code=stock_code, stock_name=stock_name, qmt_trader=qmt_trader)
+                code_to_monitor_dict[stock_code] = stock_monitor
+            
+            def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_monitor_dict):
+                for stock in stocks:
+                    if stock not in res:
+                        continue
+                    data = res[stock]
+                    s_monitor = monitor_dict[stock]
+                    s_monitor.consume(data)
+
+            sid = xtdata.subscribe_whole_quote(monitor_stock_codes, callback=monitor_call_back)
+            if sid < 0:
+                strategy_logger.error(f"[start_monitor_monning] 订阅错误: {monitor_stock_codes}")
+            else:
+                logger.info(f"[start_monitor_monning] 订阅成功: {monitor_stock_codes}")
+                
+
+    except Exception as e:
+        pass
+
+
 if __name__ == "__main__":
 
     from xtquant import xtdatacenter as xtdc
@@ -3255,9 +3611,31 @@ if __name__ == "__main__":
     print('done')
 
     print('xtdc.listen')
+
+    addr_list = [
+    '115.231.218.73:55310', 
+    '115.231.218.79:55310', 
+    '42.228.16.211:55300',
+    '42.228.16.210:55300',
+    '36.99.48.20:55300',
+    '36.99.48.21:55300'
+    ]
+    xtdc.set_allow_optmize_address(addr_list)
+
+    xtdc.set_kline_mirror_enabled(True) 
     
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
+
+    xtdata.connect(port=listen_addr)
+
+    print('-----连接上了------')
+    print(xtdata.data_dir)
+
+    servers = xtdata.get_quote_server_status()
+    # print(servers)
+    for k, v in servers.items():
+        print(k, v)
     full_tick_info_dict = Manager().dict()
 
     qmt_trader.init_order_context(flag = use_threading_buyer)
@@ -3285,6 +3663,8 @@ if __name__ == "__main__":
 
     # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 
+    scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=29, second=0, id="start_monitor_monning")
+
     scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
@@ -3296,7 +3676,7 @@ if __name__ == "__main__":
     # 保持程序运行，以便调度器可以执行任务
     try:
         while True:
-            if is_after_940() and not do_test:
+            if is_after_1140() and not do_test:
                 logger.info("达到最大执行时间，退出程序")
                 if use_threading_buyer:
                     threading_q.put('end')

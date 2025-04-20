@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 # mods_code_to_name_dict = {
 #     "9G0001": "红盘起爆",
 #     "9G0002": "绿盘低吸",
@@ -266,6 +268,74 @@ mods_name_to_code_dict = {v: k for k, v in mods_code_to_name_dict.items()}
 all_codes = list(mods_code_to_name_dict.keys())
 
 all_names = list(mods_code_to_name_dict.values())
+
+
+# 0: 
+# MONITOR_TRADE_TYPE = 0
+
+# 止盈
+STOP_PROFIT_TRADE_TYPE = 1
+# 止损
+STOP_LOSS_TRADE_TYPE = 2
+# 最后一个交易日
+LAST_TRADE_DAY_TRADE_TYPE = 3
+# 盈利
+PROFIT_TRADE_TYPE = 4
+# 涨停
+LIMIT_UP_TRADE_TYPE = 5
+# 跌停
+LIMIT_DOWN_TRADE_TYPE = 6
+
+class OpenStatus:
+    # 低开
+    DOWN_OPEN = 0
+    # 平开
+    FLAT_OPEN = 1
+    # 高开
+    UP_OPEN = 2
+
+class OpenTradeDirection:
+    # 高走
+    UP = 0
+    # 低走
+    DOWN = 1
+
+
+class StockStatus:
+    UNKNOWN = -1
+    # 冷启动
+    COLD_START = 0
+    # 均线下
+    AVG_DOWN = 1
+    # 均线上
+    AVG_UP = 2
+    # 低走均线下
+    LOW_AVG_DOWN = 3
+    # 高走均线上
+    HIGH_AVG_UP = 4
+
+    #低开低走
+    DOWN_LOW_AVG_DOWN = 5
+    #低开高走
+    DOWN_HIGH_AVG_UP = 6
+    #高开低走
+    UP_LOW_AVG_DOWN = 7
+    #高开高走
+    UP_HIGH_AVG_UP = 8
+
+    # 观测均线下
+    OBSERVE_AVG_DOWN = 5
+
+
+
+
+db_path= r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+
+
+def get_limit_price(price):
+    limit_down_price = float(Decimal(str(price * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+    limit_up_price = float(Decimal(str(price * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+    return limit_down_price, limit_up_price
 
 
 if __name__ == "__main__":

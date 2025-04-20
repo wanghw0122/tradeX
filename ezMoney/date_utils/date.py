@@ -145,7 +145,7 @@ def is_before_0930():
 
 def is_after_0935():
     now = datetime.now()
-    start_time = now.replace(hour=9, minute=35, second=0, microsecond=0)
+    start_time = now.replace(hour=11, minute=30, second=0, microsecond=0)
     return now > start_time
 
 

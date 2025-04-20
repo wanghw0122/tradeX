@@ -196,3 +196,66 @@ CREATE TABLE IF NOT EXISTS strategy_meta_info (
     createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (strategy_name)
 );
+
+
+
+CREATE TABLE IF NOT EXISTS monitor_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin_order_id TEXT NOT NULL,
+    origin_row_id INTEGER DEFAULT -1,
+    date_key TEXT NOT NULL,
+    strategy_name TEXT NOT NULL,
+    sub_strategy_name TEXT DEFAULT '',
+    stock_code TEXT NOT NULL,
+    trade_result INTEGER DEFAULT -1,
+    trade_price REAL DEFAULT -1,
+    trade_amount REAL DEFAULT -1,
+    trade_volume INTEGER DEFAULT -1,
+    trade_time TEXT DEFAULT '',
+    trade_date TEXT DEFAULT '',
+    profit_pct REAL DEFAULT -1,
+    profit REAL DEFAULT -1,
+    left_volume INTEGER DEFAULT -1,
+    open_price REAL DEFAULT -1,
+    last_close_price REAL DEFAULT -1,
+    current_price REAL DEFAULT -1,
+    monitor_type INTEGER DEFAULT -1,
+    stop_loss_price REAL DEFAULT -1,
+    take_profit_price REAL DEFAULT -1,
+    stop_loss_pct REAL DEFAULT -1,
+    take_profit_pct REAL DEFAULT -1,
+    max_trade_days INTEGER DEFAULT -1,
+    current_trade_days INTEGER DEFAULT -1,
+    limit_up_price REAL DEFAULT -1,
+    limit_down_price REAL DEFAULT -1,
+    sell_order_id TEXT DEFAULT '',
+    selled_volume INTEGER DEFAULT 0,
+    selled_amount REAL DEFAULT 0,
+    selled_price REAL DEFAULT -1,
+    extra_info TEXT DEFAULT '',
+    monitor_status INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (strategy_name, sub_strategy_name, stock_code, origin_order_id)
+)
+
+CREATE TABLE IF NOT EXISTS strategy_monitor_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_name TEXT NOT NULL,
+    sub_strategy_name TEXT DEFAULT '',
+    per_step_tick_gap INTEGER DEFAULT 5,
+    cold_start_steps INTEGER DEFAULT 10,
+    max_abserve_tick_steps INTEGER DEFAULT 100,
+    max_abserce_avg_price_down_steps INTEGER DEFAULT 5,
+    stop_profit_open_hc_pct REAL DEFAULT -0.02,
+    stop_profit_pct REAL DEFAULT 0,
+    dynamic_hc_stop_profit_thres REAL DEFAULT 0,
+    static_hc_stop_profit_pct REAL DEFAULT 1,
+    last_close_price_hc_pct REAL DEFAULT -0.005,
+    last_day_sell_thres REAL DEFAULT 0.06,
+    extra_info TEXT DEFAULT '',
+    monitor_status INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (strategy_name, sub_strategy_name, stock_code, origin_order_id)
+)

@@ -666,7 +666,21 @@ class QMTTrader:
                     # elif order_status == xtconstant.ORDER_JUNK:
                     #     keys_to_delete.append(order_id)
                     else:
-                        self.cancel_order(order_id)
+                        stock_code = infos[0][0]
+                        full_tick_info = xtdata.get_full_tick([stock_code])
+                        limit_down_price = -1
+
+                        if full_tick_info and 'lastClose' in full_tick_info[stock_code] and 'lastPrice' in full_tick_info[stock_code]:
+                            lastPrice = full_tick_info[stock_code]['lastPrice']
+                            last_close = full_tick_info[stock_code]['lastClose']
+                            from decimal import Decimal, ROUND_HALF_UP
+                            limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+                            if abs(lastPrice - limit_down_price) < 0.01:
+                                order_logger.info(f"股票 {stock_code} 价格跌停了，不进行撤单")
+                            else:
+                                self.cancel_order(order_id)
+                        else:
+                            self.cancel_order(order_id)
 
                 for key in keys_to_delete:
                     if key in self.sell_stock_infos:
@@ -674,7 +688,7 @@ class QMTTrader:
                 for key, value in kv_to_merge.items():
                     self.sell_stock_infos[key] = value
 
-                time.sleep(5)
+                time.sleep(3)
 
     def get_orders_dict(self):
         return self.orders_dict
@@ -854,7 +868,7 @@ class QMTTrader:
             return seq_id
 
 
-    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True):
+    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1):
         """
         卖出股票
 
@@ -866,29 +880,31 @@ class QMTTrader:
         :param order_remark: 委托备注，默认为空
         :return: 委托ID
         """
-        full_tick_info = xtdata.get_full_tick([stock_code])
-        if not full_tick_info:
-            order_logger.error(f"[出售] 获取股票 {stock_code} 行情失败")
-            return
-        lastPrice = full_tick_info[stock_code]['lastPrice']
-        price = full_tick_info[stock_code]['lastPrice'] * (1 + buffer)
-        from decimal import Decimal, ROUND_HALF_UP
-        new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-
-        limit_down_price = 0
-
-        if full_tick_info and 'lastClose' in full_tick_info[stock_code]:
-            last_close = full_tick_info[stock_code]['lastClose']
-            print(f"last_close {last_close}")
+        
+        if s_price > 0:
+            sell_price = s_price
+        else:
+            full_tick_info = xtdata.get_full_tick([stock_code])
+            if not full_tick_info:
+                order_logger.error(f"[出售] 获取股票 {stock_code} 行情失败")
+                return
+            lastPrice = full_tick_info[stock_code]['lastPrice']
+            price = full_tick_info[stock_code]['lastPrice'] * (1 + buffer)
             from decimal import Decimal, ROUND_HALF_UP
-            limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-            limit_up_price = float(Decimal(str(last_close * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-            if not up_sell and abs(lastPrice - limit_up_price) < 0.01:
-                order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
-                return 0
+            new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
 
-            
-        sell_price = max(new_price, limit_down_price)
+            limit_down_price = 0
+
+            if full_tick_info and 'lastClose' in full_tick_info[stock_code]:
+                last_close = full_tick_info[stock_code]['lastClose']
+                print(f"last_close {last_close}")
+                from decimal import Decimal, ROUND_HALF_UP
+                limit_down_price = float(Decimal(str(last_close * 0.9)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+                limit_up_price = float(Decimal(str(last_close * 1.1)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+                if not up_sell and abs(lastPrice - limit_up_price) < 0.01:
+                    order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
+                    return 0
+            sell_price = max(new_price, limit_down_price)
         
         if sync:
             if order_type == xtconstant.FIX_PRICE:

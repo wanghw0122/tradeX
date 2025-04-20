@@ -57,11 +57,12 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
 test_date = "2025-04-16"
-buy_total_coef = 0.75
+buy_total_coef = 1.0
+cash_discount = 0.7
 sell_at_monning = True
 
 use_threading_buyer = True
@@ -2194,7 +2195,7 @@ def consumer_to_buy(q, orders_dict, orders):
                         sub_strategy_name = order_info[2]
                         max_buffer = order_info[3]
                         buy_buffer = max(buy_buffer, max_buffer)
-                        buy_vol = qmt_trader.get_stock_buy_vol(c_cash, full_tick_info)
+                        buy_vol = qmt_trader.get_stock_buy_vol(cash_discount * c_cash, full_tick_info)
                         if buy_vol <= 0:
                             order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
                             continue

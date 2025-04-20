@@ -3556,9 +3556,9 @@ def start_monitor_monning():
         return
     try:
         is_trade, pre_trade_date = date.is_trading_day()
-        # if not is_trade:
-        #     strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
-        #     return
+        if not is_trade:
+            strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
+            return
         current_date = date.get_current_date()
         monitor_stock_codes = []
         code_to_monitor_dict = {}
@@ -3639,7 +3639,7 @@ def start_monitor_monning_test():
                 strategy_logger.info(f"[start_monitor_monning] 监听股票: {stock_code}")
 
                 import numpy as np
-                n_data_key = '20250418'
+                n_data_key = '20250410'
                 xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
                 all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
 
@@ -3660,7 +3660,7 @@ def start_monitor_monning_test():
                 print(filtered_df.head(10))
                 for index, row in filtered_df.iterrows():
                     stock_monitor.consume(row.to_dict())
-                    time.sleep(3)
+                    time.sleep(0.05)
                     
 
     except Exception as e:
@@ -3668,11 +3668,6 @@ def start_monitor_monning_test():
 
 
 if __name__ == "__main__":
-
-    start_monitor_monning_test()
-
-    while True:
-        time.sleep(1)
 
     from xtquant import xtdatacenter as xtdc
     xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")

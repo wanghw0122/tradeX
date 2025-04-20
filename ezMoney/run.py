@@ -3580,8 +3580,10 @@ def start_monitor_monning():
                 stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
                 if not stock_name:
                     stock_name = ''
+
                 stock_monitor = StockMonitor(stock_code=stock_code, stock_name=stock_name, qmt_trader=qmt_trader)
                 code_to_monitor_dict[stock_code] = stock_monitor
+                strategy_logger.info(f"[start_monitor_monning] 监听股票: {stock_code}")
             
             def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_monitor_dict):
                 for stock in stocks:
@@ -3602,9 +3604,72 @@ def start_monitor_monning():
         pass
 
 
+def start_monitor_monning_test():
+    if not sell_at_monning:
+        return
+    try:
+        is_trade, pre_trade_date = date.is_trading_day()
+        # if not is_trade:
+        #     strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
+        #     return
+        current_date = date.get_current_date()
+        monitor_stock_codes = []
+        code_to_monitor_dict = {}
+        with SQLiteManager(db_name) as manager:
+            query_data_results = manager.query_data_dict("monitor_data", condition_dict={'date_key': current_date, 'monitor_status': 1})
+            if not query_data_results:
+                strategy_logger.error("[start_monitor_monning] 无监听任务。")
+                return
+            for data_result in query_data_results:
+                stock_code = data_result['stock_code']
+                # stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                # if not stock_name:
+                #     stock_name = ''
+                if stock_code and stock_code not in monitor_stock_codes:
+                    monitor_stock_codes.append(stock_code)
+        monitor_stock_codes = ['600712.SH']
+        if monitor_stock_codes:
+            for stock_code in monitor_stock_codes:
+                stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                if not stock_name:
+                    stock_name = ''
+                
+                stock_monitor = StockMonitor(stock_code=stock_code, stock_name=stock_name, qmt_trader=qmt_trader)
+                code_to_monitor_dict[stock_code] = stock_monitor
+                strategy_logger.info(f"[start_monitor_monning] 监听股票: {stock_code}")
+
+                import numpy as np
+                n_data_key = '20250418'
+                xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
+                all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
+
+                # 假设 all_tick_data['000759.SZ'] 是 numpy.void 数组
+                if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
+                    df = pd.DataFrame(all_tick_data[stock_code].tolist(), columns=all_tick_data[stock_code].dtype.names)
+                else:
+                    raise
+
+                df['datetime'] = pd.to_datetime(df['time'], unit='ms').dt.tz_localize('UTC')
+                # 将 UTC 时间转换为上海时间
+                df['datetime'] = df['datetime'].dt.tz_convert('Asia/Shanghai')
+
+                # 筛选出 9:30 之后的行
+                time_930 = pd.to_datetime('09:30:00').time()
+                filtered_df = df[df['datetime'].dt.time >= time_930]
+
+                print(filtered_df.head(10))
+                for index, row in filtered_df.iterrows():
+                    stock_monitor.consume(row.to_dict())
+                    time.sleep(3)
+                    
+
+    except Exception as e:
+        pass
+
+
 if __name__ == "__main__":
 
-    start_monitor_monning()
+    start_monitor_monning_test()
 
     while True:
         time.sleep(1)

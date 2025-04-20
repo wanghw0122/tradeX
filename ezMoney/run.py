@@ -57,7 +57,7 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-04-16"
@@ -3698,10 +3698,10 @@ if __name__ == "__main__":
     print('-----连接上了------')
     print(xtdata.data_dir)
 
-    servers = xtdata.get_quote_server_status()
+    # servers = xtdata.get_quote_server_status()
     # print(servers)
-    for k, v in servers.items():
-        print(k, v)
+    # for k, v in servers.items():
+        # print(k, v)
     full_tick_info_dict = Manager().dict()
 
     qmt_trader.init_order_context(flag = use_threading_buyer)

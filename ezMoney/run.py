@@ -3556,9 +3556,9 @@ def start_monitor_monning():
         return
     try:
         is_trade, pre_trade_date = date.is_trading_day()
-        if not is_trade:
-            strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
-            return
+        # if not is_trade:
+        #     strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
+        #     return
         current_date = date.get_current_date()
         monitor_stock_codes = []
         code_to_monitor_dict = {}
@@ -3603,6 +3603,11 @@ def start_monitor_monning():
 
 
 if __name__ == "__main__":
+
+    start_monitor_monning()
+
+    while True:
+        time.sleep(1)
 
     from xtquant import xtdatacenter as xtdc
     xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")

@@ -100,9 +100,12 @@ class StockMonitor(object):
                 self.row_id_to_monitor_data[row_id] = query_data
                 monitor_type = query_data['monitor_type']
                 monitor_config = db.query_data_dict(monitor_config_table, condition_dict= {'strategy_name': strategy_name})
-                if not monitor_config:
+                default_monitor_config = db.query_data_dict(monitor_config_table, condition_dict= {'strategy_name': 'default'})
+                if not monitor_config and not default_monitor_config:
                     logger.error(f"monitor_config null. {strategy_name}")
                     continue
+                if not monitor_config:
+                    monitor_config = default_monitor_config
                 monitor_config = monitor_config[0]
                 self.monitor_configs[strategy_name] = monitor_config
                 # if monitor_type == constants.STOP_PROFIT_TRADE_TYPE:
@@ -111,7 +114,18 @@ class StockMonitor(object):
                     self.monitor_type_to_row_ids[monitor_type] = [row_id]
                 else:
                     self.monitor_type_to_row_ids[monitor_type].append(row_id)
-        
+        # 打印日志
+        logger.info(f"已卖出的 rowid 列表: {self.selled_row_ids}")
+        logger.info(f"准备卖出的 rowid 列表: {self.to_sell_row_ids}")
+        logger.info(f"剩余未卖出的 rowid 列表: {self.left_row_ids}")
+        logger.info(f"队列 bq 当前大小: {self.bq.qsize()}")
+        logger.info(f"row_id 到监控数据的映射: {self.row_id_to_monitor_data}")
+        logger.info(f"监控类型到 row_id 列表的映射: {self.monitor_type_to_row_ids}")
+        logger.info(f"运行中的监控状态: {self.running_monitor_status}")
+        logger.info(f"运行中的股票监控状态: {self.running_monitor_stock_status}")
+        logger.info(f"运行中的下跌监控状态: {self.running_monitor_down_status}")
+        logger.info(f"运行中的监控观察步数: {self.running_monitor_observe_steps}")
+
         self.start_monitor()
         
 
@@ -309,7 +323,10 @@ class StockMonitor(object):
                         static_zs_line = -1
 
                         if dynamic_hc_stop_profit_thres > 0:
-                            dynamic_zs_line = (1 - ((10 - self.current_max_increase * 100) * dynamic_hc_stop_profit_thres) / 100) * self.current_max_price
+                            a = ((10 - self.current_max_increase * 100) * dynamic_hc_stop_profit_thres) / 100
+                            a = max(a, 0.005)
+                            a = min(a, 0.05)
+                            dynamic_zs_line = (1 - a) * self.current_max_price
                             dynamic_zs_line = max(dynamic_zs_line, limit_down_price)
                             dynamic_zs_line = min(dynamic_zs_line, limit_up_price)
                             if abs(dynamic_zs_line - self.current_max_increase) < 0.01:
@@ -701,7 +718,10 @@ class StockMonitor(object):
                         static_zs_line = -1
 
                         if dynamic_hc_stop_profit_thres > 0:
-                            dynamic_zs_line = (1 - ((10 - self.current_max_increase * 100) * dynamic_hc_stop_profit_thres) / 100) * self.current_max_price
+                            a = ((10 - self.current_max_increase * 100) * dynamic_hc_stop_profit_thres) / 100
+                            a = max(a, 0.005)
+                            a = min(a, 0.05)
+                            dynamic_zs_line = (1 - a) * self.current_max_price
                             dynamic_zs_line = max(dynamic_zs_line, limit_down_price)
                             dynamic_zs_line = min(dynamic_zs_line, limit_up_price)
                             if abs(dynamic_zs_line - self.current_max_increase) < 0.01:

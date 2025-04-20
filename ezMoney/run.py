@@ -3604,10 +3604,6 @@ def start_monitor_monning():
 
 if __name__ == "__main__":
 
-    # schedule_update_sell_stock_infos_everyday_at_925()
-
-    # exit(0)
-
     from xtquant import xtdatacenter as xtdc
     xtdc.set_token("26e6009f4de3bfb2ae4b89763f255300e96d6912")
 

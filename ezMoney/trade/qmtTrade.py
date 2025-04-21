@@ -399,12 +399,11 @@ class QMTTrader:
                 if date.is_before_0930():
                     time.sleep(1)
                     continue
-
-                if len(self.sell_stock_infos) <= 0 or date.is_after_0935():
+                if date.is_after_0935():
                     order_logger.info("无监听卖出/任务执行完毕，结束任务")
+                    break
+                if len(updated_oids) > 0:
                     order_logger.info(f"准备收益和预算更新，更新ids {updated_oids}")
-                    if not updated_oids:
-                        break
                     strategy_to_profits = {}
                     strategy_to_logs = {}
                     # 更新收益和预算
@@ -495,8 +494,11 @@ class QMTTrader:
                                 manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
                             else:
                                 manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
-
-                    break
+                    updated_oids.clear()
+                if len(self.sell_stock_infos) == 0:
+                    order_logger.info("无监听卖出/任务执行完毕，等待继续任务")
+                    time.sleep(1)
+                    continue
                 order_logger.info(f"监听卖出，任务执行。 {self.sell_stock_infos}")
                 cur_orders_stats = self.get_all_orders(filter_order_ids = list(self.sell_stock_infos.keys()))
                 keys_to_delete = []
@@ -508,6 +510,18 @@ class QMTTrader:
                     order_logger.info(f"order_id - {order_id}, infos - {infos}")
                     cur_order_stat = cur_orders_stats[order_id]
                     order_status = cur_order_stat['order_status']
+                    order_time = cur_order_stat['order_time']
+                    current_time = time.time()
+                    if order_time > 1e10:  # 假设毫秒级时间戳大于 1e10
+                        time_diff = (current_time - order_time / 1000)
+                    else:
+                        time_diff = (current_time - order_time)
+                    if time_diff <= 0:
+                        raise Exception(f"time_diff error. {time_diff}")
+                    if time_diff < 5 and time_diff > 0:
+                        order_logger.info(f"order_id {order_id} 时间小于5秒，跳过")
+                        time.sleep(time_diff/5)
+                        continue
                     if order_status == xtconstant.ORDER_SUCCEEDED:
                         
                         traded_price = cur_order_stat['traded_price']
@@ -608,6 +622,8 @@ class QMTTrader:
                                                 origin_profit_pct = profit_pct
                                             origin_volume = origin_dct['left_volume']
                                         manager.update_data("trade_data", {'profit': profit + origin_profit, 'profit_pct': (profit_pct + origin_profit_pct) / 2, 'left_volume': origin_volume - total_traded_volume}, {'id': row_id})
+                                    if row_id not in updated_oids:
+                                        updated_oids.append(row_id)
                                     left_order_infos.append((stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, volume - total_traded_volume))
                                     total_traded_volume = 0
                                 else:
@@ -687,8 +703,6 @@ class QMTTrader:
                         del self.sell_stock_infos[key]
                 for key, value in kv_to_merge.items():
                     self.sell_stock_infos[key] = value
-
-                time.sleep(3)
 
     def get_orders_dict(self):
         return self.orders_dict

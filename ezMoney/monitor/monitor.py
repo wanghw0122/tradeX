@@ -1075,11 +1075,11 @@ class StockMonitor(object):
                             logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 回撤卖出")
                             self.add_to_sell(row_id=row_id)
                             continue
-                        now = datetime.datetime.now().time()
-                        target_time = datetime.time(11, 25)
-                        if now > target_time:
-                            logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 超过最大时间卖出")
-                            self.add_to_sell(row_id=row_id)
+                        # now = datetime.datetime.now().time()
+                        # target_time = datetime.time(11, 25)
+                        # if now > target_time:
+                        #     logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 超过最大时间卖出")
+                        #     self.add_to_sell(row_id=row_id)
 
             
             if not bidPrice or not bidVol:

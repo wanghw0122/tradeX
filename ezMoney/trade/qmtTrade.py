@@ -400,7 +400,7 @@ class QMTTrader:
                     time.sleep(1)
                     continue
                 if date.is_after_0935():
-                    order_logger.info("无监听卖出/任务执行完毕，结束任务")
+                    order_logger.info("达到最大执行时间，结束任务。")
                     break
                 if len(updated_oids) > 0:
                     order_logger.info(f"准备收益和预算更新，更新ids {updated_oids}")
@@ -516,11 +516,11 @@ class QMTTrader:
                         time_diff = (current_time - order_time / 1000)
                     else:
                         time_diff = (current_time - order_time)
-                    if time_diff <= 0:
+                    if time_diff < 0:
                         raise Exception(f"time_diff error. {time_diff}")
-                    if time_diff < 5 and time_diff > 0:
+                    if time_diff < 5 and time_diff >= 0:
                         order_logger.info(f"order_id {order_id} 时间小于5秒，跳过")
-                        time.sleep(time_diff/5)
+                        time.sleep((5 - time_diff)/5)
                         continue
                     if order_status == xtconstant.ORDER_SUCCEEDED:
                         

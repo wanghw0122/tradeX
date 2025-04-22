@@ -62,7 +62,7 @@ buy = True
 subscribe = True
 test_date = "2025-04-16"
 buy_total_coef = 1.0
-cash_discount = 1.0
+cash_discount = 0.5
 sell_at_monning = True
 
 use_threading_buyer = True

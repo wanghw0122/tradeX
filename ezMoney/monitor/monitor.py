@@ -174,7 +174,7 @@ class StockMonitor(object):
             askVol = data['askVol']
             bidVol = data['bidVol']
             if self.open_status == -1:
-                self.open_status = constants.OpenStatus.DOWN_OPEN if open < lastClose else constants.OpenStatus.UP_OPEN if open > lastClose else constants.OpenStatus.FLAT_OPEN
+                self.open_status = constants.OpenStatus.DOWN_OPEN if open <= lastClose else constants.OpenStatus.UP_OPEN
             if amount <= 0 or volume <= 0:
                 logger.error(f"amount <= 0. {amount} {time} {self.stock_code} {self.stock_name}")
                 continue
@@ -234,12 +234,18 @@ class StockMonitor(object):
                         buy1_price = bidPrice[0]
                         buy1_vol = bidVol[0]
                         if abs(buy1_price - self.limit_up_price) >= 0.01:
-                            self.sell_all(price = buy1_price)
+                            if buy1_price > 0:
+                                self.sell_all(price = buy1_price)
+                            else:
+                                self.sell_all(price = self.current_price)
                             continue
                         # 封单金额过小 卖
                         if buy1_price * buy1_vol * 100 < 8000000:
                             logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
-                            self.sell_all(price = buy1_price)
+                            if buy1_price > 0:
+                                self.sell_all(price = buy1_price)
+                            else:
+                                self.sell_all(price = self.current_price)
                             continue
                 else:
                     self.limit_up_tick_times = 0
@@ -264,9 +270,15 @@ class StockMonitor(object):
                             if buy2_price > 0:
                                 self.sell_all(price = buy2_price)
                             else:
-                                self.sell_all(price = buy1_price)
+                                if buy1_price > 0:
+                                    self.sell_all(price = buy1_price)
+                                else:
+                                    self.sell_all(price = self.current_price)
                         else:
-                            self.sell_all(price = buy1_price)
+                            if buy1_price > 0:
+                                self.sell_all(price = buy1_price)
+                            else:
+                                self.sell_all(price = self.current_price)
                     self.limit_up_status = False
                     continue
                 self.limit_up_status = False
@@ -410,7 +422,7 @@ class StockMonitor(object):
                                         if self.limit_down_status:
                                             logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 跌停了，等5min后卖，先不出售")
                                         else:
-                                            logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                            logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             self.add_to_sell(row_id=row_id)
                                             continue
                                     # 均线下
@@ -421,12 +433,12 @@ class StockMonitor(object):
                                                 if self.current_tick_steps >= max_abserve_tick_steps:
                                                     self.running_monitor_observe_steps[strategy_name] = self.running_monitor_observe_steps[strategy_name] + 1
                                                     if self.running_monitor_observe_steps[strategy_name] >= max_abserce_avg_price_down_steps:
-                                                        logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                        logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
                                             else:
                                                 if self.current_tick_steps >= max_abserve_tick_steps:
-                                                    logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                    logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -446,7 +458,7 @@ class StockMonitor(object):
                                             if self.limit_down_status:
                                                 logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 跌停了，等5min后卖，先不出售")
                                             else:
-                                                logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                 self.add_to_sell(row_id=row_id)
                                                 continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -487,7 +499,7 @@ class StockMonitor(object):
                                         if self.limit_down_status:
                                             logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 跌停了，等5min后卖，先不出售")
                                         else:
-                                            logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                            logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             self.add_to_sell(row_id=row_id)
                                             continue
                                     if self.running_monitor_stock_status[strategy_name] == constants.StockStatus.AVG_UP:
@@ -529,12 +541,12 @@ class StockMonitor(object):
                                                 if self.current_tick_steps >= max_abserve_tick_steps:
                                                     self.running_monitor_observe_steps[strategy_name] = self.running_monitor_observe_steps[strategy_name] + 1
                                                     if self.running_monitor_observe_steps[strategy_name] >= max_abserce_avg_price_down_steps:
-                                                        logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                        logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
                                             else:
                                                 if self.current_tick_steps >= max_abserve_tick_steps:
-                                                    logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                    logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -555,7 +567,7 @@ class StockMonitor(object):
                                     
                                     if self.running_monitor_stock_status[strategy_name] == constants.StockStatus.AVG_UP:
                                         if self.current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
-                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             self.add_to_sell(row_id=row_id)
                                             continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -584,7 +596,7 @@ class StockMonitor(object):
                                             self.running_monitor_observe_steps[strategy_name] = 0
                                     elif self.running_monitor_stock_status[strategy_name] == constants.StockStatus.AVG_DOWN:
                                         if self.current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
-                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             self.add_to_sell(row_id=row_id)
                                             continue
 
@@ -594,18 +606,18 @@ class StockMonitor(object):
                                                 if self.running_monitor_down_status[strategy_name]:
                                                     self.running_monitor_observe_steps[strategy_name] = self.running_monitor_observe_steps[strategy_name] + 1
                                                     if self.running_monitor_observe_steps[strategy_name] >= max_abserce_avg_price_down_steps:
-                                                        logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                        logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
                                                 else:
                                                     if self.current_tick_steps >= max_abserve_tick_steps:
-                                                        logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                        logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
 
                                             else:
                                                 if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
-                                                    logger.info(f"跌破开盘价卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                    logger.info(f"跌破开盘价卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -626,7 +638,7 @@ class StockMonitor(object):
                                     
                                     if self.running_monitor_stock_status[strategy_name] == constants.StockStatus.AVG_UP:
                                         if self.current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
-                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             self.add_to_sell(row_id=row_id)
                                             continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -655,7 +667,7 @@ class StockMonitor(object):
                                             self.running_monitor_observe_steps[strategy_name] = 0
                                     elif self.running_monitor_stock_status[strategy_name] == constants.StockStatus.AVG_DOWN:
                                         if self.current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
-                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                            logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             self.add_to_sell(row_id=row_id)
                                             continue
 
@@ -666,18 +678,18 @@ class StockMonitor(object):
                                                     if self.current_tick_steps >= max_abserve_tick_steps:
                                                         self.running_monitor_observe_steps[strategy_name] = self.running_monitor_observe_steps[strategy_name] + 1
                                                         if self.running_monitor_observe_steps[strategy_name] >= max_abserce_avg_price_down_steps:
-                                                            logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                            logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                             self.add_to_sell(row_id=row_id)
                                                             continue
                                                 else:
                                                     if self.current_tick_steps >= max_abserve_tick_steps:
-                                                        logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                        logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
 
                                             else:
                                                 if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
-                                                    logger.info(f"跌破均价线，卖出. {self.stock_code} {self.stock_name} {strategy_name} {zs_line} {self.current_price} {current_time_str}")
+                                                    logger.info(f"跌破均价线，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -1104,9 +1116,15 @@ class StockMonitor(object):
                     if buy2_price > 0:
                         self.sell_all_row_ids(price = buy2_price)
                     else:
-                        self.sell_all_row_ids(price = buy1_price)
+                        if buy1_price > 0:
+                            self.sell_all_row_ids(price = buy1_price)
+                        else:
+                            self.sell_all_row_ids(price = self.current_price)
                 else:
-                    self.sell_all_row_ids(price = buy1_price)
+                    if buy1_price > 0:
+                        self.sell_all_row_ids(price = buy1_price)
+                    else:
+                        self.sell_all_row_ids(price = self.current_price)
 
 
     def consume(self, data):

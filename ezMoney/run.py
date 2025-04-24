@@ -60,7 +60,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-04-16"
+test_date = "2025-04-22"
 buy_total_coef = 1.0
 cash_discount = 1.0
 sell_at_monning = True
@@ -584,7 +584,7 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 1,
-                    'top_cx': 101,
+                    'top_cx': 50,
                     'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': True,

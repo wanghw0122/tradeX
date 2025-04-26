@@ -1,4 +1,6 @@
 # 导入 requests 库
+# import sys
+# sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from shlex import join
 from turtle import st
 import requests
@@ -9,8 +11,11 @@ import json
 from logger import logger
 import functools
 import time
-
+import traceback 
 import threading
+
+import brotli
+import json
 
 # ... 已有代码 ...
 
@@ -79,10 +84,26 @@ def post_request(url, headers, cookies, data=None, max_retries=3, retry_delay=1)
         try:
             response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=3)
             if response.status_code == 200:
-                return response.json()
+                # if response.headers.get('Content-Encoding') == 'br':
+                #     print(f"Raw data from {url}: {response.content[:100]}...")
+                #     decompressed_data = brotli.decompress(response.content)
+                #     decoded_data = decompressed_data.decode('utf-8')
+                #     try:
+                #         # Replace eval with json.loads
+                #         return json.loads(decoded_data)
+                #     except json.JSONDecodeError:
+                #         logger.error(f"Failed to decode JSON from response: {url} {decoded_data}")
+                #         return None
+                # else:
+                try:
+                    return response.json()
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to decode JSON from response: {url} {response.text}")
+                    return None
             else:
                 logger.error(f"Request failed with status code: {response.status_code}")
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"Request exception: {e}")
         retries += 1
         time.sleep(retry_delay)
@@ -92,11 +113,46 @@ def post_request(url, headers, cookies, data=None, max_retries=3, retry_delay=1)
 
 @log_error
 def get_request(url, headers, cookies, params=None):
+    try:
+        response = requests.get(url, headers=headers, cookies=cookies, params=params)
+        if response.status_code == 200:
+            response.encoding = 'utf-8'
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                logger.error(f"Failed to decode JSON from response: {url} {response.text}")
+        else:
+            logger.error(f"Request failed with status code: {response.status_code}")
+    except Exception as e:
+        traceback.print_exc()
+        logger.error(f"Request exception: {e}")
+    return None
 
-    response = requests.get(url, headers=headers, cookies=cookies, params=params)
-    if response.status_code != 200:
-        logger.error(f"Request failed with status code: {response.status_code}")
-    return response.json()
+# def post_request(url, headers, cookies, data=None, max_retries=3, retry_delay=1):
+#     retries = 0
+#     while retries < max_retries:
+#         try:
+#             response = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=3)
+#             if response.status_code == 200:
+#                 return response.json()
+#             else:
+#                 logger.error(f"Request failed with status code: {response.status_code}")
+#         except Exception as e:
+#             traceback.print_exc()
+#             logger.error(f"Request exception: {e}")
+#         retries += 1
+#         time.sleep(retry_delay)
+    
+#     logger.error("Max retries exceeded. Request failed.")
+#     return None
+
+# @log_error
+# def get_request(url, headers, cookies, params=None):
+
+#     response = requests.get(url, headers=headers, cookies=cookies, params=params)
+#     if response.status_code != 200:
+#         logger.error(f"Request failed with status code: {response.status_code}")
+#     return response.json()
 
 
 
@@ -520,7 +576,7 @@ def user_login(loginId = "1QIgHC8Y4Z/OkUV8Av7lOQ==", passwd = "Vz53GS09rB+bsm7/8
 # 如果脚本作为主程序运行
 if __name__ == '__main__':
     # 调用 check_user_alive 函数并打印结果
-    # print(check_user_alive())
+    print(check_user_alive())
 
     # print(system_time())
 
@@ -534,7 +590,7 @@ if __name__ == '__main__':
 
     # print(json.dumps(stock_call_auction(code="002666.XSHE", tradeDate="2025-01-10")))
 
-    print(json.dumps(xiao_cao_environment_second_line_v2(codes=['9A0001','9A0002','9A0003','9B0001','9B0002','9B0003','9C0001'], date="2025-01-10")))
+    # print(json.dumps(xiao_cao_environment_second_line_v2(codes=['9A0001','9A0002','9A0003','9B0001','9B0002','9B0003','9C0001'], date="2025-01-10")))
 
     # print(sort_v2(sortId=37, sortType=1, queryType=1, type=0, date="2025-01-10", hpqbState=0, lpdxState=0))
 

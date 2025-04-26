@@ -5,6 +5,7 @@ from multiprocessing import Queue
 q = Queue()
 from date_utils import *
 from data_class.xiao_cao_environment_second_line_v2 import *
+from http_request import build_http_request
 
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
@@ -28,9 +29,9 @@ def consumer_to_rebuy(d, q):
     print("执行完成...")
 if __name__ == "__main__":
 
-    x,y = build_xiaocao_mod_dict_all()
-    print(x)
-    print(y)
+    # print(build_http_request.check_user_alive())
+
+    print(build_http_request.system_time())
     
     # with SQLiteManager(db_name) as manager:
     #     manager.insert_data("strategy_budget",{'strategy_name':'追涨-中位小高开起爆',
@@ -41,4 +42,4 @@ if __name__ == "__main__":
         #                                   'origin_budget': 30000,
         #                                   'budget': 30000}, {'strategy_name':'低吸-绿盘低吸'})
         # manager.update_budget("xiao_cao_1j2db",10000)
-       
+    

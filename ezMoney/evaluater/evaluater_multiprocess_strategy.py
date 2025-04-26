@@ -1348,7 +1348,7 @@ if __name__ == '__main__':
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
-    xtdata.connect(port=listen_addr)
+    xtdata.connect(port=58611)
     import yaml
     file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
     with open(file_name, 'r',  encoding='utf-8') as file:

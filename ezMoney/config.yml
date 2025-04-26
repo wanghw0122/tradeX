@@ -134,4 +134,4 @@ Steps:
       verify: false
       method: "post"
       step: 13
-      data: '{"params":{"type":0,"loginId":"1QIgHC8Y4Z/OkUV8Av7lOQ==","passwd":"Vz53GS09rB+bsm7/8nDHgQ=="}}'
+      data: '{"params":{"type":0,"loginId":"1QIgHC8Y4Z/OkUV8Av7lOQ==","passwd":"Vz53GS09rB+bsm7/8nDHgQ==", "environment":"{}"}}'

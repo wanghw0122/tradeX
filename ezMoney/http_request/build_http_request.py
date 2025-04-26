@@ -497,7 +497,8 @@ def user_login(loginId = "1QIgHC8Y4Z/OkUV8Av7lOQ==", passwd = "Vz53GS09rB+bsm7/8
     params = {
         "loginId": loginId,
         "passwd": passwd,
-        "type": type
+        "type": type,
+        "environment": "{}"
     }
     data = {"params": params}
     result = post_request(url, head, cookie, data = json.dumps(data))

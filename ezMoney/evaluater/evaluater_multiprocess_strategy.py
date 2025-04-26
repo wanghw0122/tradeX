@@ -644,7 +644,7 @@ months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503',
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [100, 20, 10]
+trade_days_rang = [110, 20, 10]
 gaps = [0]
 # 候选排名筛选
 max_stock_ranks = [10, 5, 3, 2]
@@ -672,14 +672,14 @@ filter_params = [
         'top_cx': 2,
         'only_fx': False,
         'enbale_industry': False,
-        'filter_amount': [6000000, 8000000, 10000000]
+        'filter_amount': [6000000, 8000000, 10000000, 12000000]
     },
     {
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,3,50],
-        'top_cx': [1,2,3,50],
+        'top_fx': [1,2,3,101],
+        'top_cx': [1,2,3,101],
         'only_fx': [False, True],
         'enbale_industry': [False],
         'filter_amount': [6000000, 8000000, 10000000,12000000]
@@ -1332,9 +1332,23 @@ if __name__ == '__main__':
     print('xtdc.init')
     xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几秒的时间
     print('done')
+
+    addr_list = [
+    '115.231.218.73:55310', 
+    '115.231.218.79:55310', 
+    '42.228.16.211:55300',
+    '42.228.16.210:55300',
+    '36.99.48.20:55300',
+    '36.99.48.21:55300'
+    ]
+    xtdc.set_allow_optmize_address(addr_list)
+
+    xtdc.set_kline_mirror_enabled(True) 
+    
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
+    xtdata.connect(port=listen_addr)
     import yaml
     file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
     with open(file_name, 'r',  encoding='utf-8') as file:

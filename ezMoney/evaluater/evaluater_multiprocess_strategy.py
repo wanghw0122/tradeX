@@ -1332,23 +1332,9 @@ if __name__ == '__main__':
     print('xtdc.init')
     xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几秒的时间
     print('done')
-
-    addr_list = [
-    '115.231.218.73:55310', 
-    '115.231.218.79:55310', 
-    '42.228.16.211:55300',
-    '42.228.16.210:55300',
-    '36.99.48.20:55300',
-    '36.99.48.21:55300'
-    ]
-    xtdc.set_allow_optmize_address(addr_list)
-
-    xtdc.set_kline_mirror_enabled(True) 
-    
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
-    xtdata.connect(port=58611)
     import yaml
     file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
     with open(file_name, 'r',  encoding='utf-8') as file:

@@ -883,6 +883,23 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': True
+                    },
+                    {
+                    'mark': '第二高频',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
                     }
                 ]
             },

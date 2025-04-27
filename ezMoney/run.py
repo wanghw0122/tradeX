@@ -60,7 +60,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-04-22"
+test_date = "2025-04-24"
 buy_total_coef = 1.0
 cash_discount = 1.0
 sell_at_monning = True
@@ -349,6 +349,30 @@ strategies = {
                     }
                 ]
             },
+
+            "断低吸": {
+                "code": "9G0032",
+                "returnNum": 10,
+                "budget": "zwdbdx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            },
             "高强中低开低吸": {
                 # 10日 高频 前2 有方向 最近强势 创建日期 2025-03-19
                 "code": "9G0128",
@@ -584,7 +608,7 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 1,
-                    'top_cx': 50,
+                    'top_cx': 101,
                     'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': True,
@@ -1046,6 +1070,7 @@ strategies_to_buffer = {
     "低吸-低位中强中低开低吸": [0.019],
     "低吸-中强中低开低吸": [0.019],
     "低吸-首红断低吸": [0.019],
+    "低吸-断低吸": [0.019],
     "接力-一进二弱转强": [0.019]
 }
 
@@ -1070,6 +1095,7 @@ default_positions = {
     "低吸-低位中强中低开低吸": 0.2,
     "低吸-中强中低开低吸": 0.2,
     "低吸-首红断低吸": 0.25,
+    "低吸-断低吸": 0.25,
     "接力-一进二弱转强": 0.25
 }
 

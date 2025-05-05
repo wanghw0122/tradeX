@@ -15,6 +15,19 @@ def calculate_seconds_difference(specified_time):
 monitor_table = 'monitor_data'
 monitor_config_table = "strategy_monitor_config"
 
+
+from collections import deque
+
+class SmoothFilter:
+    def __init__(self, window_size=10):
+        self.window = deque(maxlen=window_size)  # 滑动窗口
+        self.smoothed_value = 0
+        
+    def update(self, new_value):
+        self.window.append(new_value)
+        self.smoothed_value = sum(self.window)/len(self.window)
+        return self.smoothed_value
+
 class StockMonitor(object):
     def __init__(self, stock_code, stock_name, qmt_trader = None):
         # self.config = {}
@@ -30,6 +43,13 @@ class StockMonitor(object):
         self.avg_price = 0
         # 当前价
         self.current_price = 0
+        # 平滑当前价
+        self.smooth_current_price = 0
+        # 平滑过滤器
+        self.smooth_price_filter = SmoothFilter(window_size=3)
+
+        # 涨停最大封单量
+        self.max_limit_up_vol = -1
         # 开盘价
         self.open_price = 0
         # 昨天收盘价
@@ -186,6 +206,7 @@ class StockMonitor(object):
             self.avg_price = amount / volume / 100
             # 当前价
             self.current_price = lastPrice
+            self.smooth_current_price = self.smooth_price_filter.update(self.current_price)
             # 开盘价
             self.open_price = open
             # 昨天收盘价
@@ -224,10 +245,32 @@ class StockMonitor(object):
                 self.limit_up_price = limit_up_price_0
                 self.limit_down_price = limit_down_price_0
 
-            if self.limit_up_price > 0 and abs(self.current_price - self.limit_up_price) < 0.01:
+            if self.limit_up_price > 0 and abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
+                if not bidPrice or not bidVol:
+                    self.sell_all(price = self.current_price)
+                    continue
+                self.max_limit_up_vol = max(self.max_limit_up_vol, bidVol[0])
+
+                buy1_price = bidPrice[0]
+                buy1_vol = bidVol[0]
+                if abs(buy1_price - self.limit_up_price) >= 0.01:
+                    if buy1_price > 0:
+                        self.sell_all(price = buy1_price)
+                    else:
+                        self.sell_all(price = self.current_price)
+                    continue
+                # 封单金额过小 卖
+                if buy1_price * buy1_vol * 100 < 35000000 and buy1_vol / self.max_limit_up_vol < 0.5:
+                    logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
+                    if buy1_price > 0:
+                        self.sell_all(price = buy1_price)
+                    else:
+                        self.sell_all(price = self.current_price)
+                    continue
+
                 if self.limit_up_status:
                     self.limit_up_tick_times = self.limit_up_tick_times + 1
-                    if self.limit_up_tick_times > 10:
+                    if self.limit_up_tick_times > 3:
                         if not bidPrice or not bidVol:
                             self.sell_all(price = self.current_price)
                             continue
@@ -250,7 +293,9 @@ class StockMonitor(object):
                 else:
                     self.limit_up_tick_times = 0
                     self.limit_up_status = True
-            elif self.limit_up_price > 0 and abs(self.current_price - self.limit_up_price) >= 0.01:
+
+            elif self.limit_up_price > 0 and abs(self.smooth_current_price - self.limit_up_price) >= 0.0033:
+                self.max_limit_up_vol = -1
                 self.limit_up_tick_times = -1
                 if self.limit_up_status:
                     # 涨停炸板卖
@@ -282,7 +327,9 @@ class StockMonitor(object):
                     self.limit_up_status = False
                     continue
                 self.limit_up_status = False
-
+            else:
+                self.limit_up_status = False
+                self.max_limit_up_vol = -1
             if self.limit_down_price > 0 and abs(self.current_price - self.limit_down_price) < 0.01:
                 self.limit_down_status = True
             else:

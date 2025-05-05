@@ -100,6 +100,7 @@ def schedule_sell_stocks_everyday_at_1457():
         strategy_meta_dict = {}
         with SQLiteManager(db_name) as manager:
             all_strategy_meta_infos = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_status': 1}, columns="*")
+            # all_strategy_meta_infos = manager.query_data_dict("strategy_meta_info")
             if not all_strategy_meta_infos:
                 order_logger.info(f"策略 没有数据， 跳过更新")
                 return

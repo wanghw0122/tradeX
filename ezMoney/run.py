@@ -62,7 +62,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-05-06"
+test_date = "2025-05-07"
 buy_total_coef = 1.0
 cash_discount = 1.0
 sell_at_monning = True
@@ -3725,19 +3725,19 @@ if __name__ == "__main__":
     xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几秒的时间
     print('done')
 
-    print('xtdc.listen')
+    # print('xtdc.listen')
 
-    addr_list = [
-    '115.231.218.73:55310', 
-    '115.231.218.79:55310', 
-    '42.228.16.211:55300',
-    '42.228.16.210:55300',
-    '36.99.48.20:55300',
-    '36.99.48.21:55300'
-    ]
-    xtdc.set_allow_optmize_address(addr_list)
+    # addr_list = [
+    # '115.231.218.73:55310', 
+    # '115.231.218.79:55310', 
+    # '42.228.16.211:55300',
+    # '42.228.16.210:55300',
+    # '36.99.48.20:55300',
+    # '36.99.48.21:55300'
+    # ]
+    # xtdc.set_allow_optmize_address(addr_list)
 
-    xtdc.set_kline_mirror_enabled(True) 
+    # xtdc.set_kline_mirror_enabled(True) 
     
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')

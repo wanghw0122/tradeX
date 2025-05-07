@@ -1,6 +1,8 @@
 import multiprocessing
 import os
 
+from sqlalchemy import exists
+
 
 
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -3775,10 +3777,8 @@ if __name__ == "__main__":
 
     scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=29, second=0, id="start_monitor_monning")
 
-    if monitor_sell:
-        scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")
-    else:
-        scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")
+    scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")
+    # scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")
 
     # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
     # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])

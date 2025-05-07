@@ -330,11 +330,13 @@ strategies = {
             # },
             "中位孕线低吸": {
                 "code": "9G0085",
-                "returnNum": 3,
+                "returnNum": 5,
                 "budget": "zwdbdx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '方向1',
+                    'limit': 3,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -348,7 +350,24 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': True
-                    }
+                    },
+                    {
+                    'mark': '方向2',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
                 ]
             },
 
@@ -447,6 +466,24 @@ strategies = {
                     'enbale_industry': False,
                     'empty_priority': False,
                     'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    # 曲线完美
+                    'mark': '强方向前1',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -819,6 +856,40 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': True
+                    },
+                    {
+                    'mark': '方向低频',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 3,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '方向低频2',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             },
@@ -944,6 +1015,49 @@ strategies = {
                     'enbale_industry': False,
                     'empty_priority': True,
                     'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
+            },
+
+            "孕线": {
+                "code": "9G0014",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'mark': '方向1',
+                    'limit': 10,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '方向2',
+                    'limit': 10,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 12000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -1090,6 +1204,7 @@ strategies_to_buffer = {
     "低吸-中强中低开低吸": [0.019],
     "低吸-首红断低吸": [0.019],
     "低吸-断低吸": [0.019],
+    "低吸-孕线": [0.019],
     "接力-一进二弱转强": [0.019]
 }
 
@@ -1115,6 +1230,7 @@ default_positions = {
     "低吸-中强中低开低吸": 0.2,
     "低吸-首红断低吸": 0.25,
     "低吸-断低吸": 0.25,
+    "低吸-孕线": 0.25,
     "接力-一进二弱转强": 0.25
 }
 

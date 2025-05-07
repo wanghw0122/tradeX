@@ -3611,8 +3611,11 @@ def start_monitor_monning():
         with SQLiteManager(db_name) as manager:
             query_data_results = manager.query_data_dict("monitor_data", condition_dict={'date_key': current_date, 'monitor_status': 1})
             if not query_data_results:
-                strategy_logger.error("[start_monitor_monning] 无监听任务。")
-                return
+                schedule_update_sell_stock_infos_everyday_at_925()
+                query_data_results = manager.query_data_dict("monitor_data", condition_dict={'date_key': current_date, 'monitor_status': 1})
+                if not query_data_results:
+                    strategy_logger.error("[start_monitor_monning] 无监听任务。")
+                    return
             for data_result in query_data_results:
                 stock_code = data_result['stock_code']
                 # stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])

@@ -62,7 +62,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-05-07"
+test_date = "2025-05-08"
 buy_total_coef = 1.0
 cash_discount = 1.0
 sell_at_monning = True
@@ -1435,7 +1435,12 @@ def get_first_tick_trade_amount(stock_code, datekey):
 
     if len(amount) == 1:
         real_amount = amount.item()
+    elif len(amount) == 0:
+        logger.error(f"{stock_code}-{datekey}, amount = 0")
+        return 10000000
     else:
+        logger.error(f"{stock_code}-{datekey}, {amount}")
+        # return 5000000
         raise Exception(f"{stock_code}-{datekey}")
 
     return real_amount

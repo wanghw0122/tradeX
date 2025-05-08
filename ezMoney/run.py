@@ -49,7 +49,7 @@ error_time = 0
 cancel_time = 0
 
 global back_cash
-back_cash = 100000
+back_cash = 0
 
 global cached_auction_infos
 cached_auction_infos = []
@@ -208,6 +208,23 @@ strategies = {
                     'except_is_ppp': True,
                     'except_is_track': True
                     },
+                    {
+                    'mark': '方向前3',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 3,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
                 ]
             },
             # "连断低吸": {
@@ -2359,7 +2376,8 @@ def consumer_to_buy(q, orders_dict, orders):
                         buy_vol = qmt_trader.get_stock_buy_vol(cash_discount * c_cash, full_tick_info)
                         if buy_vol <= 0:
                             order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
-                            continue
+                            buy_vol = 100
+                            # continue
                         buy_volume = buy_volume + buy_vol
                         if code in code_to_order_volume_dict:
                             code_to_order_volume_dict[code].append((strategy_name, sub_strategy_name, buy_vol))

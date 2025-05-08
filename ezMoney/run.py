@@ -907,6 +907,23 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': False
+                    },
+                    {
+                    'mark': '方向低频3',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 3,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
                     }
                 ]
             },
@@ -990,6 +1007,23 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': True
+                    },
+                    {
+                    'mark': '方向低频',
+                    'limit': 10,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
                     }
                 ]
             },
@@ -1006,6 +1040,48 @@ strategies = {
                     'top_fx': 101,
                     'top_cx': 101,
                     'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
+            },
+            "低位中强低吸": {
+                "code": "9G0125",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'mark': '方向低频前2',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '方向低频前1',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 1,
+                    'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': True,
                     'min_trade_amount': 8000000,
@@ -1222,6 +1298,7 @@ strategies_to_buffer = {
     "低吸-首红断低吸": [0.019],
     "低吸-断低吸": [0.019],
     "低吸-孕线": [0.019],
+    "低吸-低位中强低吸": [0.019],
     "接力-一进二弱转强": [0.019]
 }
 
@@ -1248,6 +1325,7 @@ default_positions = {
     "低吸-首红断低吸": 0.25,
     "低吸-断低吸": 0.25,
     "低吸-孕线": 0.25,
+    "低吸-低位中强低吸": 0.25,
     "接力-一进二弱转强": 0.25
 }
 
@@ -2356,6 +2434,12 @@ def consumer_to_buy(q, orders_dict, orders):
                         else:
                             code_to_order_info_dict[code] = [(c_cash, strategy_name, sub_strategy_name, max_buffer)]
                 order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
+
+                cash_thresh, t_cash = get_order_info_dict_cash_thresh(code_to_order_info_dict=code_to_order_info_dict, cash = cash)
+                if cash_thresh < 0.99999:
+                    order_logger.error(f"cash_thresh < 1 ! cash_thresh {cash_thresh} {cash} - {t_cash}")
+                else:
+                    order_logger.info(f"cash_thresh = 1 ! {cash_thresh} {cash} - {t_cash}")
                 code_to_buy_price_dict = {}
                 code_to_order_volume_dict = {}
                 code_to_total_buy_volume_dict = {}
@@ -2369,15 +2453,20 @@ def consumer_to_buy(q, orders_dict, orders):
                     
                     for order_info in order_info_list:
                         c_cash = order_info[0]
+                        c_cash = c_cash * cash_thresh
                         strategy_name = order_info[1]
                         sub_strategy_name = order_info[2]
                         max_buffer = order_info[3]
                         buy_buffer = max(buy_buffer, max_buffer)
                         buy_vol = qmt_trader.get_stock_buy_vol(cash_discount * c_cash, full_tick_info)
                         if buy_vol <= 0:
-                            order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
-                            buy_vol = 100
-                            # continue
+                            if cash_thresh > 0.999:
+                                order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code} add 100")
+                                buy_vol = 100
+                            else:
+                                order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
+                                buy_vol = 0
+                                continue
                         buy_volume = buy_volume + buy_vol
                         if code in code_to_order_volume_dict:
                             code_to_order_volume_dict[code].append((strategy_name, sub_strategy_name, buy_vol))
@@ -2458,6 +2547,19 @@ def consumer_to_buy(q, orders_dict, orders):
                 raise
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
+
+
+def get_order_info_dict_cash_thresh(code_to_order_info_dict, cash, cash_discount = cash_discount):
+    total_cash = 0
+    for code, order_info_list in code_to_order_info_dict.items():
+        for order_info in order_info_list:
+            c_cash = order_info[0]
+            r_c_cash = cash_discount * c_cash
+            if r_c_cash > 0:
+                total_cash = total_cash + r_c_cash
+    if total_cash >= cash * 0.97:
+        return min(cash / total_cash * 0.98, 1), total_cash
+    return 1, total_cash
 
 def get_cancel_budgets(orders_dict, budgets_list):
     new_order_infos = {}

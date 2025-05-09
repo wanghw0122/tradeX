@@ -503,7 +503,7 @@ class QMTTrader:
                 cur_orders_stats = self.get_all_orders(filter_order_ids = list(self.sell_stock_infos.keys()))
                 keys_to_delete = []
                 kv_to_merge = {}
-                for order_id, infos in self.sell_stock_infos.items():
+                for order_id, infos in list(self.sell_stock_infos.items()):
                     if not infos:
                         order_logger.error(f"infos null error. {order_id}")
                         continue

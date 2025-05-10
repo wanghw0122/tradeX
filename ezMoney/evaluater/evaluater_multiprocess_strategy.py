@@ -639,15 +639,15 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
 # max_stock_rank = 20
 
 
-months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503', '202504']
+months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503', '202504', '202505']
 
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [110, 20, 10]
+trade_days_rang = [110, 25]
 gaps = [0]
 # 候选排名筛选
-max_stock_ranks = [10, 5, 3, 2]
+max_stock_ranks = [10, 3]
 
 # 方向前几
 
@@ -672,17 +672,17 @@ filter_params = [
         'top_cx': 2,
         'only_fx': False,
         'enbale_industry': False,
-        'filter_amount': [6000000, 8000000, 10000000, 12000000]
+        'filter_amount': [6000000, 8000000, 10000000]
     },
     {
         'filtered': True,
         'fx_filtered': True,
         'topn': 1,
-        'top_fx': [1,2,3,101],
-        'top_cx': [1,2,3,101],
-        'only_fx': [False, True],
+        'top_fx': [1,2,101],
+        'top_cx': [1,2,101],
+        'only_fx': [True],
         'enbale_industry': [False],
-        'filter_amount': [6000000, 8000000, 10000000,12000000]
+        'filter_amount': [6000000, 8000000, 10000000]
     }
 ]
 

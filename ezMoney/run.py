@@ -59,12 +59,12 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
 test_date = "2025-04-28"
 buy_total_coef = 1.0
-cash_discount = 1.0
+cash_discount = 0.5
 sell_at_monning = True
 
 use_threading_buyer = True
@@ -1329,6 +1329,12 @@ default_positions = {
     "接力-一进二弱转强": 0.25
 }
 
+
+# default_strategy_positions = {
+#     "低吸-高强中低开低吸:": 0.25,
+# }
+
+
 ##########################strategy configs ################
 
 codes_to_strategies = {}
@@ -1833,12 +1839,14 @@ def direction_filter_fuc(candicates, category_infos, params):
                     numChange = block['numChange']
                     isPpp_b = 1 if block['isPpp'] else 0
                     isTrack_b = 1 if block['isTrack'] else 0
-                    if blockCode in ['886079.DDBK',
+                    if blockCode in [
+                        '886079.DDBK',
                         '883436.DDBK',
                         '885338.DDBK'
                     ]:
                         continue
-                    block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
+                    else:
+                        block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
             if except_is_track and isTrack == 1:
                 category_dict[categoryCode]['rank'] = 101
                 continue
@@ -1906,6 +1914,8 @@ def direction_filter_fuc(candicates, category_infos, params):
                 continue
             block_code_dict = {}
             for block in blocks:
+                if block not in block_dict:
+                    continue
                 block_code_dict[block] = {}
                 block_code_dict[block].update(block_dict[block])
             info['block_dict'] = block_code_dict

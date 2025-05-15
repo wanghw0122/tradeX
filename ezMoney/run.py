@@ -59,10 +59,10 @@ default_position = 0.33
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-05-08"
+test_date = "2025-04-28"
 buy_total_coef = 1.0
 cash_discount = 1.0
 sell_at_monning = True
@@ -1833,6 +1833,11 @@ def direction_filter_fuc(candicates, category_infos, params):
                     numChange = block['numChange']
                     isPpp_b = 1 if block['isPpp'] else 0
                     isTrack_b = 1 if block['isTrack'] else 0
+                    if blockCode in ['886079.DDBK',
+                        '883436.DDBK',
+                        '885338.DDBK'
+                    ]:
+                        continue
                     block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
             if except_is_track and isTrack == 1:
                 category_dict[categoryCode]['rank'] = 101

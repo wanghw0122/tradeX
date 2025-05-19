@@ -152,7 +152,8 @@ def build_xiaocao_environment_second_line_v2_dict(date = get_current_date(), cod
         if 'code' not in item:
             logger.error("xiao_cao_environment_second_line_v2 no code.")
             continue
-        block_dict[item['code']] = XiaoCaoEnvironmentSecondLineV2(**item)
+        filtered_item = {k: v for k, v in item.items() if k in XiaoCaoEnvironmentSecondLineV2.__dataclass_fields__}
+        block_dict[item['code']] = XiaoCaoEnvironmentSecondLineV2(**filtered_item)
         block_name_dict[item['code']] = item['codeName']
     return block_dict, block_name_dict
 

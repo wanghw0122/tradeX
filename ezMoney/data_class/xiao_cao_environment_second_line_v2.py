@@ -1,6 +1,6 @@
 from date_utils.date import *
 from http_request import build_http_request
-from attr import dataclass
+from dataclasses import dataclass
 from logger import logger
 
 from functools import partial

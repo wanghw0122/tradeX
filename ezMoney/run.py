@@ -1366,7 +1366,8 @@ default_strategy_positions = {
     "低吸-低位中强低吸:方向低频前1": 0.25,
     "低吸-低位高强中低开低吸:方向低频": 0.25,
     "低吸-低位高强中低开低吸:方向低频2": 0.25,
-    "低吸-低位高强中低开低吸:方向低频3": 0.25
+    "低吸-低位高强中低开低吸:方向低频3": 0.25,
+    "低吸-首红断低吸": 0.25
 }
 
 def get_strategy_position(strategy, sub_strategy=None, default_strategy_positions=default_strategy_positions):

@@ -62,9 +62,9 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-05-19"
+test_date = "2025-05-21"
 buy_total_coef = 1.0
-cash_discount = 0.5
+cash_discount = 1
 sell_at_monning = True
 
 use_threading_buyer = True
@@ -1331,9 +1331,67 @@ default_positions = {
 
 
 # default_strategy_positions = {
-#     "低吸-高强中低开低吸:": 0.25,
+#     "低吸-高强中低开低吸:强方向前2": 0.25,
+#     "低吸-高强中低开低吸:方向前1": 0.25,
+#     "低吸-高强中低开低吸:强方向前1": 0.25,
+#     "低吸-高强中低开低吸:方向前2": 0.25,
+#     "低吸-中位孕线低吸:方向2": 0.25,
+#     "低吸-中位孕线低吸:方向1": 0.25,
+#     "低吸-低位中强中低开低吸": 0.25,
+#     "低吸-低位高强低吸:中低频2": 0.25,
+#     "低吸-低位高强低吸:中低频3": 0.25,
+#     "低吸-低位高强低吸:中低频4": 0.25,
+#     "低吸-低位中强低吸:方向低频前2": 0.25,
+#     "低吸-低位中强低吸:方向低频前1": 0.25,
+#     "低吸-低位高强中低开低吸:方向低频": 0.25,
+#     "低吸-低位高强中低开低吸:方向低频2": 0.25,
+#     "低吸-低位高强中低开低吸:方向低频3": 0.25
 # }
 
+
+# ... existing code ...
+
+default_strategy_positions = {
+    "低吸-高强中低开低吸:强方向前2": 0.25,
+    "低吸-高强中低开低吸:方向前1": 0.25,
+    "低吸-高强中低开低吸:强方向前1": 0.25,
+    "低吸-高强中低开低吸:方向前2": 0.25,
+    "低吸-中位孕线低吸:方向2": 0.25,
+    "低吸-中位孕线低吸:方向1": 0.25,
+    "低吸-低位中强中低开低吸": 0.25,
+    "低吸-低位高强低吸:中低频2": 0.25,
+    "低吸-低位高强低吸:中低频3": 0.25,
+    "低吸-低位高强低吸:中低频4": 0.25,
+    "低吸-低位中强低吸:方向低频前2": 0.25,
+    "低吸-低位中强低吸:方向低频前1": 0.25,
+    "低吸-低位高强中低开低吸:方向低频": 0.25,
+    "低吸-低位高强中低开低吸:方向低频2": 0.25,
+    "低吸-低位高强中低开低吸:方向低频3": 0.25
+}
+
+def get_strategy_position(strategy, sub_strategy=None, default_strategy_positions=default_strategy_positions):
+    """
+    根据输入的 strategy 和 sub_strategy 获取对应的系数。
+    如果只提供 strategy，则返回只匹配 strategy 的 key 对应的 value；
+    如果提供了 sub_strategy，则尝试匹配完整的 'strategy:sub_strategy' 格式的 key。
+
+    :param strategy: 策略名称
+    :param sub_strategy: 子策略名称，可选
+    :return: 对应的系数，如果未找到则返回 None
+    """
+    if sub_strategy:
+        full_key = f"{strategy}:{sub_strategy}"
+        if full_key in default_strategy_positions:
+            return default_strategy_positions[full_key]
+    
+    # 尝试匹配只包含 strategy 的 key
+    for key in default_strategy_positions:
+        if key == strategy:
+            return default_strategy_positions[key]
+    
+    return 0
+
+# ... existing code ...
 
 ##########################strategy configs ################
 
@@ -1839,14 +1897,14 @@ def direction_filter_fuc(candicates, category_infos, params):
                     numChange = block['numChange']
                     isPpp_b = 1 if block['isPpp'] else 0
                     isTrack_b = 1 if block['isTrack'] else 0
-                    if blockCode in [
-                        '886079.DDBK',
-                        '883436.DDBK',
-                        '885338.DDBK'
-                    ]:
-                        continue
-                    else:
-                        block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
+                    # if blockCode in [
+                    #     '886079.DDBK',
+                    #     '883436.DDBK',
+                    #     '885338.DDBK'
+                    # ]:
+                    #     continue
+                    # else:
+                    block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
             if except_is_track and isTrack == 1:
                 category_dict[categoryCode]['rank'] = 101
                 continue
@@ -2425,6 +2483,12 @@ def consumer_to_buy(q, orders_dict, orders):
                     if ':' in strategy_name:
                         sub_strategy_name = strategy_name.split(':')[1]
                         strategy_name = strategy_name.split(':')[0]
+
+                    ps = get_strategy_position(strategy_name, sub_strategy_name)
+                    if ps <= 0.0001:
+                        order_logger.error(f"get_strategy_position error! ps {ps}")
+                        continue
+                    
                     code = code_info.split('|')[1]
                     if code in qmt_trader.all_stocks:
                         code = qmt_trader.all_stocks[code]
@@ -2450,12 +2514,12 @@ def consumer_to_buy(q, orders_dict, orders):
                         else:
                             max_buffer = 0
                         if code in code_to_order_info_dict:
-                            code_to_order_info_dict[code].append((c_cash, strategy_name, sub_strategy_name, max_buffer))
+                            code_to_order_info_dict[code].append((c_cash * ps, strategy_name, sub_strategy_name, max_buffer))
                         else:
-                            code_to_order_info_dict[code] = [(c_cash, strategy_name, sub_strategy_name, max_buffer)]
+                            code_to_order_info_dict[code] = [(c_cash * ps, strategy_name, sub_strategy_name, max_buffer)]
                 order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
 
-                cash_thresh, t_cash = get_order_info_dict_cash_thresh(code_to_order_info_dict=code_to_order_info_dict, cash = cash)
+                cash_thresh, t_cash = get_order_info_dict_cash_thresh(code_to_order_info_dict=code_to_order_info_dict, cash = cash, cash_discount=cash_discount)
                 if cash_thresh < 0.99999:
                     order_logger.error(f"cash_thresh < 1 ! cash_thresh {cash_thresh} {cash} - {t_cash}")
                 else:
@@ -2569,7 +2633,7 @@ def consumer_to_buy(q, orders_dict, orders):
             logger.error(f"[consumer] 执行任务出现错误: {e}")
 
 
-def get_order_info_dict_cash_thresh(code_to_order_info_dict, cash, cash_discount = cash_discount):
+def get_order_info_dict_cash_thresh(code_to_order_info_dict, cash,  cash_discount = cash_discount):
     total_cash = 0
     for code, order_info_list in code_to_order_info_dict.items():
         for order_info in order_info_list:

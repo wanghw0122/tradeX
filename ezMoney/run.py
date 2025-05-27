@@ -62,7 +62,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-05-21"
+test_date = "2025-05-27"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1332,22 +1332,24 @@ default_positions = {
 # ... existing code ...
 
 default_strategy_positions = {
-    "低吸-高强中低开低吸:强方向前2": 0.25,
+    "低吸-高强中低开低吸:强方向前2": 0.5,
     "低吸-高强中低开低吸:方向前1": 0.25,
-    "低吸-高强中低开低吸:强方向前1": 0.25,
+    "低吸-高强中低开低吸:强方向前1": 0.5,
     "低吸-高强中低开低吸:方向前2": 0.25,
-    "低吸-中位孕线低吸:方向2": 0.25,
-    "低吸-中位孕线低吸:方向1": 0.25,
-    "低吸-低位中强中低开低吸": 0.25,
-    "低吸-低位高强低吸:中低频2": 0.25,
-    "低吸-低位高强低吸:中低频3": 0.25,
-    "低吸-低位高强低吸:中低频4": 0.25,
-    "低吸-低位中强低吸:方向低频前2": 0.25,
-    "低吸-低位中强低吸:方向低频前1": 0.25,
-    "低吸-低位高强中低开低吸:方向低频": 0.25,
-    "低吸-低位高强中低开低吸:方向低频2": 0.25,
-    "低吸-低位高强中低开低吸:方向低频3": 0.25,
-    "低吸-首红断低吸": 0.25
+    "低吸-中位孕线低吸:方向2": 0.5,
+    "低吸-中位孕线低吸:方向1": 0.5,
+    "低吸-低位中强中低开低吸": 0.5,
+    "低吸-低位高强低吸:中低频2": 0.5,
+    "低吸-低位高强低吸:中低频3": 0.5,
+    "低吸-低位高强低吸:中低频4": 0.5,
+    "低吸-低位中强低吸:方向低频前2": 0.5,
+    "低吸-低位中强低吸:方向低频前1": 0.5,
+    "低吸-低位高强中低开低吸:方向低频": 0.5,
+    "低吸-低位高强中低开低吸:方向低频2": 0.5,
+    "低吸-低位高强中低开低吸:方向低频3": 0.5,
+    "低吸-首红断低吸": 0.25,
+    "低吸-中强中低开低吸:第二高频": 0.25,
+    "低吸-中强中低开低吸:方向低频": 0.25,
 }
 
 def get_strategy_position(strategy, sub_strategy=None, default_strategy_positions=default_strategy_positions):
@@ -1878,14 +1880,14 @@ def direction_filter_fuc(candicates, category_infos, params):
                     numChange = block['numChange']
                     isPpp_b = 1 if block['isPpp'] else 0
                     isTrack_b = 1 if block['isTrack'] else 0
-                    # if blockCode in [
-                    #     '886079.DDBK',
-                    #     '883436.DDBK',
-                    #     '885338.DDBK'
-                    # ]:
-                    #     continue
-                    # else:
-                    block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
+                    if blockCode in [
+                        '886079.DDBK',
+                        '883436.DDBK',
+                        '885338.DDBK'
+                    ]:
+                        continue
+                    else:
+                        block_list.append((blockCode, num, prePctChangeRate, numChange, isPpp_b, isTrack_b))
             if except_is_track and isTrack == 1:
                 category_dict[categoryCode]['rank'] = 101
                 continue
@@ -2041,6 +2043,7 @@ def direction_filter_fuc(candicates, category_infos, params):
 
         # order_logger.info("direction_filter_fuc code_to_index_dict:{}".format(code_to_index_dict))
         c_res = group_filter_fuc(candicates, code_to_index_dict, **fuc_params)
+        # order_logger.info("direction_filter_fuc before filter :{} after filter :{}".format(candicates, c_res))
         if c_res and len(c_res) > 0:
             apos = 1 / len(c_res)
             for c in c_res:

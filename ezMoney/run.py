@@ -62,7 +62,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-05-27"
+test_date = "2025-06-05"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -889,7 +889,7 @@ strategies = {
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': True
+                    'except_is_track': False
                     },
                     {
                     'mark': '方向低频2',
@@ -902,7 +902,7 @@ strategies = {
                     'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': True,
-                    'min_trade_amount': 10000000,
+                    'min_trade_amount': 6000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -935,6 +935,26 @@ strategies = {
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '第一高频',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 2,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 7500000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                    ,
+                    {
+                    'mark': '第二高频',
+                    'limit': 5,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -1332,24 +1352,26 @@ default_positions = {
 # ... existing code ...
 
 default_strategy_positions = {
-    "低吸-高强中低开低吸:强方向前2": 0.5,
-    "低吸-高强中低开低吸:方向前1": 0.25,
+    "低吸-高强中低开低吸:强方向前2": 0.25,
+    "低吸-高强中低开低吸:方向前1": 0.5,
     "低吸-高强中低开低吸:强方向前1": 0.5,
     "低吸-高强中低开低吸:方向前2": 0.25,
-    "低吸-中位孕线低吸:方向2": 0.5,
-    "低吸-中位孕线低吸:方向1": 0.5,
-    "低吸-低位中强中低开低吸": 0.5,
+    "低吸-中位孕线低吸:方向2": 0.2,
+    "低吸-中位孕线低吸:方向1": 0.2,
+    "低吸-低位中强中低开低吸:第一高频": 1,
+    "低吸-低位中强中低开低吸:第二高频": 1,
     "低吸-低位高强低吸:中低频2": 0.5,
     "低吸-低位高强低吸:中低频3": 0.5,
     "低吸-低位高强低吸:中低频4": 0.5,
-    "低吸-低位中强低吸:方向低频前2": 0.5,
+    "低吸-低位中强低吸:方向低频前2": 0.7,
     "低吸-低位中强低吸:方向低频前1": 0.5,
-    "低吸-低位高强中低开低吸:方向低频": 0.5,
-    "低吸-低位高强中低开低吸:方向低频2": 0.5,
-    "低吸-低位高强中低开低吸:方向低频3": 0.5,
-    "低吸-首红断低吸": 0.25,
-    "低吸-中强中低开低吸:第二高频": 0.25,
-    "低吸-中强中低开低吸:方向低频": 0.25,
+    "低吸-低位高强中低开低吸:方向低频": 1,
+    "低吸-低位高强中低开低吸:方向低频2": 1,
+    "低吸-低位高强中低开低吸:方向低频3": 1,
+    "低吸-首红断低吸": 0.35,
+    "低吸-中强中低开低吸:第二高频": 1,
+    "低吸-中强中低开低吸:第一高频": 1,
+    "低吸-中强中低开低吸:方向低频": 1,
 }
 
 def get_strategy_position(strategy, sub_strategy=None, default_strategy_positions=default_strategy_positions):

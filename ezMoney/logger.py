@@ -53,6 +53,29 @@ strategy_logger = setup_logging("strategy_logger")
 order_logger = setup_logging("order_logger")
 order_success_logger = setup_logging("order_success_logger")
 
+
+
+# 配置日志记录器
+order_logger = logging.getLogger('order_logger')
+order_logger.setLevel(logging.DEBUG)
+
+# 创建 RotatingFileHandler，设置 delay=True
+handler = RotatingFileHandler(
+    'D:\\workspace\\TradeX\\logs\\order_logger\\order_logger.log',
+    maxBytes=1024 * 1024 * 5,  # 5 MB
+    backupCount=5,
+    delay=True,
+    encoding='utf-8'
+)
+handler.setLevel(logging.DEBUG)
+
+# 创建格式化器并添加到处理器
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+# 将处理器添加到日志记录器
+order_logger.addHandler(handler)
+
 def catch(func):
     @wraps(func)
     def wrapper(*args, **kwargs):

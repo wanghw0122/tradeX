@@ -329,6 +329,71 @@ class StockStatus:
     OBSERVE_AVG_DOWN = 5
 
 
+class LimitUpStockStatus:
+    # 未知
+    UNKNOWN = 0
+    # 涨停
+    LIMIT_UP = 1
+    # 跌停
+    LIMIT_DOWN = 2
+    # 未涨停
+    UNLIMITED = 3
+    # 平滑涨停
+    SMOOTH_LIMIT_UP = 4
+    # 平滑跌停
+    SMOOTH_LIMIT_DOWN = 5
+    # 触涨停
+    TOUCH_LIMIT_UP = 6
+    # 触跌停
+    TOUCH_LIMIT_DOWN = 7
+    # 封涨停
+    CLOSE_LIMIT_UP = 8
+
+class LimitUpHitType:
+    # 涨停板
+    LIMIT_UP = 0
+    # 上午板
+    AM_TIME = 1
+    # 下午板
+    PM_TIME = 2
+    # 确定板，只要上板就买入
+    SURE_TIME = 3
+    # 排板
+    SORT = 4
+    # 回封板
+    BACK_OPEN = 5
+    # 缩量板
+    SMALL_VOLUME = 6
+    # 换手板
+    CHANGE_HAND = 7
+    # 10点前板
+    BEFORE_10 = 8
+    # 10点半前板
+    BEFORE_10_30 = 9
+    # 已触停板
+    TOUCH_STOP = 10
+
+
+class RowIdStatus:
+    # 未下单
+    UNPROCESSED = 0
+    # 已下单
+    PLACED = 1
+    # 部分成功
+    PARTIALLY_BOUGHT = 2
+    # 已买入
+    BOUGHT = 3
+    # 已取消
+    CANCELLED = 4
+
+def get_row_id_status(input_num):
+    if input_num == 0:
+        return RowIdStatus.UNPROCESSED
+    elif input_num == 1:
+        return RowIdStatus.PLACED
+    elif input_num == 2:
+        return RowIdStatus.BOUGHT
+    return RowIdStatus.UNPROCESSED
 
 
 db_path= r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
@@ -344,6 +409,48 @@ def get_limit_price(price, stock_code = ''):
     return limit_down_price, limit_up_price
 
 
+
+def modify_string_slice(input_str, index, new_value):
+    """
+    使用切片修改指定位置的字符值
+
+    :param input_str: 输入的字符串
+    :param index: 要修改的位置索引
+    :param new_value: 新的值，只能是 '0' 或 '1'
+    :return: 修改后的字符串
+    """
+    if new_value not in ['0', '1']:
+        raise ValueError("新值必须是 '0' 或 '1'")
+    if index < 0 or index >= len(input_str):
+        raise IndexError("索引超出范围")
+    
+    return input_str[:index] + new_value + input_str[index + 1:]
+
+
+def match_binary_string(binary_str, pattern_str):
+    """
+    根据输入的 11 位二进制字符串和待匹配字符串，检查是否所有匹配位置在二进制字符串中都为 1。
+
+    :param binary_str: 11 位的二进制字符串，每个位置为 0 或 1
+    :param pattern_str: 待匹配的字符串，每个位置为 0 - 9 或 a - z
+    :return: 若所有匹配位置在二进制字符串中都为 1 则返回 True，否则返回 False
+    """
+    if len(binary_str) != 11:
+        raise ValueError("二进制字符串长度必须为 11")
+    
+    for char in pattern_str:
+        try:
+            if char.isdigit():
+                index = int(char)
+            else:
+                index = ord(char) - ord('a') + 10
+            if index < 0 or index >= 11 or binary_str[index] != '1':
+                return False
+        except Exception:
+            return False
+    return True
+
 if __name__ == "__main__":
-    print(all_codes)
-    print(all_names)
+    # print(get_row_id_status(0))
+    # print(type(get_row_id_status(0)))
+    print(match_binary_string("00010100111", '3549a'))

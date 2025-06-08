@@ -168,6 +168,20 @@ def get_trade_dates_by_end(end_date, trade_days = 30):
     start_date_index = trade_date_list.index(str(end_date_t))- trade_days + 1
     return trade_date_list[start_date_index:start_date_index + trade_days]
 
+def get_trade_dates_by_start(start_date, trade_days = 30):
+    import datetime
+    start_date_t = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+    if str(start_date_t) != start_date:
+        raise ValueError("日期格式错误，应为 YYYY-MM-DD")
+    # 如果当前日期不在交易日期列表内，则当前日期天数加一
+    while str(start_date_t) not in trade_date_list:
+        start_date_t = start_date_t + datetime.timedelta(days=1)
+    start_date_index = trade_date_list.index(str(start_date_t))
+    return trade_date_list[start_date_index:start_date_index + trade_days]
+
+def find_next_nth_date(date_key, n = 10):
+    return get_trade_dates_by_start(date_key, trade_days=n)[-1]
+
 
 
 def get_trade_dates(start_date, end_date, trade_days = 30):
@@ -204,3 +218,4 @@ if __name__ == "__main__":
     print(trade_date_list)
     print(is_trading_day("2025-03-03"))
     print(get_trade_dates_by_end("2025-03-01"))
+    print(find_next_nth_date('2025-05-05', 10))

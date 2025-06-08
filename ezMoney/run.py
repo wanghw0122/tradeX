@@ -2,9 +2,6 @@ import multiprocessing
 import os
 
 from sqlalchemy import exists
-
-
-
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 from strategy.strategy import sm
 from logger import catch, logger, order_logger, strategy_logger, order_success_logger
@@ -29,6 +26,10 @@ import queue
 from sqlite_processor.mysqlite import SQLiteManager
 
 from monitor.monitor import StockMonitor
+from monitor.limit_up_monitor import LimitUpStockMonitor
+
+# 初始化锁
+code_to_limit_up_monitor_lock = threading.Lock()
 
 threading_q = queue.Queue(100)
 
@@ -53,6 +54,7 @@ back_cash = 0
 
 global cached_auction_infos
 cached_auction_infos = []
+code_to_limit_up_monitor = {}
 
 global default_position
 default_position = 0.33
@@ -224,7 +226,24 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': True
-                    }
+                    },
+                    {
+                    'mark': '第一高频2',
+                    'limit': 2,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 3,
+                    'only_fx': False,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
                 ]
             },
             # "连断低吸": {
@@ -1375,8 +1394,8 @@ default_strategy_positions = {
     "低吸-高强中低开低吸:方向前2": 0.5,
     "低吸-中位孕线低吸:方向2": 0.25,
     "低吸-中位孕线低吸:方向1": 0.25,
-    "低吸-低位中强中低开低吸:第一高频": 1,
-    "低吸-低位中强中低开低吸:第二高频": 1,
+    "低吸-低位中强中低开低吸:第一高频": 0.8,
+    "低吸-低位中强中低开低吸:第二高频": 0.8,
     "低吸-低位高强低吸:中低频2": 1,
     "低吸-低位高强低吸:中低频3": 1,
     "低吸-低位高强低吸:中低频4": 1,
@@ -3940,6 +3959,121 @@ def schedule_update_sell_stock_infos_everyday_at_925():
         order_logger.error(f"早盘出售 出现错误: {e}")
 
 
+
+def add_limit_up_monitor(stock_code, row_ids = [], code_to_limit_up_monitor = code_to_limit_up_monitor, qmt_trader = qmt_trader):
+    if not row_ids:
+        return
+    # 获取锁
+    with code_to_limit_up_monitor_lock:
+        print(code_to_limit_up_monitor.keys())
+        if stock_code in code_to_limit_up_monitor:
+            monitor = code_to_limit_up_monitor[stock_code]
+            monitor.add_monitor_data(row_ids)
+        else:
+            stock_code_to_row_ids = {}
+            with SQLiteManager(db_name) as manager:
+                all_datas = []
+                for row_id in row_ids:
+                    datas = manager.query_data_dict('limit_up_strategy_info', condition_dict={'id': row_id})
+                    all_datas.extend(datas)
+                if not all_datas:
+                    return
+                all_datas = [
+                    data for data in all_datas
+                    if data['success'] == 0 
+                    and data['c_status'] != 2 
+                    and data['budget'] > 0
+                ]
+                if not all_datas:
+                    return
+                for data in all_datas:
+                    stock_code = data['stock_code']
+                    row_id = data['id']
+                    if stock_code in stock_code_to_row_ids:
+                        stock_code_to_row_ids[stock_code].append(row_id)
+                    else:
+                        stock_code_to_row_ids[stock_code] = [row_id]
+            if stock_code_to_row_ids:
+                for stock_code, r_row_ids in stock_code_to_row_ids.items():
+                    stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                    if not stock_name:
+                        stock_name = ''
+                    stock_monitor = LimitUpStockMonitor(stock_code=stock_code, stock_name=stock_name, row_ids = r_row_ids,  qmt_trader=qmt_trader)
+                    code_to_limit_up_monitor[stock_code] = stock_monitor
+                    strategy_logger.info(f"[add_limit_up_monitor] 监听股票打板: {stock_code}")
+                monitor_stock_codes = stock_code_to_row_ids.keys()
+
+                def monitor_call_back(res, stock=stock_code, monitor_dict = code_to_limit_up_monitor):
+                    # 在回调函数中也需要加锁
+                    with code_to_limit_up_monitor_lock:
+                        if stock not in res:
+                            return
+                        data = res[stock][0]
+                        s_monitor = monitor_dict[stock]
+                        s_monitor.consume(data)
+
+                sid = xtdata.subscribe_quote(stock_code, period = 'tick', count=1, callback=monitor_call_back)
+                if sid < 0:
+                    strategy_logger.error(f"[add_limit_up_monitor] 订阅错误: {monitor_stock_codes}")
+                else:
+                    strategy_logger.info(f"[add_limit_up_monitor] 订阅成功: {monitor_stock_codes}")
+
+def start_limit_up_monitor():
+    try:
+        is_trade, pre_trade_date = date.is_trading_day()
+        if not is_trade:
+            strategy_logger.info("[start_limit_up_monitor] 非交易日，不打板。")
+            return
+        current_date = date.get_current_date()
+        stock_code_to_row_ids = {}
+        with SQLiteManager(db_name) as manager:
+            limit_up_monitor_datas = manager.query_limit_up_records_by_date(current_date)
+            if not limit_up_monitor_datas:
+                return
+            limit_up_monitor_datas = [
+                data for data in limit_up_monitor_datas
+                if data['success'] == 0 
+                and data['c_status'] != 2 
+                and data['budget'] > 0
+            ]
+            if not limit_up_monitor_datas:
+                return
+            for data in limit_up_monitor_datas:
+                stock_code = data['stock_code']
+                row_id = data['id']
+                if stock_code in stock_code_to_row_ids:
+                    stock_code_to_row_ids[stock_code].append(row_id)
+                else:
+                    stock_code_to_row_ids[stock_code] = [row_id]
+        if stock_code_to_row_ids:
+            for stock_code, row_ids in stock_code_to_row_ids.items():
+                stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
+                if not stock_name:
+                    stock_name = ''
+                stock_monitor = LimitUpStockMonitor(stock_code=stock_code, stock_name=stock_name, row_ids = row_ids,  qmt_trader=qmt_trader)
+                code_to_limit_up_monitor[stock_code] = stock_monitor
+                strategy_logger.info(f"[start_limit_up_monitor] 监听股票打板: {stock_code}")
+            monitor_stock_codes = list(stock_code_to_row_ids.keys())
+            def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_limit_up_monitor):
+                for stock in stocks:
+                    if stock not in res:
+                        continue
+                    data = res[stock]
+                    s_monitor = monitor_dict[stock]
+                    s_monitor.consume(data)
+
+            sid = xtdata.subscribe_whole_quote(monitor_stock_codes, callback=monitor_call_back)
+            if sid < 0:
+                strategy_logger.error(f"[start_limit_up_monitor] 订阅错误: {monitor_stock_codes}")
+            else:
+                strategy_logger.info(f"[start_limit_up_monitor] 订阅成功: {monitor_stock_codes}")
+
+    except Exception as e:
+        stack_trace = traceback.format_exc()
+        strategy_logger.error(f"发生异常: {str(e)}\n堆栈信息:\n{stack_trace}")
+        pass
+
+
 def start_monitor_monning():
     if not sell_at_monning:
         return
@@ -4067,7 +4201,6 @@ if __name__ == "__main__":
     print('xtdc.init')
     xtdc.init() # 初始化行情模块，加载合约数据，会需要大约十几秒的时间
     print('done')
-
     # print('xtdc.listen')
 
     # addr_list = [
@@ -4122,6 +4255,7 @@ if __name__ == "__main__":
     # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 
     scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=29, second=0, id="start_monitor_monning")
+    scheduler.add_job(start_limit_up_monitor, 'cron', hour=9, minute=29, second=0, id="start_limit_up_monitor")
 
     scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")
     # scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")

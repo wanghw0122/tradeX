@@ -29,14 +29,16 @@ def consumer_to_rebuy(d, q):
     print("执行完成...")
 if __name__ == "__main__":
 
+
     # print(build_http_request.check_user_alive())
 
     print(build_http_request.system_time())
     
-    # with SQLiteManager(db_name) as manager:
-    #     manager.insert_data("strategy_budget",{'strategy_name':'追涨-中位小高开起爆',
-    #                                       'budget':30000,
-    #                                       'origin_budget': 30000})
+    with SQLiteManager(db_name) as manager:
+       print(manager.query_limit_up_records_by_date('2025-06-08'))
+        # manager.insert_data("strategy_budget",{'strategy_name':'追涨-中位小高开起爆',
+        #                                   'budget':30000,
+        #                                   'origin_budget': 30000})
 
         # manager.update_data("strategy_budget",{
         #                                   'origin_budget': 30000,

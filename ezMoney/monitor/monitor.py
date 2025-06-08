@@ -1216,7 +1216,7 @@ class StockMonitor(object):
         if all_volume > 0:
             logger.info(f"卖出 {self.stock_code} {self.stock_name} {all_volume} {price} {extra_infos}")
             if self.qmt_trader != None:
-                self.qmt_trader.sell_quickly(self.stock_code, self.stock_name, all_volume, order_remark= "sell_once",  buffer=0, extra_infos = extra_infos, up_sell=True, s_price = price)
+                self.qmt_trader.sell_quickly(self.stock_code, self.stock_name, all_volume, order_remark= "sell_once",  buffer=0, extra_infos = extra_infos, up_sell=True, s_price = price, limit_up_monitor = True)
 
 
     def sell_all(self, price):
@@ -1243,7 +1243,7 @@ class StockMonitor(object):
         if all_volume > 0:
             logger.info(f"卖出 {self.stock_code} {self.stock_name} {all_volume} {price} {extra_infos}")
             if self.qmt_trader != None:
-                self.qmt_trader.sell_quickly(self.stock_code, self.stock_name, all_volume, order_remark= "sell_all",  buffer=0, extra_infos = extra_infos, up_sell=True, s_price = price)
+                self.qmt_trader.sell_quickly(self.stock_code, self.stock_name, all_volume, order_remark= "sell_all",  buffer=0, extra_infos = extra_infos, up_sell=True, s_price = price, limit_up_monitor = True)
 
 
         # (stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, all_volume)

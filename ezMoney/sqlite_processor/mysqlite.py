@@ -35,6 +35,7 @@ class SQLiteManager:
         self.cursor.execute(insert_query, values)
         self.conn.commit()
         logger.info("Data inserted successfully.")
+        return self.cursor.lastrowid
 
     def insert_or_update_data(self, table_name, data_dict):
         columns = ', '.join(data_dict.keys())
@@ -61,6 +62,35 @@ class SQLiteManager:
         self.cursor.execute(update_query, values)
         self.conn.commit()
         logger.info("Data updated successfully.")
+
+    # def query_limit_up_records_by_date(self, input_date):
+    #     """
+    #     根据输入的日期查询 limit_up_strategy_info 表中日期在 date_key 和 last_date_key 之间的记录。
+
+    #     :param input_date: 输入的日期，格式为 yyyy-mm-dd
+    #     :return: 查询结果列表
+    #     """
+    #     query = "SELECT * FROM limit_up_strategy_info WHERE? BETWEEN date_key AND last_date_key"
+    #     self.cursor.execute(query, (input_date,))
+    #     return self.cursor.fetchall()
+    
+    def query_limit_up_records_by_date(self, input_date):
+        """
+        根据输入的日期查询 limit_up_strategy_info 表中日期在 date_key 和 last_date_key 之间的记录。
+
+        :param input_date: 输入的日期，格式为 yyyy-mm-dd
+        :return: 查询结果列表，每个元素为以列名为键的字典
+        """
+        query = "SELECT * FROM limit_up_strategy_info WHERE ? BETWEEN date_key AND last_date_key"
+        self.cursor.execute(query, (input_date,))
+        # 获取列名
+        column_names = [description[0] for description in self.cursor.description]
+        # 将查询结果转换为字典列表
+        results = []
+        for row in self.cursor.fetchall():
+            row_dict = dict(zip(column_names, row))
+            results.append(row_dict)
+        return results
 
     def query_data(self, table_name, condition_dict=None, columns="*"):
         """
@@ -416,9 +446,8 @@ condition_dict = {
 
 
 if __name__ == "__main__":
-    create_strategy_table("202503")
     with SQLiteManager(db_name) as manager:
-       manager.insert_data("strategy_data_premarket_202503", insert_dict)
+       manager.query_limit_up_records_by_date('2025-06-08')
 
     # with SQLiteManager(db_name) as manager:
     #    manager.update_data("strategy_data_premarket_202503", update_dict, condition_dict)

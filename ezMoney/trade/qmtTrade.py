@@ -882,7 +882,7 @@ class QMTTrader:
             return seq_id
 
 
-    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1):
+    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1, limit_up_monitor = False):
         """
         卖出股票
 
@@ -945,13 +945,31 @@ class QMTTrader:
                             date_key = date.get_current_date()
                             db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
                             table_name = 'trade_data'
+                            limit_up_table = 'limit_up_strategy_info'
                             with SQLiteManager(db_name) as manager:
                                 if strategy_name and ':' in strategy_name:
                                     set_strategy_name = strategy_name.split(':')[0]
                                     sub_strategy_name = strategy_name.split(':')[1]
                                     manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 1,'stock_code': stock_code, 'stock_name': stock_name ,'order_type': order_type, 'order_price': sell_price, 'order_volume': sell_volume})
+                                    strategy_meta_infos = manager.query_data_dict('strategy_meta_info', {'strategy_name': set_strategy_name, 'sub_strategy_name': sub_strategy_name})
+                                    last_date = date.find_next_nth_date(date_key=date_key)
+                                    if strategy_meta_infos:
+                                        cbudget = max(strategy_meta_infos[0]['budget'] * 0.15, 5000)
+                                        row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget})
+
+                                        if limit_up_monitor and row_id:
+                                            from run import add_limit_up_monitor
+                                            add_limit_up_monitor(stock_code, row_ids=[row_id])
                                 else:
                                     manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': strategy_name, 'buy0_or_sell1': 1, 'stock_code': stock_code , 'stock_name': stock_name, 'order_type': order_type, 'order_price': sell_price, 'order_volume': sell_volume})
+                                    strategy_meta_infos = manager.query_data_dict('strategy_meta_info', {'strategy_name': strategy_name})
+                                    last_date = date.find_next_nth_date(date_key=date_key)
+                                    if strategy_meta_infos:
+                                        cbudget = max(strategy_meta_infos[0]['budget'] * 0.15, 5000)
+                                        row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget})
+                                        if limit_up_monitor and row_id:
+                                            from run import add_limit_up_monitor
+                                            add_limit_up_monitor(stock_code, row_ids=[row_id])
                         except Exception as e:
                             order_logger.error(f"插入数据失败 {e}")
                 if extra_infos:
@@ -963,6 +981,39 @@ class QMTTrader:
             seq_id = self.trader.order_stock_async(self.acc, stock_code, xtconstant.STOCK_SELL, volume, order_type, sell_price, order_remark)
             self.seq_ids_dict[seq_id] = (stock_code, sell_price, volume, order_type, order_remark)
             return seq_id
+        
+    
+
+    def test_sell_quickly(self, stock_code):
+        from sqlite_processor.mysqlite import SQLiteManager
+        from date_utils import date
+        date_key = date.get_current_date()
+        db_name = r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db'
+        limit_up_table = 'limit_up_strategy_info'
+        strategy_name = "低吸-低位高强低吸:中低频2"
+        limit_up_monitor = True
+        with SQLiteManager(db_name) as manager:
+            if strategy_name and ':' in strategy_name:
+                set_strategy_name = strategy_name.split(':')[0]
+                sub_strategy_name = strategy_name.split(':')[1]
+                strategy_meta_infos = manager.query_data_dict('strategy_meta_info', {'strategy_name': set_strategy_name, 'sub_strategy_name': sub_strategy_name})
+                last_date = date.find_next_nth_date(date_key=date_key)
+                if strategy_meta_infos:
+                    cbudget = max(strategy_meta_infos[0]['budget'] * 0.1, 5000)
+                    row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name,'stock_code': stock_code, 'budget': cbudget})
+
+                    if limit_up_monitor and row_id:
+                        from run import add_limit_up_monitor
+                        add_limit_up_monitor(stock_code, row_ids=[row_id])
+            else:
+                strategy_meta_infos = manager.query_data_dict('strategy_meta_info', {'strategy_name': strategy_name})
+                last_date = date.find_next_nth_date(date_key=date_key)
+                if strategy_meta_infos:
+                    cbudget = max(strategy_meta_infos[0]['budget'] * 0.1, 5000)
+                    row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': strategy_name,'stock_code': stock_code, 'budget': cbudget})
+                    if limit_up_monitor and row_id:
+                        from run import add_limit_up_monitor
+                        add_limit_up_monitor(stock_code, row_ids=[row_id])
 
 
 
@@ -1011,6 +1062,8 @@ class QMTTrader:
     
 
     def buy_immediate(self, stock_code, volume, price, remark = ''):
+        if stock_code in self.all_stocks:
+            stock_code = self.all_stocks[stock_code]
         return self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, xtconstant.FIX_PRICE, price, remark)
 
     def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0, orders_dict = None, orders = None, buffers= [0.0]):

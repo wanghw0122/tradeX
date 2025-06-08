@@ -258,3 +258,27 @@ CREATE TABLE IF NOT EXISTS strategy_monitor_config (
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (strategy_name, sub_strategy_name)
 )
+
+
+CREATE TABLE IF NOT EXISTS limit_up_strategy_info (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_name TEXT NOT NULL,
+    sub_strategy_name TEXT DEFAULT '',
+    stock_code TEXT NOT NULL,
+    stock_name TEXT DEFAULT '',
+    date_key TEXT NOT NULL,
+    last_date_key TEXT NOT NULL,
+    budget REAL DEFAULT 0,
+    c_status INTEGER DEFAULT 0,
+    success INTEGER DEFAULT 0,
+    success_volumes INTEGER DEFAULT 0,
+    success_amount REAL DEFAULT 0,
+    order_price REAL DEFAULT 0,
+    order_ids TEXT DEFAULT '',
+    profit REAL DEFAULT 0,
+    profit_pct REAL DEFAULT 0,
+    hit_type TEXT DEFAULT "0",
+    source TEXT DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)

@@ -199,6 +199,7 @@ class LimitUpStockMonitor(object):
     def start_monitor(self):
         logger.info(f"start limit up monitor {self.stock_code} {self.stock_name}")
         self.thread = threading.Thread(target=self.monitor)
+        self.thread.setDaemon(True)
         self.thread.start()
         return self.thread
     
@@ -308,6 +309,7 @@ class LimitUpStockMonitor(object):
         if not self.monitor_orders_running:
             self.monitor_orders_running = True
             self.monitor_orders_thread = threading.Thread(target=self._monitor_orders_loop)
+            self.monitor_orders_thread.setDaemon(True)
             self.monitor_orders_thread.start()
 
     def stop_monitor_orders(self):

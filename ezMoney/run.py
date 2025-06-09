@@ -64,7 +64,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-06-06"
+test_date = "2025-06-09"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -3282,6 +3282,18 @@ def is_after_1140():
     target_time = now.replace(hour=11, minute=40, second=0, microsecond=0)
     return now > target_time
 
+
+def is_after_1230():
+    now = datetime.datetime.now()
+    target_time = now.replace(hour=12, minute=30, second=0, microsecond=0)
+    return now > target_time
+
+
+def is_after_1450():
+    now = datetime.datetime.now()
+    target_time = now.replace(hour=14, minute=50, second=0, microsecond=0)
+    return now > target_time
+
 def cancel_orders():
     global cancel_time
     is_trade, _ = date.is_trading_day()
@@ -4203,113 +4215,122 @@ if __name__ == "__main__":
     print('done')
     # print('xtdc.listen')
 
-    # addr_list = [
-    # '115.231.218.73:55310', 
-    # '115.231.218.79:55310', 
-    # '42.228.16.211:55300',
-    # '42.228.16.210:55300',
-    # '36.99.48.20:55300',
-    # '36.99.48.21:55300'
-    # ]
-    # xtdc.set_allow_optmize_address(addr_list)
-
-    # xtdc.set_kline_mirror_enabled(True) 
-    
-    listen_addr = xtdc.listen(port = 58611)
-    print(f'done, listen_addr:{listen_addr}')
-
-    xtdata.connect(port=listen_addr)
-
-    print('-----连接上了------')
-    print(xtdata.data_dir)
-
-    # servers = xtdata.get_quote_server_status()
-    # print(servers)
-    # for k, v in servers.items():
-        # print(k, v)
-    full_tick_info_dict = Manager().dict()
-
-    qmt_trader.init_order_context(flag = use_threading_buyer)
-    qmt_trader.start_sell_listener()
-    if use_threading_buyer:
-        consumer_thread = threading.Thread(target=consumer_to_buy, args=(threading_q, qmt_trader.orders_dict, qmt_trader.orders,))
-    else:
-        consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
-
-    # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
-    # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
-
-    subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q))
-    consumer_thread.start()
-    subscribe_thread.start()
-    cached_auction_infos.clear()
-
-    scheduler = BackgroundScheduler()
-    # 每隔5秒执行一次 job_func 方法
-    scheduler.add_job(strategy_schedule_job, 'interval', seconds=3, id="code_schedule_job")
-
-    # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
-
-    scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
-
-    # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
-
-    scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=29, second=0, id="start_monitor_monning")
-    scheduler.add_job(start_limit_up_monitor, 'cron', hour=9, minute=29, second=0, id="start_limit_up_monitor")
-
-    scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")
-    # scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")
-
-    # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
-    # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])
-
-    # 启动调度器
-    scheduler.start()
-
-    # 保持程序运行，以便调度器可以执行任务
-    try:
+    if is_after_1230() and not do_test:
+        logger.info("1230 后， 不启动程序")
+        start_limit_up_monitor()
         while True:
-            if is_after_1140() and not do_test:
-                logger.info("达到最大执行时间，退出程序")
-                if use_threading_buyer:
-                    threading_q.put('end')
-                else:
-                    q.put('end')
-                if end_subscribe:
-                    qq.put('end')
-                scheduler.shutdown()
+            time.sleep(10)
+            if is_after_1450():
                 break
-            time.sleep(3)
-            print_latest_tick(full_tick_info_dict)
-    except (KeyboardInterrupt, SystemExit):
-        # 关闭调度器
-        scheduler.shutdown()
-    
-    print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
-    if not use_threading_buyer:
-        q.close()
-        q.join_thread()
-    if end_subscribe:
-        qq.close()
-        qq.join_thread()
-    consumer_thread.join()
-    subscribe_thread.join()
-    logger.info("Consumer thread joined.")
-    logger.info("Subscribe thread joined.")  
+    else:
+        # addr_list = [
+        # '115.231.218.73:55310', 
+        # '115.231.218.79:55310', 
+        # '42.228.16.211:55300',
+        # '42.228.16.210:55300',
+        # '36.99.48.20:55300',
+        # '36.99.48.21:55300'
+        # ]
+        # xtdc.set_allow_optmize_address(addr_list)
 
-    # # 卖出股票
-    # order_id = qmt_trader.sell('600000.SH', 11.0, 50)
-    # print(f"卖出委托ID: {order_id}")
+        # xtdc.set_kline_mirror_enabled(True) 
+        
+        listen_addr = xtdc.listen(port = 58611)
+        print(f'done, listen_addr:{listen_addr}')
 
-    # # 撤单
-    # cancel_result = qmt_trader.cancel_order(order_id)
-    # print(f"撤单结果: {cancel_result}")
+        xtdata.connect(port=listen_addr)
 
-    # 获取账户信息
-    # account_info = qmt_trader.get_account_info()
-    # print(f"账户信息: {account_info}")
+        print('-----连接上了------')
+        print(xtdata.data_dir)
 
-    # get_tradable_stocks = qmt_trader.get_tradable_stocks()
-    # print(f"股票数据: {get_tradable_stocks}")
+        # servers = xtdata.get_quote_server_status()
+        # print(servers)
+        # for k, v in servers.items():
+            # print(k, v)
+        full_tick_info_dict = Manager().dict()
 
-    # qmt_trader.set_running()
+        qmt_trader.init_order_context(flag = use_threading_buyer)
+        qmt_trader.start_sell_listener()
+        if use_threading_buyer:
+            consumer_thread = threading.Thread(target=consumer_to_buy, args=(threading_q, qmt_trader.orders_dict, qmt_trader.orders,))
+        else:
+            consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
+
+        # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
+        # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
+
+        subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q))
+        consumer_thread.start()
+        subscribe_thread.start()
+        cached_auction_infos.clear()
+
+        scheduler = BackgroundScheduler()
+        # 每隔5秒执行一次 job_func 方法
+        scheduler.add_job(strategy_schedule_job, 'interval', seconds=3, id="code_schedule_job")
+
+        # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
+
+        scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+
+        # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
+
+        scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=29, second=0, id="start_monitor_monning")
+        scheduler.add_job(start_limit_up_monitor, 'cron', hour=9, minute=29, second=0, id="start_limit_up_monitor")
+
+        scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")
+        # scheduler.add_job(schedule_sell_stocks_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_sell_stocks_everyday_at_925")
+
+        # 在 2025-01-21 22:08:01 ~ 2025-01-21 22:09:00 之间, 每隔5秒执行一次 job_func 方法
+        # scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, start_date='2025-01-21 22:12:01', end_date='2025-01-21 22:13:00', args=['World!'])
+
+        # 启动调度器
+        scheduler.start()
+
+        # 保持程序运行，以便调度器可以执行任务
+        try:
+            while True:
+                if is_after_1140() and not do_test:
+                    logger.info("达到最大执行时间，退出程序")
+                    if use_threading_buyer:
+                        threading_q.put('end')
+                    else:
+                        q.put('end')
+                    if end_subscribe:
+                        qq.put('end')
+                    scheduler.shutdown()
+                    break
+                time.sleep(3)
+                print_latest_tick(full_tick_info_dict)
+        except (KeyboardInterrupt, SystemExit):
+            # 关闭调度器
+            scheduler.shutdown()
+        
+        print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
+        if not use_threading_buyer:
+            q.close()
+            q.join_thread()
+        if end_subscribe:
+            qq.close()
+            qq.join_thread()
+        consumer_thread.join()
+        subscribe_thread.join()
+        logger.info("Consumer thread joined.")
+        logger.info("Subscribe thread joined.")  
+
+        # # 卖出股票
+        # order_id = qmt_trader.sell('600000.SH', 11.0, 50)
+        # print(f"卖出委托ID: {order_id}")
+
+        # # 撤单
+        # cancel_result = qmt_trader.cancel_order(order_id)
+        # print(f"撤单结果: {cancel_result}")
+
+        # 获取账户信息
+        # account_info = qmt_trader.get_account_info()
+        # print(f"账户信息: {account_info}")
+
+        # get_tradable_stocks = qmt_trader.get_tradable_stocks()
+        # print(f"股票数据: {get_tradable_stocks}")
+
+        # qmt_trader.set_running()
+    print('end')

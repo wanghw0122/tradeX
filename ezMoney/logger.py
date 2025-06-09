@@ -3,6 +3,14 @@ from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 import datetime
 import os
 from functools import wraps
+import threading
+
+log_lock = threading.Lock()
+class LockedRotatingFileHandler(RotatingFileHandler):
+    def emit(self, record):
+        with log_lock:
+            super().emit(record)
+
 
 def setup_logging(name):
     # 获取当前日期
@@ -60,7 +68,7 @@ order_logger = logging.getLogger('order_logger')
 order_logger.setLevel(logging.DEBUG)
 
 # 创建 RotatingFileHandler，设置 delay=True
-handler = RotatingFileHandler(
+handler = LockedRotatingFileHandler(
     'D:\\workspace\\TradeX\\logs\\order_logger\\order_logger.log',
     maxBytes=1024 * 1024 * 5,  # 5 MB
     backupCount=5,

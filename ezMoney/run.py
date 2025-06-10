@@ -1388,12 +1388,13 @@ default_positions = {
 # ... existing code ...
 
 default_strategy_positions = {
-    "低吸-高强中低开低吸:强方向前2": 0.5,
-    "低吸-高强中低开低吸:方向前1": 0.8,
-    "低吸-高强中低开低吸:强方向前1": 0.8,
-    "低吸-高强中低开低吸:方向前2": 0.5,
-    "低吸-中位孕线低吸:方向2": 0.25,
-    "低吸-中位孕线低吸:方向1": 0.25,
+    "低吸-高强中低开低吸:强方向前2": 1,
+    "低吸-高强中低开低吸:强方向前22": 1,
+    "低吸-高强中低开低吸:方向前1": 1,
+    "低吸-高强中低开低吸:强方向前1": 1,
+    "低吸-高强中低开低吸:方向前2": 1,
+    "低吸-中位孕线低吸:方向2": 1,
+    "低吸-中位孕线低吸:方向1": 1,
     "低吸-低位中强中低开低吸:第一高频": 0.8,
     "低吸-低位中强中低开低吸:第二高频": 0.8,
     "低吸-低位高强低吸:中低频2": 1,
@@ -4118,8 +4119,8 @@ def start_monitor_monning():
                 stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
                 if not stock_name:
                     stock_name = ''
-
-                stock_monitor = StockMonitor(stock_code=stock_code, stock_name=stock_name, qmt_trader=qmt_trader)
+                mkt_datas = get_marketting_datas(stock_code)
+                stock_monitor = StockMonitor(stock_code=stock_code, stock_name=stock_name, qmt_trader=qmt_trader, mkt_datas = mkt_datas)
                 code_to_monitor_dict[stock_code] = stock_monitor
                 strategy_logger.info(f"[start_monitor_monning] 监听股票: {stock_code}")
             
@@ -4140,6 +4141,52 @@ def start_monitor_monning():
 
     except Exception as e:
         pass
+
+
+def get_marketting_datas(stock_code):
+    previous_day = date.get_previous_date()
+    trade_days = date.get_trade_dates_by_end(previous_day, trade_days= 100)
+    if not trade_days:
+        return None
+    n_date_key = trade_days[0]
+    m_date_key = trade_days[-1]
+    xtdata.download_history_data(stock_code, '1d', n_date_key, m_date_key)
+    all_days_data = xtdata.get_market_data(stock_list=[stock_code], period='1d', start_time=n_date_key, end_time=m_date_key)
+    if not all_days_data:
+        return None
+    res = {}
+    try:
+        ma5 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(5).mean())
+        if ma5:
+            res['ma5'] = ma5
+    except Exception as e:
+        pass
+    try:
+        ma10 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(10).mean())
+        if ma10:
+            res['ma10'] = ma10
+    except Exception as e:
+        pass
+    try:
+        ma20 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(20).mean())
+        if ma20:
+            res['ma20'] = ma20
+    except Exception as e:
+        pass
+    try:
+        ma30 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(30).mean())
+        if ma30:
+            res['ma30'] = ma30
+    except Exception as e:
+        pass
+    try:
+        ma60 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(60).mean())
+        if ma60:
+            res['ma60'] = ma60
+    except Exception as e:
+        pass
+    
+    return res
 
 
 def start_monitor_monning_test():

@@ -9,7 +9,7 @@ from trade.qmtTrade import *
 from xtquant import xtdata
 from xtquant import xtconstant
 from date_utils import date
-
+import math
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 from run_roll_back import *
@@ -4148,8 +4148,8 @@ def get_marketting_datas(stock_code):
     trade_days = date.get_trade_dates_by_end(previous_day, trade_days= 100)
     if not trade_days:
         return None
-    n_date_key = trade_days[0]
-    m_date_key = trade_days[-1]
+    n_date_key = trade_days[0].replace('-', '')
+    m_date_key = trade_days[-1].replace('-', '')
     xtdata.download_history_data(stock_code, '1d', n_date_key, m_date_key)
     all_days_data = xtdata.get_market_data(stock_list=[stock_code], period='1d', start_time=n_date_key, end_time=m_date_key)
     if not all_days_data:
@@ -4157,31 +4157,31 @@ def get_marketting_datas(stock_code):
     res = {}
     try:
         ma5 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(5).mean())
-        if ma5:
+        if ma5 and not math.isnan(ma5):
             res['ma5'] = ma5
     except Exception as e:
         pass
     try:
         ma10 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(10).mean())
-        if ma10:
+        if ma10 and not math.isnan(ma10):
             res['ma10'] = ma10
     except Exception as e:
         pass
     try:
         ma20 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(20).mean())
-        if ma20:
+        if ma20 and not math.isnan(ma20):
             res['ma20'] = ma20
     except Exception as e:
         pass
     try:
         ma30 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(30).mean())
-        if ma30:
+        if ma30 and not math.isnan(ma30):
             res['ma30'] = ma30
     except Exception as e:
         pass
     try:
         ma60 = float(all_days_data['close'].loc[stock_code].sort_index(ascending=True).tail(60).mean())
-        if ma60:
+        if ma60 and not math.isnan(ma60):
             res['ma60'] = ma60
     except Exception as e:
         pass

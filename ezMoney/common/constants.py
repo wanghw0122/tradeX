@@ -427,7 +427,7 @@ def modify_string_slice(input_str, index, new_value):
     return input_str[:index] + new_value + input_str[index + 1:]
 
 
-def match_binary_string(binary_str, pattern_str):
+def match_binary_string(binary_str, pattern_strs):
     """
     根据输入的 11 位二进制字符串和待匹配字符串，检查是否所有匹配位置在二进制字符串中都为 1。
 
@@ -438,19 +438,25 @@ def match_binary_string(binary_str, pattern_str):
     if len(binary_str) != 11:
         raise ValueError("二进制字符串长度必须为 11")
     
-    for char in pattern_str:
-        try:
-            if char.isdigit():
-                index = int(char)
-            else:
-                index = ord(char) - ord('a') + 10
-            if index < 0 or index >= 11 or binary_str[index] != '1':
+    def match_string(binary_str, pattern_str):
+        for char in pattern_str:
+            try:
+                if char.isdigit():
+                    index = int(char)
+                else:
+                    index = ord(char) - ord('a') + 10
+                if index < 0 or index >= 11 or binary_str[index] != '1':
+                    return False
+            except Exception:
                 return False
-        except Exception:
-            return False
-    return True
+        return True
+            
+    for pattern_str in pattern_strs:
+        if match_string(binary_str, pattern_str):
+            return True
+    return False
 
 if __name__ == "__main__":
     # print(get_row_id_status(0))
     # print(type(get_row_id_status(0)))
-    print(match_binary_string("00010100111", '3549a'))
+    print(match_binary_string("00010100111", ['13a','35']))

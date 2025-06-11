@@ -882,7 +882,7 @@ class QMTTrader:
             return seq_id
 
 
-    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1, limit_up_monitor = False):
+    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1, limit_up_monitor = False, afternoon = False):
         """
         卖出股票
 
@@ -894,29 +894,34 @@ class QMTTrader:
         :param order_remark: 委托备注，默认为空
         :return: 委托ID
         """
-        
+
+        full_tick_info = xtdata.get_full_tick([stock_code])
+        if not full_tick_info:
+            order_logger.error(f"[出售] 获取股票 {stock_code} 行情失败")
+            return
+        lastPrice = full_tick_info[stock_code]['lastPrice']
+        price = full_tick_info[stock_code]['lastPrice'] * (1 + buffer)
+        high = lastPrice
+        if 'high' in full_tick_info[stock_code]:
+            high = full_tick_info[stock_code]['high']
+        from decimal import Decimal, ROUND_HALF_UP
+        new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+
+        limit_down_price = 0
+        have_limited_up = False
+
+        if full_tick_info and 'lastClose' in full_tick_info[stock_code]:
+            last_close = full_tick_info[stock_code]['lastClose']
+            print(f"last_close {last_close}")
+            limit_down_price, limit_up_price =  constants.get_limit_price(last_close, stock_code=stock_code)
+            if abs(high - limit_up_price) < 0.01:
+                have_limited_up = True
+            if not up_sell and abs(lastPrice - limit_up_price) < 0.01:
+                order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
+                return 0
+        sell_price = max(new_price, limit_down_price)
         if s_price > 0:
             sell_price = s_price
-        else:
-            full_tick_info = xtdata.get_full_tick([stock_code])
-            if not full_tick_info:
-                order_logger.error(f"[出售] 获取股票 {stock_code} 行情失败")
-                return
-            lastPrice = full_tick_info[stock_code]['lastPrice']
-            price = full_tick_info[stock_code]['lastPrice'] * (1 + buffer)
-            from decimal import Decimal, ROUND_HALF_UP
-            new_price = float(Decimal(str(price)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-
-            limit_down_price = 0
-
-            if full_tick_info and 'lastClose' in full_tick_info[stock_code]:
-                last_close = full_tick_info[stock_code]['lastClose']
-                print(f"last_close {last_close}")
-                limit_down_price, limit_up_price =  constants.get_limit_price(last_close, stock_code=stock_code)
-                if not up_sell and abs(lastPrice - limit_up_price) < 0.01:
-                    order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
-                    return 0
-            sell_price = max(new_price, limit_down_price)
         
         if sync:
             if order_type == xtconstant.FIX_PRICE:
@@ -955,7 +960,15 @@ class QMTTrader:
                                     last_date = date.find_next_nth_date(date_key=date_key)
                                     if strategy_meta_infos:
                                         cbudget = max(strategy_meta_infos[0]['budget'] * 0.15, 5000)
-                                        row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget})
+
+                                        if afternoon:
+                                            hit_type = "35,48"
+                                        else:
+                                            if have_limited_up:
+                                                hit_type = "3"
+                                            else:
+                                                hit_type = "35,49"
+                                        row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget, 'hit_type': hit_type})
 
                                         if limit_up_monitor and row_id:
                                             from run import add_limit_up_monitor
@@ -966,7 +979,14 @@ class QMTTrader:
                                     last_date = date.find_next_nth_date(date_key=date_key)
                                     if strategy_meta_infos:
                                         cbudget = max(strategy_meta_infos[0]['budget'] * 0.15, 5000)
-                                        row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget})
+                                        if afternoon:
+                                            hit_type = "35,48"
+                                        else:
+                                            if have_limited_up:
+                                                hit_type = "3"
+                                            else:
+                                                hit_type = "35,49"
+                                        row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget, 'hit_type': hit_type})
                                         if limit_up_monitor and row_id:
                                             from run import add_limit_up_monitor
                                             add_limit_up_monitor(stock_code, row_ids=[row_id])

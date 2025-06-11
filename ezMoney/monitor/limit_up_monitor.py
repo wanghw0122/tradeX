@@ -65,8 +65,9 @@ class LimitUpStockMonitor(object):
         # 平滑当前价
         self.smooth_current_price = 0
         # 平滑过滤器
-        self.smooth_price_filter = SmoothFilter(window_size=3)
-
+        self.smooth_price_filter = SmoothFilter(window_size=2)
+        self.limited_up_history = []
+        self.limit_up_before = False
         # 涨停最大封单量
         self.max_limit_up_vol = -1
         # 开盘价
@@ -174,7 +175,7 @@ class LimitUpStockMonitor(object):
             self.limit_up_str_type = constants.modify_string_slice(self.limit_up_str_type, 4, '1')
         else:
             self.limit_up_str_type = constants.modify_string_slice(self.limit_up_str_type, 4, '0')
-        if self.limited_up:
+        if self.limit_up_before:
             self.limit_up_str_type = constants.modify_string_slice(self.limit_up_str_type, 5, '1')
         else:
             self.limit_up_str_type = constants.modify_string_slice(self.limit_up_str_type, 5, '0')
@@ -266,8 +267,13 @@ class LimitUpStockMonitor(object):
             strategy_name = data['strategy_name']
             sub_strategy_name = data['sub_strategy_name']
             hit_type = data['hit_type']
+            hit_types = []
+            if ',' in hit_type:
+                hit_types.extend(hit_type.split(','))
+            else:
+                hit_types.append(hit_type)
 
-            matched = constants.match_binary_string(self.limit_up_str_type, hit_type)
+            matched = constants.match_binary_string(self.limit_up_str_type, hit_types)
             if matched:
                 fnally_match_datas.append(data)
         if not fnally_match_datas:
@@ -465,6 +471,13 @@ class LimitUpStockMonitor(object):
                     self.limit_up_price = limit_up_price_0
                     self.limit_down_price = limit_down_price_0
                 
+                if abs(self.current_price - self.limit_up_price) < 0.01:
+                    self.limited_up_history.append(1)
+                else:
+                    self.limited_up_history.append(0)
+
+                self.limit_up_before = self.have_limited_up()
+
                 if self.limit_up_stock_status == constants.LimitUpStockStatus.UNKNOWN:
                     if abs(self.current_price - self.limit_up_price) < 0.01:
                         self.limit_up_stock_status = constants.LimitUpStockStatus.LIMIT_UP
@@ -486,12 +499,11 @@ class LimitUpStockMonitor(object):
                     if abs(self.current_price - self.limit_up_price) >= 0.01:
                         self.limit_up_stock_status = constants.LimitUpStockStatus.UNLIMITED
                         logger.info(f"股票状态更新为: {self.limit_up_stock_status}")  # 添加核心日志
-                    
                     self.limit_up_stock_status_list.append(self.limit_up_stock_status)
                     continue
                 elif self.limit_up_stock_status == constants.LimitUpStockStatus.UNLIMITED:
                     # 未涨停到涨停 意味着首次涨停，判断是否有对手盘
-                    if abs(self.current_price - self.limit_up_price) < 0.01 or abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
+                    if abs(self.current_price - self.limit_up_price) < 0.01 and abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
                         self.limit_up_stock_status = constants.LimitUpStockStatus.TOUCH_LIMIT_UP
                         touched = False
                         has_op = False
@@ -518,7 +530,7 @@ class LimitUpStockMonitor(object):
                         continue
                 elif self.limit_up_stock_status == constants.LimitUpStockStatus.TOUCH_LIMIT_UP:
                     # 涨停到涨停
-                    if abs(self.current_price - self.limit_up_price) < 0.01 or abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
+                    if abs(self.current_price - self.limit_up_price) < 0.01 and abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
                         self.limit_up_stock_status = constants.LimitUpStockStatus.LIMIT_UP
                         touched = True
                         has_op = False
@@ -544,7 +556,7 @@ class LimitUpStockMonitor(object):
                         continue
                 elif self.limit_up_stock_status == constants.LimitUpStockStatus.LIMIT_UP:
                     # 涨停未封
-                    if abs(self.current_price - self.limit_up_price) < 0.01:
+                    if abs(self.current_price - self.limit_up_price) < 0.01 and abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
                         self.limit_up_stock_status = constants.LimitUpStockStatus.LIMIT_UP
                         touched = False
                         has_op = False
@@ -576,7 +588,7 @@ class LimitUpStockMonitor(object):
                         continue
                 elif self.limit_up_stock_status == constants.LimitUpStockStatus.CLOSE_LIMIT_UP:
                     # 涨停封
-                    if abs(self.current_price - self.limit_up_price) < 0.01:
+                    if abs(self.current_price - self.limit_up_price) < 0.01 and abs(self.smooth_current_price - self.limit_up_price) < 0.0033:
                         self.limit_up_stock_status = constants.LimitUpStockStatus.LIMIT_UP
                         touched = False
                         has_op = False
@@ -610,4 +622,6 @@ class LimitUpStockMonitor(object):
         self.bq.put(data)
 
 
-
+    def have_limited_up(self):
+        sum_value = sum(self.limited_up_history[:-10]) if len(self.limited_up_history) > 10 else 0
+        return sum_value > 5

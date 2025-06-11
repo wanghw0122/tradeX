@@ -51,6 +51,30 @@ def get_previous_date():
     return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
+def get_previous_date_by_date(input_date=None):
+    """
+    获取指定日期的前一天日期。若未提供日期，则获取当前日期的前一天。
+
+    参数:
+        input_date (str, 可选): 指定日期，格式为 "YYYY-MM-DD"。默认为 None。
+
+    返回:
+        str: 前一天日期的字符串表示，格式为 "YYYY-MM-DD"。
+    """
+    if input_date is None:
+        # 若未提供日期，使用当前日期
+        current_date = datetime.now()
+    else:
+        try:
+            # 将输入日期字符串转换为 datetime 对象
+            current_date = datetime.strptime(input_date, "%Y-%m-%d")
+        except ValueError:
+            # 若输入日期格式错误，抛出异常
+            raise ValueError("输入日期格式错误，应为 'YYYY-MM-DD'")
+    # 计算前一天的日期
+    previous_date = current_date - timedelta(days=1)
+    return previous_date.strftime("%Y-%m-%d")
+
 def get_previous_date_no_line():
     """
     获取前一天的日期。

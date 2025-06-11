@@ -253,7 +253,7 @@ def schedule_sell_stocks_everyday_at_1457():
             stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
             if not stock_name:
                 stock_name = ''
-            qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.005, extra_infos = extra_infos, up_sell=False)
+            qmt_trader.sell_quickly(code, stock_name, sell_volume, order_remark= "sell",  buffer=-0.005, extra_infos = extra_infos, up_sell=False, afternoon=True)
     except Exception as e:
         print(f'exception: {e}')
 

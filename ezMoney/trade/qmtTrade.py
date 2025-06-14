@@ -959,15 +959,15 @@ class QMTTrader:
                                     strategy_meta_infos = manager.query_data_dict('strategy_meta_info', {'strategy_name': set_strategy_name, 'sub_strategy_name': sub_strategy_name})
                                     last_date = date.find_next_nth_date(date_key=date_key)
                                     if strategy_meta_infos:
-                                        cbudget = max(strategy_meta_infos[0]['budget'] * 0.15, 5000)
+                                        cbudget = max(strategy_meta_infos[0]['budget'] * 0.1, 5000)
 
                                         if afternoon:
-                                            hit_type = "35,48"
+                                            hit_type = "5,49"
                                         else:
                                             if have_limited_up:
                                                 hit_type = "3"
                                             else:
-                                                hit_type = "35,49"
+                                                hit_type = "5,49"
                                         row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': set_strategy_name,'sub_strategy_name': sub_strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget, 'hit_type': hit_type})
 
                                         if limit_up_monitor and row_id:
@@ -978,14 +978,14 @@ class QMTTrader:
                                     strategy_meta_infos = manager.query_data_dict('strategy_meta_info', {'strategy_name': strategy_name})
                                     last_date = date.find_next_nth_date(date_key=date_key)
                                     if strategy_meta_infos:
-                                        cbudget = max(strategy_meta_infos[0]['budget'] * 0.15, 5000)
+                                        cbudget = max(strategy_meta_infos[0]['budget'] * 0.1, 5000)
                                         if afternoon:
-                                            hit_type = "35,48"
+                                            hit_type = "5,48"
                                         else:
                                             if have_limited_up:
                                                 hit_type = "3"
                                             else:
-                                                hit_type = "35,49"
+                                                hit_type = "5,49"
                                         row_id = manager.insert_data(limit_up_table, {'date_key': date_key,'last_date_key': last_date, 'strategy_name': strategy_name,'stock_code': stock_code,'stock_name': stock_name, 'budget': cbudget, 'hit_type': hit_type})
                                         if limit_up_monitor and row_id:
                                             from run import add_limit_up_monitor

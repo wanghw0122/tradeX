@@ -64,7 +64,7 @@ default_position = 0.33
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-06-09"
+test_date = "2025-06-11"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1388,11 +1388,11 @@ default_positions = {
 # ... existing code ...
 
 default_strategy_positions = {
-    "低吸-高强中低开低吸:强方向前2": 1,
-    "低吸-高强中低开低吸:强方向前22": 1,
+    "低吸-高强中低开低吸:强方向前2": 0.5,
+    "低吸-高强中低开低吸:强方向前22": 0.5,
     "低吸-高强中低开低吸:方向前1": 1,
     "低吸-高强中低开低吸:强方向前1": 1,
-    "低吸-高强中低开低吸:方向前2": 1,
+    "低吸-高强中低开低吸:方向前2": 0.5,
     "低吸-中位孕线低吸:方向2": 1,
     "低吸-中位孕线低吸:方向1": 1,
     "低吸-低位中强中低开低吸:第一高频": 0.8,

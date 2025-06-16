@@ -266,7 +266,7 @@ class StrategyManager:
         return self.strategy_dict[name]
 
     def run_all_strategys(self, strategies_dict = {}, current_date = date.get_current_date()):
-        logger.info(f"strategies_dict: {strategies_dict}")
+        logger.info(f"strategies_dict: {strategies_dict}, date: {current_date}")
         return_rslt = {}
         if strategies_dict is None or len(strategies_dict) == 0:
             return {}

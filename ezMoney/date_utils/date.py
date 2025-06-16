@@ -116,6 +116,15 @@ def is_trading_day(current_date = get_current_date()):
             end_date_t = end_date_t - datetime.timedelta(days=1)
         return False, str(end_date_t)
 
+def get_previous_trade_date(current_date = get_current_date()):
+    if '-' not in current_date:
+        current_date = current_date[0:4] + '-' + current_date[4:6] + '-' + current_date[6:8]
+    pre_day = get_previous_date_by_date(current_date)
+    is_trade, pre_date = is_trading_day(pre_day)
+    if is_trade:
+        return pre_day
+    else:
+        return pre_date
 
 def is_trade_date(date_str):
     """
@@ -137,13 +146,13 @@ def is_trade_date(date_str):
 
 def is_between_925_and_930():
     now = datetime.now()
-    start_time = now.replace(hour=9, minute=25, second=30, microsecond=0)
+    start_time = now.replace(hour=9, minute=26, second=30, microsecond=0)
     end_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
     return start_time <= now < end_time
 
 def is_after_929():
     now = datetime.now()
-    start_time = now.replace(hour=9, minute=28, second=0, microsecond=0)
+    start_time = now.replace(hour=9, minute=29, second=20, microsecond=0)
     return now > start_time
 
 def is_after_920():
@@ -240,6 +249,8 @@ def get_trade_dates(start_date, end_date, trade_days = 30):
 if __name__ == "__main__":
     
     print(trade_date_list)
-    print(is_trading_day("2025-03-03"))
-    print(get_trade_dates_by_end("2025-03-01"))
-    print(find_next_nth_date('2025-05-05', 10))
+    # print(is_trading_day("2025-03-03"))
+
+    # print(get_trade_dates_by_end("2025-03-01"))
+    # print(find_next_nth_date('2025-05-05', 10))
+    print(get_previous_trade_date('2025-06-17'))

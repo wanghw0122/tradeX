@@ -63,10 +63,10 @@ pre_search_results = {}
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-06-17"
+test_date = "2025-06-16"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -4317,7 +4317,7 @@ if __name__ == "__main__":
 
         scheduler = BackgroundScheduler()
         # 每隔5秒执行一次 job_func 方法
-        scheduler.add_job(strategy_schedule_job, 'interval', seconds=5, id="code_schedule_job")
+        scheduler.add_job(strategy_schedule_job, 'interval', seconds=8, id="code_schedule_job")
 
         # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
 

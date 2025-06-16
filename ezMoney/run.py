@@ -63,10 +63,10 @@ pre_search_results = {}
 
 #################### 测试配置 ########################
 
-do_test = True
+do_test = False
 buy = True
 subscribe = True
-test_date = "2025-06-16"
+test_date = "2025-06-17"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True

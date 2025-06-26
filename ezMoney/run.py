@@ -1892,7 +1892,9 @@ def direction_filter_fuc(candicates, category_infos, params):
             except_is_track = False
 
         if not category_infos or len(category_infos) == 0:
-            return [candicates[0].code]
+            cres = {}
+            cres[candicates[0].code] = 1
+            return cres
         
         code_to_index_dict = {}
 

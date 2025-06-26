@@ -66,7 +66,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-06-25"
+test_date = "2025-06-26"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1892,6 +1892,7 @@ def direction_filter_fuc(candicates, category_infos, params):
             except_is_track = False
 
         if not category_infos or len(category_infos) == 0:
+            return {}
             cres = {}
             cres[candicates[0].code] = 1
             return cres
@@ -2260,6 +2261,9 @@ def get_target_codes_by_all_strategies(retry_times=3):
                 real_item_dict = {}
                 if 'xiaocao_category_info' in item:
                     xiaocao_category_infos = item['xiaocao_category_info']
+                    if not xiaocao_category_infos:
+                        logger.error(f"xiaocao_category_infos is None or empty")
+                        continue
                     params = get_filter_params(key)
                     if params and len(params) > 1:
                         multi_configs = True

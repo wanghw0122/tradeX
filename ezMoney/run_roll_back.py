@@ -711,6 +711,8 @@ def run_roll_back(once_daily = False, pre = False):
                     if not sub_task_name or len(sub_task_name) == 0:
                         logger.error(f"子任务名称为空...")
                         continue
+                    # if sub_task_name != '绿盘低吸前3':
+                    #     continue
                     code = sub_task_params['code']
                     if not code or len(code) == 0:
                         logger.error(f"子任务参数code为空...")

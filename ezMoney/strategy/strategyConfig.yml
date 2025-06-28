@@ -697,12 +697,12 @@ Strategies:
             logged: false
             params:
               xcdxScore: 1
-          - name: "jw_filter"
-            index: 5
-            desc: "过滤竞王分"
-            logged: false
-            params:
-              xcjwScore: 100
+          # - name: "jw_filter"
+          #   index: 5
+          #   desc: "过滤竞王分"
+          #   logged: false
+          #   params:
+          #     xcjwScore: 100
   - name: "追涨"
     type: "小草追涨"
     status: 1

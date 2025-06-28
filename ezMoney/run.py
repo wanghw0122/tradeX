@@ -4275,12 +4275,14 @@ if __name__ == "__main__":
     # print('xtdc.listen')
 
     if is_after_1230() and not do_test:
-        logger.info("1230 后， 不启动程序")
-        start_limit_up_monitor()
-        while True:
-            time.sleep(10)
-            if is_after_1450():
-                break
+        is_trade, pre_trade_date = date.is_trading_day()
+        if is_trade:
+            logger.info("1230 后， 不启动程序")
+            start_limit_up_monitor()
+            while True:
+                time.sleep(10)
+                if is_after_1450():
+                    break
     else:
         # addr_list = [
         # '115.231.218.73:55310', 

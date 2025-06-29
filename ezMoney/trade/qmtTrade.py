@@ -1084,6 +1084,13 @@ class QMTTrader:
     def buy_immediate(self, stock_code, volume, price, remark = ''):
         if stock_code in self.all_stocks:
             stock_code = self.all_stocks[stock_code]
+        limit_down_price, limit_up_price = constants.get_limit_price(stock_code)
+
+        if price < limit_down_price:
+            price = limit_down_price
+        elif price > limit_up_price:
+            price = limit_up_price
+
         return self.trader.order_stock(self.acc, stock_code, xtconstant.STOCK_BUY, volume, xtconstant.FIX_PRICE, price, remark)
 
     def buy_quickly(self, stock_code, cash, min_vol = -1, max_vol = -1, max_cash = -1, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, price_type = 0, orders_dict = None, orders = None, buffers= [0.0]):

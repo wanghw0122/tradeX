@@ -459,6 +459,24 @@ strategies = {
                     },
                     {
                     # 曲线完美
+                    'mark': '方向前22',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    # 曲线完美
                     'mark': '方向前1',
                     'limit': 5,
                     'filtered': True,
@@ -1398,6 +1416,8 @@ default_strategy_positions = {
     "低吸-高强中低开低吸:强方向前1": 1,
     "低吸-高强中低开低吸:强方向前1止损10": 1,
     "低吸-高强中低开低吸:强方向前1无止损": 1,
+    "低吸-高强中低开低吸:方向前2": 1,
+    "低吸-高强中低开低吸:方向前22": 1,
     "低吸-低位孕线低吸:第一高频": 1,
     "低吸-低位孕线低吸:第一高频2": 1,
     "低吸-低位中强中低开低吸:第一高频": 1,

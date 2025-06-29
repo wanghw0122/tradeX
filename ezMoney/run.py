@@ -1262,61 +1262,60 @@ strategies = {
             #     ]
             # }
         }
-    }
+    },
     # ,
-    # "追涨": {
-    #     "sub_strategies": {
-    #         # 收益不错 有方向 最近强势 ，创建日期 2025-03-19
-    #         "小高开追涨": {
-    #             "code": "9G0019",
-    #             "returnNum": 5,
-    #             "budget": "ddx",
-    #             'returnFullInfo': True,
-    #             'filter_params': [
-    #                 {
-    #                 'filtered': True,
-    #                 'fx_filtered': True,
-    #                 'topn': 1,
-    #                 'top_fx': 2,
-    #                 'top_cx': 50,
-    #                 'only_fx': True,
-    #                 'enbale_industry': False,
-    #                 'empty_priority': False,
-    #                 'min_trade_amount': 10000000,
-    #                 'block_rank_filter': True,
-    #                 'gap': 0,
-    #                 'except_is_ppp': True,
-    #                 'except_is_track': False
-    #                 }
-    #             ]
-    #         }
-    #         # ,
-    #         # "低位中强追涨": {
-    #         #     "code": "9G0116",
-    #         #     "returnNum": 2,
-    #         #     "budget": "ddx",
-    #         #     'returnFullInfo': True,
-    #         #     'filter_params': [
-    #         #         {
-    #         #         'filtered': True,
-    #         #         'fx_filtered': True,
-    #         #         'topn': 1,
-    #         #         'top_fx': 50,
-    #         #         'top_cx': 50,
-    #         #         'only_fx': True,
-    #         #         'enbale_industry': False,
-    #         #         'empty_priority': False,
-    #         #         'min_trade_amount': 6000000,
-    #         #         'block_rank_filter': True,
-    #         #         'gap': 0,
-    #         #         'except_is_ppp': True,
-    #         #         'except_is_track': False
-    #         #         }
-    #         #     ]
-    #         # }
-    #     }
-    # }
-    ,
+    "追涨": {
+        "sub_strategies": {
+            # 收益不错 有方向 最近强势 ，创建日期 2025-03-19
+            "高位高强追涨": {
+                "code": "9G0109",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
+            }
+            # ,
+            # "低位中强追涨": {
+            #     "code": "9G0116",
+            #     "returnNum": 2,
+            #     "budget": "ddx",
+            #     'returnFullInfo': True,
+            #     'filter_params': [
+            #         {
+            #         'filtered': True,
+            #         'fx_filtered': True,
+            #         'topn': 1,
+            #         'top_fx': 50,
+            #         'top_cx': 50,
+            #         'only_fx': True,
+            #         'enbale_industry': False,
+            #         'empty_priority': False,
+            #         'min_trade_amount': 6000000,
+            #         'block_rank_filter': True,
+            #         'gap': 0,
+            #         'except_is_ppp': True,
+            #         'except_is_track': False
+            #         }
+            #     ]
+            # }
+        }
+    },
     "接力": {
         "sub_strategies": {
             "一进二弱转强": {
@@ -1376,6 +1375,7 @@ strategies_to_buffer = {
     "低吸-首红断低吸": [0.019],
     "低吸-断低吸": [0.019],
     "低吸-孕线": [0.019],
+    "追涨-高位高强追涨": [0.019],
     "低吸-低位中强低吸": [0.019],
     "接力-一进二弱转强": [0.019]
 }
@@ -1393,6 +1393,7 @@ default_positions = {
     "低吸-放宽低吸前3": 0.25,
     "追涨-小高开追涨": 0.2,
     "追涨-低位中强追涨": 0.2,
+    "追涨-高位高强追涨": 0.2,
     "低吸-绿盘低吸": 0.25,
     "低吸-中位低吸": 0.25,
     "追涨-中位小高开起爆": 0.1,
@@ -1433,6 +1434,7 @@ default_strategy_positions = {
     "低吸-首红断低吸": 1,
     "低吸-中强中低开低吸:第二高频": 1,
     # "低吸-中强中低开低吸:方向低频": 0,
+    "追涨-高位高强追涨": 1,
 }
 
 def get_strategy_position(strategy, sub_strategy=None, default_strategy_positions=default_strategy_positions):

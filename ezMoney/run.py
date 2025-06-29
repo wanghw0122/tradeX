@@ -63,7 +63,7 @@ pre_search_results = {}
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
 test_date = "2025-06-30"

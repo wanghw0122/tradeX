@@ -1107,7 +1107,7 @@ strategies = {
             },
             "首红断低吸": {
                 "code": "9G0008",
-                "returnNum": 3,
+                "returnNum": 10,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -1117,10 +1117,10 @@ strategies = {
                     'topn': 1,
                     'top_fx': 101,
                     'top_cx': 101,
-                    'only_fx': False,
+                    'only_fx': True,
                     'enbale_industry': False,
                     'empty_priority': True,
-                    'min_trade_amount': 8000000,
+                    'min_trade_amount': 10000000,
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
@@ -1430,7 +1430,7 @@ default_strategy_positions = {
     # "低吸-低位高强中低开低吸:方向低频": 0,
     "低吸-低位高强中低开低吸:方向低频2": 1,
     # "低吸-低位高强中低开低吸:方向低频3": 0,
-    # "低吸-首红断低吸": 0,
+    "低吸-首红断低吸": 1,
     "低吸-中强中低开低吸:第二高频": 1,
     # "低吸-中强中低开低吸:方向低频": 0,
 }

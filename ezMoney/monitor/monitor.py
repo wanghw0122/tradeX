@@ -83,6 +83,8 @@ class StockMonitor(object):
         self.current_increase = 0
         # 当天最高价
         self.current_max_price = 0
+        # 当天平滑最高价
+        self.smooth_current_max_price = 0
         # 当天最低价
         self.current_min_price = 0
         # 当天天内最高涨幅
@@ -240,6 +242,8 @@ class StockMonitor(object):
             self.current_increase = (self.current_price - self.last_close_price) / self.last_close_price
             # 当天最高价
             self.current_max_price = max(self.current_max_price, high)
+            # 平滑最高价
+            self.smooth_current_max_price = max(self.smooth_current_max_price, self.smooth_current_price)
             # 当天最低价
             self.current_min_price = min(self.current_min_price, low)
             # 当天天内最高涨幅
@@ -1182,7 +1186,7 @@ class StockMonitor(object):
                         max_abserve_tick_steps = monitor_config['max_abserve_tick_steps']
                         max_abserce_avg_price_down_steps = monitor_config['max_abserce_avg_price_down_steps']
                         last_day_sell_thres = monitor_config['last_day_sell_thres']
-                        max_thres_line = self.current_max_price * (1 - 0.005)
+                        max_thres_line = self.smooth_current_max_price * (1 - 0.009)
                         if self.current_increase > last_day_sell_thres and self.current_price < max_thres_line:
                             logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 回撤卖出")
                             self.add_to_sell(row_id=row_id)

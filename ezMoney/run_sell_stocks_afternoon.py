@@ -59,6 +59,52 @@ def schedule_sell_stocks_everyday_at_1457():
             order_logger.info("无股票可出售")
             return
         
+        selled_codes = []
+        all_available_codes = []
+        all_available_codes_dict = {}
+        for position_stock_info in position_stocks:
+            stock_code = position_stock_info['stock_code']
+            available_qty = position_stock_info['available_qty']
+            quantity = position_stock_info['quantity']
+            if available_qty <= 0:
+                continue
+            all_available_codes.append(stock_code)
+            all_available_codes_dict[stock_code] = position_stock_info
+
+        if all_available_codes:
+            full_ticks = xtdata.get_full_tick(all_available_codes)
+        
+            if full_ticks and len(full_ticks):
+                for c_stock_code, c_full_tick in full_ticks.items():
+
+                    if c_stock_code not in all_available_codes_dict:
+                        continue
+                    if 'lastPrice' not in c_full_tick:
+                        continue
+                    if 'lastClose' not in c_full_tick:
+                        continue
+                    c_available_qty = all_available_codes_dict[c_stock_code]['available_qty']
+                    last_price = c_full_tick['lastPrice']
+                    last_close = c_full_tick['lastClose']
+                    high = c_full_tick['high']
+                    limit_down_price, limit_up_price = constants.get_limit_price(last_close, c_stock_code)
+
+                    print(c_stock_code, c_available_qty, last_price, last_close, limit_up_price, high)
+                    if abs(high - limit_up_price) < 0.01 and abs(last_price - limit_up_price) > 0.02:
+                        stock_name = offlineStockQuery.get_stock_name(c_stock_code)
+                        qmt_trader.sell_quickly(c_stock_code, stock_name, c_available_qty, order_remark= "sell",  buffer=-0.03, extra_infos = None, up_sell=False, afternoon=True)
+                        selled_codes.append(c_stock_code)
+
+        if selled_codes:
+            # 过滤 position_stocks 列表，保留 stock_code 不在 selled_codes 中的项
+            position_stocks = [position_stock_info for position_stock_info in position_stocks if position_stock_info['stock_code'] not in selled_codes]
+
+        if not position_stocks:
+            order_logger.info("过滤炸板后无股票可出售")
+            return
+        else:
+            order_logger.info("过滤炸板后有股票可出售")
+                        
         stock_to_trade_volume = {}
         days_strategy_to_stock_volume = {}
 

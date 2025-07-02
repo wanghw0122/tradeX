@@ -347,7 +347,7 @@ class LimitUpStockMonitor(object):
     def _monitor_orders_loop(self):
         while self.monitor_orders_running:
             self._monitor_orders()
-            time.sleep(5)
+            time.sleep(3)
 
     def _monitor_orders(self):
         if not hasattr(self, 'qmt_trader') or self.qmt_trader is None:

@@ -347,7 +347,7 @@ class LimitUpStockMonitor(object):
     def _monitor_orders_loop(self):
         while self.monitor_orders_running:
             self._monitor_orders()
-            time.sleep(1)
+            time.sleep(5)
 
     def _monitor_orders(self):
         if not hasattr(self, 'qmt_trader') or self.qmt_trader is None:
@@ -358,56 +358,67 @@ class LimitUpStockMonitor(object):
         if not order_id_list:
             logger.error(f"查询不到订单继续loop. {self.stock_code} - {self.stock_name}")
             return
+        else:
+            logger.info(f"查询到订单继续loop. {self.stock_code} - {self.stock_name} - {order_id_list} - {self.order_id_to_row_ids}")
+
+
         order_infos = self.qmt_trader.get_all_orders(filter_order_ids = order_id_list)
+        if order_infos:
+            logger.info(f"查询到订单信息. {self.stock_code} - {self.stock_name} - {order_infos}")
+        else:
+            logger.error(f"查询不到订单信息. {self.stock_code} - {self.stock_name} - {order_id_list}")
 
         for order_id in order_id_list:
             if order_id not in order_infos:
                 if order_id in self.order_id_miss_times:
                     self.order_id_miss_times[order_id] = self.order_id_miss_times[order_id] + 1
-                    if self.order_id_miss_times[order_id] > 3 and order_id in self.order_id_to_row_ids:
+                    if self.order_id_miss_times[order_id] > 120 and order_id in self.order_id_to_row_ids:
+                        logger.error(f"订单超时未成交 删除记录. {self.stock_code} - {self.stock_name} - {order_id}")
                         del self.order_id_to_row_ids[order_id]
                 else:
                     self.order_id_miss_times[order_id] = 1
         
         for order_id, info in order_infos.items():
-            order_status = info[order_id]['order_status']
-            if order_status == xtconstant.ORDER_SUCCEEDED:
-                new_status = constants.RowIdStatus.BOUGHT
-            elif order_status == xtconstant.ORDER_JUNK or order_status == xtconstant.ORDER_CANCELED or order_status == xtconstant.ORDER_PART_CANCEL:
-                new_status = constants.RowIdStatus.CANCELLED
-            else:
-                new_status = constants.RowIdStatus.PLACED
-            row_ids = self.order_id_to_row_ids[order_id]
-
-            for row_id in row_ids:
+            try:
+                order_status = info['order_status']
+                if order_status == xtconstant.ORDER_SUCCEEDED:
+                    new_status = constants.RowIdStatus.BOUGHT
+                elif order_status == xtconstant.ORDER_JUNK or order_status == xtconstant.ORDER_CANCELED or order_status == xtconstant.ORDER_PART_CANCEL:
+                    new_status = constants.RowIdStatus.CANCELLED
+                else:
+                    new_status = constants.RowIdStatus.PLACED
+                row_ids = self.order_id_to_row_ids[order_id]
                 with SQLiteManager(constants.db_path) as db:
-                    if row_id in self.row_id_status:
-                        self.row_id_status[row_id] = new_status
-                        logger.info(f"更新 row_id {row_id} 的状态为 {new_status}")
-                    else:
-                        self.row_id_status[row_id] = new_status
-                        logger.warning(f"row_id {row_id} 不在 row_id_status 中，无法更新状态")
-                    
-                    update_dict = {}
-                    condition_dict = {'id': row_id}
-                    if new_status ==  constants.RowIdStatus.BOUGHT:
-                        update_dict['success'] = 1
-                        update_dict['c_status'] = 2
-                        update_dict['order_ids'] = str(order_id)
-                    elif new_status == constants.RowIdStatus.CANCELLED or new_status == constants.RowIdStatus.UNPROCESSED:
-                        update_dict['success'] = 0
-                        update_dict['c_status'] = 0
-                    elif new_status == constants.RowIdStatus.PLACED:
-                        update_dict['success'] = 0
-                        update_dict['c_status'] = 1
-                        update_dict['order_ids'] = str(order_id)
-                    
-                    # 打印更新前的日志
-                    logger.info(f"[打板]即将更新表 {monitor_table} 中 id 为 {row_id} 的记录，更新内容: {update_dict}")
-                    db.update_data(monitor_table, update_dict=update_dict, condition_dict=condition_dict)
-                    # 打印更新后的日志
-                    logger.info(f"[打板]已成功更新表 {monitor_table} 中 id 为 {row_id} 的记录，更新内容: {update_dict}")
-    
+                    for row_id in row_ids:
+                        if row_id in self.row_id_status:
+                            self.row_id_status[row_id] = new_status
+                            logger.info(f"更新 row_id {row_id} 的状态为 {new_status}")
+                        else:
+                            self.row_id_status[row_id] = new_status
+                            logger.warning(f"row_id {row_id} 不在 row_id_status 中，无法更新状态")
+                        
+                        update_dict = {}
+                        condition_dict = {'id': row_id}
+                        if new_status ==  constants.RowIdStatus.BOUGHT:
+                            update_dict['success'] = 1
+                            update_dict['c_status'] = 2
+                            update_dict['order_ids'] = str(order_id)
+                        elif new_status == constants.RowIdStatus.CANCELLED or new_status == constants.RowIdStatus.UNPROCESSED:
+                            update_dict['success'] = 0
+                            update_dict['c_status'] = 0
+                        elif new_status == constants.RowIdStatus.PLACED:
+                            update_dict['success'] = 0
+                            update_dict['c_status'] = 1
+                            update_dict['order_ids'] = str(order_id)
+                        
+                        # 打印更新前的日志
+                        logger.info(f"[打板]即将更新表 {monitor_table} 中 id 为 {row_id} 的记录，更新内容: {update_dict}")
+                        db.update_data(monitor_table, update_dict=update_dict, condition_dict=condition_dict)
+                        # 打印更新后的日志
+                        logger.info(f"[打板]已成功更新表 {monitor_table} 中 id 为 {row_id} 的记录，更新内容: {update_dict}")
+            except Exception as e:
+                 logger.error(f"处理订单 {order_id} 时发生错误: {str(e)}")
+        
 
     # ... 已有代码 ...
     

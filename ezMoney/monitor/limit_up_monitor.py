@@ -307,6 +307,7 @@ class LimitUpStockMonitor(object):
         
         if total_budgets <= 0:
             return
+        total_budgets = min(total_budgets, 5000)
         order_pirce = self.limit_up_price
         if order_pirce <= 0:
             order_pirce = self.current_price

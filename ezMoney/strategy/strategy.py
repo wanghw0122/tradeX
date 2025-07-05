@@ -551,7 +551,103 @@ def dx_filter(xcdxScore = 100):
     return inner_filter
 
 
+@count_filtered_items
+@catch
+def dx_filter_max0(xcdxScore = 0):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.cjs and item.cjs > xcdxScore]
+    inner_filter.__name__ = "dx_filter_max0"
+    return inner_filter
 
+@count_filtered_items
+@catch
+def dx_filter_ranked(xcdxScore = 0):  # 添加 xcdxScore 参数，设置默认值为 0
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        # 过滤出满足条件的元素
+        filtered_items = [item for item in arr if hasattr(item, 'cjs')]
+        if not filtered_items:
+            return []
+        # 按照 cjs 值从高到低排序
+        filtered_items.sort(key=lambda x: float('-inf') if x.cjs is None else x.cjs, reverse=True)
+        return filtered_items
+    inner_filter.__name__ = "dx_filter_ranked"  # 修改函数名为 dx_filter_ranked
+    return inner_filter
+
+
+@count_filtered_items
+@catch
+def qb_filter_max0(xcqbScore = 0):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.jssb and item.jssb > xcqbScore]
+    inner_filter.__name__ = "qb_filter_max0"
+    return inner_filter
+
+
+@count_filtered_items
+@catch
+def qb_filter_ranked(xcdxScore = 0):  # 添加 xcdxScore 参数，设置默认值为 0
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        # 过滤出满足条件的元素
+        filtered_items = [item for item in arr if hasattr(item, 'jssb')]
+        if not filtered_items:
+            return []
+        # 按照 cjs 值从高到低排序
+        filtered_items.sort(key=lambda x: float('-inf') if x.jssb is None else x.jssb, reverse=True)
+        return filtered_items
+    inner_filter.__name__ = "qb_filter_ranked"  # 修改函数名为 dx_filter_ranked
+    return inner_filter
+
+@count_filtered_items
+@catch
+def jl_filter_max0(xcjlScore = 0):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.jsjl and item.jsjl != xcjlScore]
+    inner_filter.__name__ = "jl_filter_max0"
+    return inner_filter
+
+@count_filtered_items
+@catch
+def jl_filter_ranked(xcdxScore = 0):  # 添加 xcdxScore 参数，设置默认值为 0
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        # 过滤出满足条件的元素
+        filtered_items = [item for item in arr if hasattr(item, 'jsjl')]
+        if not filtered_items:
+            return []
+        # 按照 cjs 值从高到低排序
+        filtered_items.sort(key=lambda x: float('-inf') if x.jsjl is None else x.jsjl, reverse=True)
+        return filtered_items
+    inner_filter.__name__ = "jl_filter_ranked"  # 修改函数名为 dx_filter_ranked
+    return inner_filter
+
+@count_filtered_items
+@catch
+def jw_filter_max0(xcjwScore = 0):
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        return [item for item in arr if item.xcjw and item.xcjw > xcjwScore and item.jsjl != 0 and item.jssb <= 0 and item.cjs <= 0]
+    inner_filter.__name__ = "jw_filter_max0"
+    return inner_filter
+
+@count_filtered_items
+@catch
+def jw_filter_ranked(xcdxScore = 0):  # 添加 xcdxScore 参数，设置默认值为 0
+    def inner_filter(*args, **kwargs):
+        arr = args[0]
+        # 过滤出满足条件的元素
+        filtered_items = [item for item in arr if hasattr(item, 'xcjw')]
+        if not filtered_items:
+            return []
+        # 按照 cjs 值从高到低排序
+        filtered_items.sort(key=lambda x: float('-inf') if x.xcjw is None else x.xcjw, reverse=True)
+        return filtered_items
+    inner_filter.__name__ = "jw_filter_ranked"  # 修改函数名为 dx_filter_ranked
+    return inner_filter
 
 @count_filtered_items
 @catch
@@ -630,6 +726,27 @@ def stock_type_filter(**args):
                 continue
             if 'ylimitupdays' in args and item.ylimitupdays!= args['ylimitupdays']:
                 continue
+            if 'isStrengthHigh' in args and item.isStrengthHigh!= args['isStrengthHigh']:
+                continue
+            if 'isStrengthMiddle' in args and item.isStrengthMiddle!= args['isStrengthMiddle']:
+                continue
+            if 'isStrengthLow' in args and item.isStrengthLow!= args['isStrengthLow']:
+                continue
+            if 'isStrengthIncrease' in args and item.isStrengthIncrease!= args['isStrengthIncrease']:
+                continue
+            if 'isStrengthReduct' in args and item.isStrengthReduct!= args['isStrengthReduct']:
+                continue
+            if 'isMiddleHighOpen' in args and item.isMiddleHighOpen!= args['isMiddleHighOpen']:
+                continue
+            if 'isLargeHighOpen' in args and item.isLargeHighOpen!= args['isLargeHighOpen']:
+                continue
+            if 'isSmallLowOpen' in args and item.isSmallLowOpen!= args['isSmallLowOpen']:
+                continue
+            if 'isMiddleLowOpen' in args and item.isMiddleLowOpen!= args['isMiddleLowOpen']:
+                continue
+            if 'isLargeLowOpen' in args and item.isLargeLowOpen!= args['isLargeLowOpen']:
+                continue
+
             rtn.append(item)
         return rtn
     inner_filter.__name__ = "stock_type_filter"
@@ -686,6 +803,7 @@ sm.register_selector("check_user_alive", http_context['check_user_alive'])
 sm.register_selector("system_time", http_context['system_time'])
 sm.register_selector("sort_v2", http_context['sort_v2'])
 sm.register_selector("xiao_cao_index_v2", http_context['xiao_cao_index_v2'])
+sm.register_selector("xiao_cao_index_v2_list", http_context['xiao_cao_index_v2_list'])
 sm.register_selector("build_xiaocao_environment_second_line_v2_dict_simple", build_xiaocao_environment_second_line_v2_dict_simple)
 sm.register_selector("build_xiaocao_mod_dict_all", build_xiaocao_mod_dict_all)
 sm.register_selector("get_code_by_block_rank", get_code_by_block_rank)
@@ -696,6 +814,15 @@ sm.register_filter("jw_filter", jw_filter)
 sm.register_filter("jl_filter", jl_filter)
 sm.register_filter("st_filter", st_filter)
 sm.register_filter("dx_filter", dx_filter)
+sm.register_filter("dx_filter_max0", dx_filter_max0)
+sm.register_filter("jl_filter_max0", jl_filter_max0)
+sm.register_filter("jw_filter_max0", jw_filter_max0)
+sm.register_filter("qb_filter_max0", qb_filter_max0)
+
+sm.register_filter("dx_filter_ranked", dx_filter_ranked)
+sm.register_filter("qb_filter_ranked", qb_filter_ranked)
+sm.register_filter("jw_filter_ranked", jw_filter_ranked)
+sm.register_filter("jl_filter_ranked", jl_filter_ranked)
 sm.register_filter("qb_filter", qb_filter)
 sm.register_filter("n_filter", n_filter)
 sm.register_filter("yx_filter", yx_filter)

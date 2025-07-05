@@ -277,6 +277,296 @@ Strategies:
             logged: false
             params:
               xcdxScore: 1
+
+  - name: "xc_dx"
+    type: "小草全盘低吸"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 1000
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 40
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 400
+      - name: "xiao_cao_index_v2_list"
+        step: 3
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "dx_filter_ranked"
+            index: 1
+            desc: "转换格式"
+            logged: false
+            params:
+              xcdxScore: 0
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          # - name: "dx_filter_max0"
+          #   index: 1
+          #   desc: "过滤低吸"
+          #   logged: false
+          #   params:
+          #     xcdxScore: 0
+
+  - name: "xc_qb"
+    type: "小草全盘起爆"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 1000
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 39
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 400
+      - name: "xiao_cao_index_v2_list"
+        step: 3
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "qb_filter_ranked"
+            index: 1
+            desc: "转换格式"
+            logged: false
+            params:
+              xcdxScore: 0
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          # - name: "qb_filter_max0"
+          #   index: 1
+          #   desc: "过滤起爆"
+          #   logged: false
+          #   params:
+          #     xcqbScore: 0
+  - name: "xc_jl"
+    type: "小草全盘接力"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 1000
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 37
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 400
+      - name: "xiao_cao_index_v2_list"
+        step: 3
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "jl_filter_ranked"
+            index: 1
+            desc: "转换格式"
+            logged: false
+            params:
+              xcdxScore: 0
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          # - name: "qb_filter_max0"
+          #   index: 1
+          #   desc: "过滤起爆"
+          #   logged: false
+          #   params:
+          #     xcqbScore: 0
+  - name: "xc_jw"
+    type: "小草全盘竞王"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 1000
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "sort_v2"
+        step: 2
+        desc: "A股全盘绿盘低吸排序"
+        logged: false
+        cached: true
+        params:
+          sortId: 38
+          sortType: 1
+          hpqbState: 0
+          lpdxState: 0
+          date: "{{system_time}}"
+        filters:
+          - name: "limiter_filter"
+            desc: "限制数量"
+            logged: true
+            index: 0
+            params:
+              limit: 400
+      - name: "xiao_cao_index_v2_list"
+        step: 3
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{sort_v2|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "jw_filter_ranked"
+            index: 1
+            desc: "转换格式"
+            logged: false
+            params:
+              xcdxScore: 0
+          # - name: "open_pct_filter"
+          #   index: 1
+          #   desc: "过滤开盘涨幅"
+          #   params:
+          #     open_pct: -10
+          # - name: "qb_filter_max0"
+          #   index: 1
+          #   desc: "过滤起爆"
+          #   logged: false
+          #   params:
+          #     xcqbScore: 0
   - name: "xiao_cao_dwndx"
     type: "小草全盘低位n字低吸"
     status: 1

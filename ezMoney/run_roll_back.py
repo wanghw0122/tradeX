@@ -316,6 +316,31 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
             xcjw = item.xcjw
             jssb = item.jssb
             open_pct_rate = item.openPctChangeRate
+
+            xcjw_v2 = item.xcjwV2
+            jssb_v2 = item.jssbV2
+            cjs_v2 = item.cjsV2
+            is_strength_high = item.isStrengthHigh
+            is_strength_middle = item.isStrengthMiddle
+            is_strength_low = item.isStrengthLow
+            is_strength_increase = item.isStrengthIncrease
+            is_strength_reduct = item.isStrengthReduct
+            short_line_score = item.shortLineScore
+            short_line_score_change = item.shortLineScoreChange
+            jsjl_block = item.jsjlBlock
+            jssb_block = item.jssbBlock
+            cjs_block = item.cjsBlock
+            direction_cjs_v2 = item.directionCjsV2
+            circulation_market_value = item.circulationMarketValue
+            cgyk = item.cgyk
+            htyk = item.htyk
+            cgyk_value = item.cgykValue
+            htyk_value = item.htykValue
+            is_middle_high_open = item.isMiddleHighOpen
+            is_large_high_open = item.isLargeHighOpen
+            is_small_low_open = item.isSmallLowOpen
+            is_middle_low_open = item.isMiddleLowOpen
+            is_large_low_open = item.isLargeLowOpen
             d = {}
             d['date_key'] = date
             d['stock_rank'] = ranker
@@ -416,6 +441,59 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                 d['jssb'] = jssb
             if open_pct_rate != None:
                 d['open_pct_rate'] = open_pct_rate
+
+            # float 和 str 类型处理
+            if xcjw_v2 != None:
+                d['xcjw_v2'] = xcjw_v2
+            if jssb_v2 != None:
+                d['jssb_v2'] = jssb_v2
+            if cjs_v2 != None:
+                d['cjs_v2'] = cjs_v2
+            if short_line_score != None:
+                d['short_line_score'] = short_line_score
+            if short_line_score_change != None:
+                d['short_line_score_change'] = short_line_score_change
+            if jsjl_block != None:
+                d['jsjl_block'] = jsjl_block
+            if jssb_block != None:
+                d['jssb_block'] = jssb_block
+            if cjs_block != None:
+                d['cjs_block'] = cjs_block
+            if direction_cjs_v2 != None:
+                d['direction_cjs_v2'] = direction_cjs_v2
+            if circulation_market_value != None:
+                d['circulation_market_value'] = circulation_market_value
+            if cgyk != None:
+                d['cgyk'] = cgyk
+            if htyk != None:
+                d['htyk'] = htyk
+            if cgyk_value != None:
+                d['cgyk_value'] = cgyk_value
+            if htyk_value != None:
+                d['htyk_value'] = htyk_value
+
+            # bool 类型处理
+            if is_strength_high:
+                d['is_strength_high'] = 1
+            if is_strength_middle:
+                d['is_strength_middle'] = 1
+            if is_strength_low:
+                d['is_strength_low'] = 1
+            if is_strength_increase:
+                d['is_strength_increase'] = 1
+            if is_strength_reduct:
+                d['is_strength_reduct'] = 1
+            if is_middle_high_open:
+                d['is_middle_high_open'] = 1
+            if is_large_high_open:
+                d['is_large_high_open'] = 1
+            if is_small_low_open:
+                d['is_small_low_open'] = 1
+            if is_middle_low_open:
+                d['is_middle_low_open'] = 1
+            if is_large_low_open:
+                d['is_large_low_open'] = 1
+
             if 'code' in params:
                 code = params['code']
                 if code in mods_dict:
@@ -437,6 +515,9 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                     real_code = stock_code
                 if real_code in code_map:
                     real_code = code_map[real_code]
+                else:
+                    logger.error(f"股票代码{real_code}不在全市场股票字典中...")
+                    continue
                 open,close,next_open,next_close = get_stock_open_close_price(real_code, date, next_date)
                 d['open_price'] = open
                 d['close_price'] = close
@@ -638,9 +719,9 @@ def run_roll_back(once_daily = False, pre = False):
         all_stocks = xtdata.get_stock_list_in_sector('沪深A股')
         code_map = {}
         for stock in all_stocks:
-            if stock.startswith('60') or stock.startswith('00'):
-                code = stock.split('.')[0]
-                code_map[code] = stock
+            # if stock.startswith('60') or stock.startswith('00'):
+            code = stock.split('.')[0]
+            code_map[code] = stock
         logger.info(f"构建全市场股票字典完毕。 共{len(code_map)}个")
 
 

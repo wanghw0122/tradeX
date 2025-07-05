@@ -27,6 +27,11 @@ class XiaoCaoIndexResult:
     isGestationLine: bool
     isBrokenPlate: bool
     isSmallHighOpen: bool
+    isMiddleHighOpen: bool
+    isLargeHighOpen: bool
+    isSmallLowOpen: bool
+    isMiddleLowOpen: bool
+    isLargeLowOpen: bool
     isWeak: bool
     isLongShadow: bool
     isUpBroken: bool
@@ -58,5 +63,24 @@ class XiaoCaoIndexResult:
     isHighest: bool
     ybreakLimitUpDays: int
     isDownLongShadow: bool
+    xcjwV2: float
+    jssbV2: float
+    cjsV2: float
+    isStrengthHigh: bool
+    isStrengthMiddle: bool
+    isStrengthLow: bool
+    isStrengthIncrease: bool
+    isStrengthReduct: bool
+    shortLineScore: float
+    shortLineScoreChange: float
+    jsjlBlock: float
+    jssbBlock: float
+    cjsBlock: float
+    directionCjsV2: float
+    circulationMarketValue: float
+    cgyk: str
+    htyk: str
+    cgykValue: float
+    htykValue: float
 
 

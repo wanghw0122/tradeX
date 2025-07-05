@@ -16,7 +16,7 @@ import threading
 
 import brotli
 import json
-
+import concurrent.futures
 # ... 已有代码 ...
 
 # 定义一个锁
@@ -511,6 +511,45 @@ def xiao_cao_index_v2(stockCodes = "", date = get_current_date(), hpqbState = 0,
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
+
+
+@log_error
+def xiao_cao_index_v2_list(stockCodes = "", date = get_current_date(), hpqbState = 0, lpdxState = 0):
+    """
+    获取小草指数数据
+
+    返回:
+        dict: 响应的 JSON 数据。
+    """
+    if len(stockCodes) == 0:
+        raise ValueError(f"Invalid code: {stockCodes}")
+    all_stocks_arr = stockCodes.split(',')
+
+    chunks = [all_stocks_arr[i:i + 40] for i in range(0, len(all_stocks_arr), 40)]
+
+    results = []
+    # 使用线程池并发执行请求
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for chunk in chunks:
+            chunk_stock_codes = ','.join(chunk)
+            future = executor.submit(xiao_cao_index_v2, stockCodes=chunk_stock_codes, date=date, hpqbState=hpqbState, lpdxState=lpdxState)
+            futures.append(future)
+
+        # 收集结果
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                logger.error(f"Error in concurrent request: {e}")
+
+    # 获取请求配置
+    merged_result = {}
+    for res in results:
+        if isinstance(res, dict):
+            merged_result.update(res)
+    return merged_result
 
 @log_error
 @get_result

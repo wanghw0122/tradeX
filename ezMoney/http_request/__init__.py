@@ -16,5 +16,6 @@ http_context = {
     'sort_v2': build_http_request.sort_v2,
     'minute_line': build_http_request.minute_line,
     'xiao_cao_index_v2': build_http_request.xiao_cao_index_v2,
+    'xiao_cao_index_v2_list': build_http_request.xiao_cao_index_v2_list,
     'date_kline': build_http_request.date_kline
 }

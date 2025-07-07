@@ -81,6 +81,9 @@ class StockMonitor(object):
         self.current_open_increase = 0
         # 当天涨幅
         self.current_increase = 0
+        # 平滑当天涨幅
+        self.current_smooth_increase = 0
+
         # 当天最高价
         self.current_max_price = 0
         # 当天平滑最高价
@@ -240,6 +243,8 @@ class StockMonitor(object):
             self.current_open_increase = (self.current_price - self.open_price) / self.open_price
             # 当天涨幅
             self.current_increase = (self.current_price - self.last_close_price) / self.last_close_price
+            # 当日平滑涨幅
+            self.current_smooth_increase = (self.smooth_current_price - self.last_close_price) / self.last_close_price
             # 当天最高价
             self.current_max_price = max(self.current_max_price, high)
             # 平滑最高价

@@ -1112,9 +1112,9 @@ strategies = {
                 'returnFullInfo': True,
                 'filter_params': [
                     {
-                    'filtered': True,
+                    'filtered': False,
                     'fx_filtered': True,
-                    'topn': 1,
+                    'topn': 2,
                     'top_fx': 101,
                     'top_cx': 101,
                     'only_fx': True,

@@ -7,6 +7,8 @@ from date_utils import *
 from data_class.xiao_cao_environment_second_line_v2 import *
 from http_request import build_http_request
 
+from common import factors
+
 path = r'D:\qmt\userdata_mini'  # QMT客户端路径
 acc_id = '8886660057'
 # 创建QMTTrader实例
@@ -29,13 +31,13 @@ def consumer_to_rebuy(d, q):
     print("执行完成...")
 if __name__ == "__main__":
 
-
+    print(factors.get_n_days_data_batch(['603131.SH', '002054.SZ'], '2025-06-08', 7))
     # print(build_http_request.check_user_alive())
 
-    print(build_http_request.system_time())
+    # print(build_http_request.system_time())
     
-    with SQLiteManager(db_name) as manager:
-       print(manager.query_limit_up_records_by_date('2025-06-08'))
+    # with SQLiteManager(db_name) as manager:
+    #    print(manager.query_limit_up_records_by_date('2025-06-08'))
         # manager.insert_data("strategy_budget",{'strategy_name':'追涨-中位小高开起爆',
         #                                   'budget':30000,
         #                                   'origin_budget': 30000})

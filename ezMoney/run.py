@@ -546,6 +546,32 @@ strategies = {
                         'max_zhangfu': -1
                     }
                     },
+                     {
+                    # 曲线完美
+                    'mark': '强方向前11',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True,
+                    'filter_klines': True,
+                    'filter_kline_params': {
+                        'days': 7,
+                        'filter_one_word': False,
+                        'filter_high_growth': False,
+                        'fangliang_percent': 6,
+                        'max_zhangfu': -1
+                    }
+                    },
                     {
                     # 曲线完美
                     'mark': '强方向前1止损10',
@@ -1482,6 +1508,7 @@ default_strategy_positions = {
     "低吸-高强中低开低吸:强方向前22": 1,
     "低吸-高强中低开低吸:方向前1": 1,
     "低吸-高强中低开低吸:强方向前1": 1,
+    "低吸-高强中低开低吸:强方向前11": 1,
     "低吸-高强中低开低吸:强方向前1止损10": 1,
     "低吸-高强中低开低吸:强方向前1无止损": 1,
     "低吸-高强中低开低吸:方向前2": 1,

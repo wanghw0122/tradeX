@@ -222,6 +222,8 @@ def schedule_sell_stocks_everyday_at_1457():
                             if cur_profit > take_profit_pct:
                                 sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id))
                             elif cur_profit < stop_loss_pct:
+                                if gap_days >= 3 and '低位高强低吸' in strategy_name:
+                                    continue
                                 sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id))
                             else:
                                 continue

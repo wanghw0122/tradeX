@@ -5,4 +5,5 @@ selectors = {
     'system_time': build_http_request.system_time,
     'sort_v2': build_http_request.sort_v2,
     'xiao_cao_index_v2': build_http_request.xiao_cao_index_v2,
+    'xiao_cao_index_v2_list': build_http_request.xiao_cao_index_v2_list,
 }

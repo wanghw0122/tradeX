@@ -69,7 +69,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-07-14"
+test_date = "2025-07-17"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1060,6 +1060,23 @@ strategies = {
                     'except_is_track': False
                     },
                     {
+                    'mark': '方向低频22',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
                     'mark': '方向低频3',
                     'limit': 2,
                     'filtered': True,
@@ -1207,7 +1224,7 @@ strategies = {
                     {
                     'filtered': False,
                     'fx_filtered': True,
-                    'topn': 2,
+                    'topn': 1,
                     'top_fx': 101,
                     'top_cx': 101,
                     'only_fx': True,
@@ -1524,6 +1541,7 @@ default_strategy_positions = {
     # "低吸-低位中强低吸:方向低频前1": 0,
     # "低吸-低位高强中低开低吸:方向低频": 0,
     "低吸-低位高强中低开低吸:方向低频2": 1,
+    "低吸-低位高强中低开低吸:方向低频22": 1,
     # "低吸-低位高强中低开低吸:方向低频3": 0,
     "低吸-首红断低吸": 1,
     "低吸-中强中低开低吸:第二高频": 1,

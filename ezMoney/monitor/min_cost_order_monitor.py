@@ -795,7 +795,8 @@ class MinCostOrderMonitor(object):
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
 
-                elif lastPrice < self.base_price * 0.095 and self.current_tick_steps - self.last_base_buy_tick_time > 100:
+                elif lastPrice < self.base_price * 0.095 and self.current_tick_steps - self.last_base_buy_tick_time > 100 and self.left_base_budget > 0:
+
                     base_buy_budget = min(self.left_base_budget, self.base_budget * 1/3)
                     self.left_base_budget = self.left_base_budget - base_buy_budget
                     self.last_base_buy_tick_time = self.current_tick_steps

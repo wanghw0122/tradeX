@@ -31,8 +31,8 @@ def consumer_to_rebuy(d, q):
     print("执行完成...")
 if __name__ == "__main__":
 
-    print(factors.get_n_days_data_batch(['603131.SH', '002054.SZ'], '2025-06-08', 7))
-    # print(build_http_request.check_user_alive())
+    # print(factors.get_n_days_data_batch(['603131.SH', '002054.SZ'], '2025-06-08', 7))
+    print(build_http_request.check_user_alive())
 
     # print(build_http_request.system_time())
     

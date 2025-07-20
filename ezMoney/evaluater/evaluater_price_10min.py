@@ -152,19 +152,40 @@ class SignalDetector:
         self.last_macd_dea = self.macd_dea
         
         # 计算MACD (简化的增量计算)
-        if self.macd_dif is None:
-            self.macd_dif = price
-            self.macd_dea = price
-        else:
-            # DIF = EMA(close, fast) - EMA(close, slow)
-            alpha_fast = 2 / (self.macd_fast + 1)
-            alpha_slow = 2 / (self.macd_slow + 1)
-            self.macd_dif = self.macd_dif + alpha_fast * (price - self.macd_dif)
-            self.macd_dif = self.macd_dif - alpha_slow * (price - self.macd_dif)
+        # if self.macd_dif is None:
+        #     self.macd_dif = price
+        #     self.macd_dea = price
+        # else:
+        #     # DIF = EMA(close, fast) - EMA(close, slow)
+        #     alpha_fast = 2 / (self.macd_fast + 1)
+        #     alpha_slow = 2 / (self.macd_slow + 1)
+        #     self.macd_dif = self.macd_dif + alpha_fast * (price - self.macd_dif)
+        #     self.macd_dif = self.macd_dif - alpha_slow * (price - self.macd_dif)
             
-            # DEA = EMA(DIF, signal)
+        #     # DEA = EMA(DIF, signal)
+        #     alpha_signal = 2 / (self.macd_signal + 1)
+        #     self.macd_dea = self.macd_dea + alpha_signal * (self.macd_dif - self.macd_dea)
+        
+        if self.macd_dif is None:
+            self.macd_dif = 0
+            self.macd_dea = 0
+            self.ema_fast_macd = price
+            self.ema_slow_macd = price
+        else:
+            # 计算快速EMA
+            alpha_fast = 2 / (self.macd_fast + 1)
+            self.ema_fast_macd += alpha_fast * (price - self.ema_fast_macd)
+            
+            # 计算慢速EMA
+            alpha_slow = 2 / (self.macd_slow + 1)
+            self.ema_slow_macd += alpha_slow * (price - self.ema_slow_macd)
+            
+            # 计算DIF = EMA(fast) - EMA(slow)
+            self.macd_dif = self.ema_fast_macd - self.ema_slow_macd
+            
+            # 计算DEA（信号线）= EMA(DIF, signal_period)
             alpha_signal = 2 / (self.macd_signal + 1)
-            self.macd_dea = self.macd_dea + alpha_signal * (self.macd_dif - self.macd_dea)
+            self.macd_dea += alpha_signal * (self.macd_dif - self.macd_dea)
         
         # 更新EMA
         self.last_ema_fast = self.ema_fast_val
@@ -718,7 +739,7 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
         for individual in population:
             individual['debug'] = debug
             try:
-                score = evaluate_params(stocks_data, individual)
+                score = evaluate_params(stocks_data, strategy_name, individual)
                 fitness_scores.append(score)
             except Exception as e:
                 logger.error(f"评估失败: {e}")
@@ -785,8 +806,35 @@ def save_final_result(strategy_name, best_params, best_score, output_dir):
     logger.info(f"已保存最终结果: {filename}")
 
 
-def evaluate_params(stocks_data, strategy_name, params):
+# def evaluate_params(stocks_data, strategy_name, params):
 
+#     """
+#     评估参数在股票数据集上的表现
+#     :return: 平均成本差距比例
+#     """
+#     total_gap = 0
+#     count = 0
+    
+#     # 如果股票数据太多，随机选择100个进行评估
+#     if len(stocks_data) > 150:
+#         selected_data = random.sample(stocks_data, 150)
+#     else:
+#         selected_data = stocks_data
+    
+#     for stock_data in selected_data:
+#         try:
+#             _, _, gap_ratio, _ = backtest_single_stock(stock_data, strategy_name, params)
+#             total_gap += gap_ratio
+#             count += 1
+#         except Exception as e:
+#             logger.error(f"回测失败: {e}")
+#             logger.error(f"错误堆栈信息:\n{traceback.format_exc()}")
+#             # 返回一个很大的值表示无效参数
+#             return float('inf')
+    
+#     return total_gap / count if count > 0 else float('inf')
+
+def evaluate_params(stocks_data, strategy_name, params):
     """
     评估参数在股票数据集上的表现
     :return: 平均成本差距比例
@@ -794,25 +842,64 @@ def evaluate_params(stocks_data, strategy_name, params):
     total_gap = 0
     count = 0
     
-    # 如果股票数据太多，随机选择100个进行评估
+    # 如果股票数据太多，随机选择150个进行评估
     if len(stocks_data) > 150:
         selected_data = random.sample(stocks_data, 150)
+        print(f"策略 {strategy_name}: 从 {len(stocks_data)} 只股票中随机选择 150 只进行评估")
     else:
         selected_data = stocks_data
+        print(f"策略 {strategy_name}: 使用全部 {len(stocks_data)} 只股票进行评估")
     
-    for stock_data in selected_data:
+    # 创建进度条
+    progress_bar = tqdm(
+        total=len(selected_data),
+        desc=f"策略 {strategy_name} 参数评估",
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+    )
+    # 存储失败的回测信息
+    failed_tests = []
+    
+    for idx, stock_data in enumerate(selected_data):
+        progress_bar.set_postfix_str(f"当前: {idx+1}/{len(selected_data)}")
+        
         try:
-            _, _, gap_ratio, _ = backtest_single_stock(stock_data, strategy_name, params)
+            _, _, gap_ratio, buy_count = backtest_single_stock(stock_data, strategy_name, params)
             total_gap += gap_ratio
             count += 1
+            stock_code = stock_data.get('stock_code', '未知')
+            # 显示当前股票的回测结果
+            # progress_bar.write(f"  股票 {stock_code}: 成本差距={gap_ratio:.4f}, 买入点={buy_count}个")
+            
         except Exception as e:
-            logger.error(f"回测失败: {e}")
-            logger.error(f"错误堆栈信息:\n{traceback.format_exc()}")
-            # 返回一个很大的值表示无效参数
-            return float('inf')
+            error_msg = f"回测失败: {str(e)}"
+            progress_bar.write(f"【错误】{error_msg}")
+            failed_tests.append({
+                "stock": stock_data.get('stock_code', '未知'),
+                "date": stock_data.get('date', '未知'),
+                "error": error_msg,
+                "traceback": traceback.format_exc()
+            })
     
-    return total_gap / count if count > 0 else float('inf')
-
+    # 关闭进度条
+    progress_bar.close()
+    
+    # 打印失败统计
+    if failed_tests:
+        print(f"策略 {strategy_name}: 回测失败统计 ({len(failed_tests)} 次失败):")
+        for i, fail in enumerate(failed_tests[:5]):  # 最多显示前5个错误
+            print(f"  失败 {i+1}: 股票={fail['stock']}, 日期={fail['date']}")
+            print(f"      错误: {fail['error']}")
+        if len(failed_tests) > 5:
+            print(f"  还有 {len(failed_tests)-5} 个失败未显示...")
+    
+    # 计算平均差距
+    if count > 0:
+        avg_gap = total_gap / count
+        print(f"策略 {strategy_name}: 参数评估完成, 平均成本差距={avg_gap:.6f}, 成功回测={count}/{len(selected_data)}")
+        return avg_gap
+    else:
+        print(f"策略 {strategy_name}: 所有回测均失败, 返回无限大值")
+        return float('inf')
 
 
 def build_all_stock_datas(strategy_name, min_num=3):
@@ -974,6 +1061,7 @@ def build_stock_datas(stock_code, datekey):
         'volumes': volumes,
         'down_price': limit_down_price,
         'last_close_price': last_close_price,
+        'stock_code': stock_code
     }
 
 # 修改运行策略优化函数

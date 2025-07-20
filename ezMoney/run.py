@@ -2,7 +2,9 @@ import multiprocessing
 import os
 from turtle import st
 
+from numpy import real
 from sqlalchemy import exists
+from yfinance import download
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 from strategy.strategy import sm
 from logger import catch, logger, order_logger, strategy_logger, order_success_logger
@@ -29,12 +31,15 @@ from sqlite_processor.mysqlite import SQLiteManager
 
 from monitor.monitor import StockMonitor
 from monitor.limit_up_monitor import LimitUpStockMonitor
+from monitor.min_cost_order_monitor import MinCostOrderMonitor
 from common import factors
 
 # 初始化锁
 code_to_limit_up_monitor_lock = threading.Lock()
 
 threading_q = queue.Queue(100)
+
+min_cost_q = queue.Queue(100)
 
 global q
 global qq
@@ -58,6 +63,7 @@ back_cash = 0
 global cached_auction_infos
 cached_auction_infos = []
 code_to_limit_up_monitor = {}
+code_to_min_cost_order_monitor = {}
 
 global default_position
 default_position = 0.33
@@ -1549,6 +1555,183 @@ default_strategy_positions = {
     "追涨-高位高强追涨": 1,
 }
 
+strategy_name_to_min_cost_params = {
+    '高强中低开低吸': {
+        "ema_alpha": 0.0970978503657058,
+        "kalman_q": 0.01911535138965234,
+        "kalman_r": 0.05440811698473994,
+        "sg_window": 16,
+        "macd_fast": 11,
+        "macd_slow_ratio": 2.148938267562692,
+        "macd_signal": 7,
+        "ema_fast": 7,
+        "ema_slow_ratio": 1.3873151442463056,
+        "volume_window": 9,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 2,
+        "strength_threshold": 3.1948855993045697,
+        "volume_weight": 0.26282030539227497,
+        "use_price_confirm": False,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.006334810337033497,
+        "price_drop_threshold": 0.005149012848317113,
+        "max_confirm_ticks": 20,
+        "debug": False
+    },
+    '低位高强低吸': {
+        "ema_alpha": 0.26834709271518603,
+        "kalman_q": 0.030888410522753394,
+        "kalman_r": 0.039426217868463356,
+        "sg_window": 7,
+        "macd_fast": 5,
+        "macd_slow_ratio": 2.182650318715978,
+        "macd_signal": 7,
+        "ema_fast": 10,
+        "ema_slow_ratio": 1.31179692889631,
+        "volume_window": 9,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 10,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.5383477156053744,
+        "use_price_confirm": True,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.003184515956884535,
+        "price_drop_threshold": 0.001,
+        "max_confirm_ticks": 16,
+        "debug": False
+    },
+    '低位高强中低开低吸': {
+        "ema_alpha": 0.13093423095033963,
+        "kalman_q": 0.045373865089392035,
+        "kalman_r": 0.07362902522141421,
+        "sg_window": 13,
+        "macd_fast": 8,
+        "macd_slow_ratio": 2.2969213936346757,
+        "macd_signal": 14,
+        "ema_fast": 10,
+        "ema_slow_ratio": 1.4887442300682556,
+        "volume_window": 9,
+        "price_confirm_ticks": 9,
+        "strength_confirm_ticks": 1,
+        "strength_threshold": 1.7587403385913514,
+        "volume_weight": 0.9026010604846643,
+        "use_price_confirm": False,
+        "use_strength_confirm": False,
+        "dead_cross_threshold": 0.00804466812385257,
+        "price_drop_threshold": 0.006283016972851296,
+        "max_confirm_ticks": 4,
+        "debug": False
+    },
+    '低位孕线低吸': {
+        "ema_alpha": 0.1864320076542461,
+        "kalman_q": 0.020602873907916947,
+        "kalman_r": 0.03832469099687212,
+        "sg_window": 18,
+        "macd_fast": 12,
+        "macd_slow_ratio": 2.3426804672678867,
+        "macd_signal": 12,
+        "ema_fast": 12,
+        "ema_slow_ratio": 1.2,
+        "volume_window": 3,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 3,
+        "strength_threshold": 1.0158708059620183,
+        "volume_weight": 0.44016807866796914,
+        "use_price_confirm": False,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.006624757376262358,
+        "price_drop_threshold": 0.0031535208934645375,
+        "max_confirm_ticks": 9,
+        "debug": False
+    },
+    '低位中强中低开低吸': {
+        "ema_alpha": 0.10394923746533276,
+        "kalman_q": 0.031144998500943967,
+        "kalman_r": 0.06165735601932144,
+        "sg_window": 15,
+        "macd_fast": 6,
+        "macd_slow_ratio": 2.033822231930013,
+        "macd_signal": 3,
+        "ema_fast": 5,
+        "ema_slow_ratio": 1.6883670049590154,
+        "volume_window": 9,
+        "price_confirm_ticks": 7,
+        "strength_confirm_ticks": 10,
+        "strength_threshold": 3.578406660119796,
+        "volume_weight": 0.6609905866984235,
+        "use_price_confirm": False,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.003807387717179459,
+        "price_drop_threshold": 0.007,
+        "max_confirm_ticks": 1,
+        "debug": False
+    },
+    '首红断低吸': {
+        "ema_alpha": 0.17740719888052325,
+        "kalman_q": 0.04990915679191852,
+        "kalman_r": 0.02131198566859305,
+        "sg_window": 11,
+        "macd_fast": 3,
+        "macd_slow_ratio": 1.6480175496555933,
+        "macd_signal": 13,
+        "ema_fast": 6,
+        "ema_slow_ratio": 1.8491002433647823,
+        "volume_window": 5,
+        "price_confirm_ticks": 3,
+        "strength_confirm_ticks": 3,
+        "strength_threshold": 0.6421231659457405,
+        "volume_weight": 0.613387084473039,
+        "use_price_confirm": False,
+        "use_strength_confirm": False,
+        "dead_cross_threshold": 0.01,
+        "price_drop_threshold": 0.0021009723053340545,
+        "max_confirm_ticks": 2,
+        "debug": False
+    },
+    '中强中低开低吸': {
+        "ema_alpha": 0.3,
+        "kalman_q": 0.03417760916514109,
+        "kalman_r": 0.023596631596412433,
+        "sg_window": 8,
+        "macd_fast": 7,
+        "macd_slow_ratio": 2.717776752953602,
+        "macd_signal": 9,
+        "ema_fast": 7,
+        "ema_slow_ratio": 1.2,
+        "volume_window": 11,
+        "price_confirm_ticks": 8,
+        "strength_confirm_ticks": 3,
+        "strength_threshold": 5,
+        "volume_weight": 0.3518333956746753,
+        "use_price_confirm": True,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.009292301256001584,
+        "price_drop_threshold": 0.005686672486870553,
+        "max_confirm_ticks": 20,
+        "debug": False
+    }
+}
+
+
+
+def get_min_cost_strategy_by_strategy_name(strategy_name):
+    if '高强中低开低吸' in strategy_name:
+        return '高强中低开低吸'
+    elif '低位高强低吸' in strategy_name:
+        return '低位高强低吸'
+    elif '低位高强中低开低吸' in strategy_name:
+        return '低位高强中低开低吸'
+    elif '低位孕线低吸' in strategy_name:
+        return '低位孕线低吸'
+    elif '低位中强中低开低吸' in strategy_name:
+        return '低位中强中低开低吸'
+    elif '首红断低吸' in strategy_name:
+        return '首红断低吸'
+    elif '中强中低开低吸' in strategy_name:
+        return '中强中低开低吸'
+    else:
+        return None
+
 def get_strategy_position(strategy, sub_strategy=None, default_strategy_positions=default_strategy_positions):
     """
     根据输入的 strategy 和 sub_strategy 获取对应的系数。
@@ -2488,7 +2671,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
             auction_codes_dict = {}
             multi_configs = False
             multi_config_code_dict = {}
-            if 'xiao_cao_env' in item:
+            if 'xiao_cao_env' in item and item['xiao_cao_env']:
                 xiaocao_envs = item['xiao_cao_env'][0]
                 position = get_position(xiaocao_envs)
                 logger.info(f"xiaocao_envs_position: {position}")
@@ -2718,7 +2901,7 @@ def strategy_schedule_job():
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
 
 
-def consumer_to_buy(q, orders_dict, orders):
+def consumer_to_buy(q, orders_dict, orders, min_cost_q):
 
     def get_order_infos(order_id):
         i = 0
@@ -2799,6 +2982,7 @@ def consumer_to_buy(q, orders_dict, orders):
                             order_id = qmt_trader.buy_quickly(code_id, c_cash, order_remark=strategy_name, sync=True, orders_dict=orders_dict, orders=orders, buffer=buffers)
             elif type(data) == dict and len(data) > 0:
                 code_to_order_info_dict = {}
+                code_strategy_name_to_base_budget = {}
                 for code_info, (code_info, position, buffers, mark_info) in data.items():
                     strategy_name = code_info.split('|')[0]
                     sub_strategy_name = ''
@@ -2810,7 +2994,8 @@ def consumer_to_buy(q, orders_dict, orders):
                     if ps <= 0.0001:
                         order_logger.error(f"get_strategy_position error! ps {ps}")
                         continue
-                    
+                    min_cost_strategy_name = get_min_cost_strategy_by_strategy_name(strategy_name)
+
                     code = code_info.split('|')[1]
                     if code in qmt_trader.all_stocks:
                         code = qmt_trader.all_stocks[code]
@@ -2826,6 +3011,22 @@ def consumer_to_buy(q, orders_dict, orders):
                         multipy_position = all_data[0]['multipy_position']
                         max_budget = all_data[0]['max_budget']
                         min_budget = all_data[0]['min_budget']
+                        base_pct = all_data[0]['base_pct']
+                        down_pct = all_data[0]['down_pct']
+                            
+                        down_budget = total_assert * down_pct
+                        total_assert = total_assert - down_budget
+                        base_budget = down_budget * base_pct
+
+                        if min_cost_strategy_name:
+                            if (code, min_cost_strategy_name) in code_strategy_name_to_base_budget:
+                                code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['budget'] = down_budget + code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['budget']
+                                code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['base_budget'] = base_budget + code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['base_budget']
+                            else:
+                                code_strategy_name_to_base_budget[(code, min_cost_strategy_name)] = {}
+                                code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['budget'] = down_budget
+                                code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['base_budget'] = base_budget
+
                         total_assert = min(total_assert, max_budget)
                         total_assert = max(total_assert, min_budget)
                         if multipy_position > 0:
@@ -2840,6 +3041,17 @@ def consumer_to_buy(q, orders_dict, orders):
                         else:
                             code_to_order_info_dict[code] = [(c_cash * ps, strategy_name, sub_strategy_name, max_buffer)]
                 order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
+
+                order_logger.info(f"code_strategy_name_to_base_budget: {code_strategy_name_to_base_budget}")
+
+                if code_strategy_name_to_base_budget:
+                    for code_strategy_name, base_budgets in code_strategy_name_to_base_budget.items():
+                        code = code_strategy_name[0]
+                        strategy_name = code_strategy_name[1]
+                        budget = base_budgets['budget']
+                        base_budget = base_budgets['base_budget']
+                        min_cost_q.put((code, strategy_name, budget, base_budget))
+                        logger.info(f"min_cost_q: {code, strategy_name, budget, base_budget}")
 
                 cash_thresh, t_cash = get_order_info_dict_cash_thresh(code_to_order_info_dict=code_to_order_info_dict, cash = cash, cash_discount=cash_discount)
                 if cash_thresh < 0.99999:
@@ -2948,8 +3160,10 @@ def consumer_to_buy(q, orders_dict, orders):
                             orders.append(order_id)
                         
             elif type(data) == str and data == 'end':
+                min_cost_q.put('start')
                 break
             else:
+                min_cost_q.put('start')
                 raise
         except Exception as e:
             logger.error(f"[consumer] 执行任务出现错误: {e}")
@@ -4366,6 +4580,65 @@ def start_limit_up_monitor():
         pass
 
 
+
+def start_min_cost_order_monitor(min_cost_queue):
+    is_trade, pre_trade_date = date.is_trading_day()
+    if not is_trade:
+        strategy_logger.info("[start_min_cost_order_monitor] 非交易日，不打板。")
+        return
+    have_sub_scribe = False
+    monitor_stock_codes = []
+    try:
+        while True:
+            data = min_cost_queue.get()
+            if type(data) == tuple:
+                stock_code, strategy_name, budget, base_budget = data
+                if budget <=0 and base_budget <= 0:
+                    continue
+                stock_name = offlineStockQuery.get_stock_name(stock_code)
+                if not stock_name:
+                    stock_name = ''
+                if strategy_name in strategy_name_to_min_cost_params:
+                    params = strategy_name_to_min_cost_params[strategy_name]
+                else:
+                    params = {}
+                if not params:
+                    strategy_logger.error(f"[start_min_cost_order_monitor] 策略参数错误: {strategy_name}")
+                    continue
+                params['budget'] = budget
+                params['base_budget'] = base_budget
+                stock_monitor = MinCostOrderMonitor(stock_code=stock_code, stock_name=stock_name, strategy_name=strategy_name, params=params,  qmt_trader=qmt_trader)
+                if stock_code in code_to_min_cost_order_monitor:
+                    code_to_min_cost_order_monitor[stock_code].append(stock_monitor)
+                else:
+                    code_to_min_cost_order_monitor[stock_code] = [stock_monitor]
+                if stock_code not in monitor_stock_codes:
+                    monitor_stock_codes.append(stock_code)
+            elif type(data) == str and data == 'start' and not have_sub_scribe:
+                
+                def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_min_cost_order_monitor):
+                    for stock in stocks:
+                        if stock not in res:
+                            continue
+                        data = res[stock]
+                        s_monitors = monitor_dict[stock]
+                        if not s_monitors:
+                            continue
+                        for s_monitor in s_monitors:
+                            s_monitor.consume(data)
+
+                sid = xtdata.subscribe_whole_quote(monitor_stock_codes, callback=monitor_call_back)
+                if sid < 0:
+                    strategy_logger.error(f"[start_min_cost_order_monitor] 订阅错误: {monitor_stock_codes}")
+                else:
+                    strategy_logger.info(f"[start_min_cost_order_monitor] 订阅成功: {monitor_stock_codes}")
+                    have_sub_scribe = True
+
+    except Exception as e:
+        stack_trace = traceback.format_exc()
+        strategy_logger.error(f"发生异常: {str(e)}\n堆栈信息:\n{stack_trace}")
+        pass
+
 def start_monitor_monning():
     if not sell_at_monning:
         return
@@ -4580,9 +4853,10 @@ if __name__ == "__main__":
         qmt_trader.init_order_context(flag = use_threading_buyer)
         qmt_trader.start_sell_listener()
         if use_threading_buyer:
-            consumer_thread = threading.Thread(target=consumer_to_buy, args=(threading_q, qmt_trader.orders_dict, qmt_trader.orders,))
+            consumer_thread = threading.Thread(target=consumer_to_buy, args=(threading_q, qmt_trader.orders_dict, qmt_trader.orders, min_cost_q,))
         else:
-            consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders))
+            consumer_thread = multiprocessing.Process(target=consumer_to_buy, args=(q, qmt_trader.orders_dict, qmt_trader.orders, min_cost_q,))
+
 
         # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
         # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
@@ -4597,7 +4871,7 @@ if __name__ == "__main__":
         scheduler.add_job(strategy_schedule_job, 'interval', seconds=8, id="code_schedule_job")
 
         # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
-
+        scheduler.add_job(start_min_cost_order_monitor, 'cron', hour=9, minute=29, second=0, id="start_min_cost_order_monitor", args=[min_cost_q])
         scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
         # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")

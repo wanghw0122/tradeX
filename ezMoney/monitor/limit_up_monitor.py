@@ -357,7 +357,7 @@ class LimitUpStockMonitor(object):
         
         order_id_list = list(self.order_id_to_row_ids.keys())
         if not order_id_list:
-            logger.error(f"查询不到订单继续loop. {self.stock_code} - {self.stock_name}")
+            # logger.error(f"查询不到订单继续loop. {self.stock_code} - {self.stock_name}")
             return
         else:
             logger.info(f"查询到订单继续loop. {self.stock_code} - {self.stock_name} - {order_id_list} - {self.order_id_to_row_ids}")

@@ -177,7 +177,9 @@ def check_user_alive():
         if post:
             post_result = post_request(url, head, cookie, data)
             i = 0
-            while post_result == None or not post_result['ok']:
+            # print("post_result:", post_result)
+
+            while post_result == None or 'ok' not in post_result or not post_result['ok']:
                 logger.info("check alive fail user is not login.")
                 user_login()
                 post_result = post_request(url, head, cookie, data)

@@ -599,7 +599,7 @@ class MinCostOrderMonitor(object):
         order_volume = int(order_volume)
         if order_volume <= 0:
             logger.error(f'[低吸]买入股票价格太低 - {budget}')
-            self.base_budget = self.base_budget + budget
+            self.left_base_budget = self.left_base_budget + budget
             return
         order_type = xtconstant.MARKET_PEER_PRICE_FIRST
         if 'SH' in self.stock_code:

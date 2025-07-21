@@ -632,6 +632,13 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
                 individual[param] = value
         population.append(individual)
     
+    if len(stocks_data) > 300:
+        selected_data = random.sample(stocks_data, 300)
+        print(f"策略 {strategy_name}: 从 {len(stocks_data)} 只股票中随机选择 300 只进行评估")
+    else:
+        selected_data = stocks_data
+        print(f"策略 {strategy_name}: 使用全部 {len(stocks_data)} 只股票进行评估")
+    
     # 评估初始种群 - 修改：同时存储avg_gap和avg_amount_use_pct
     fitness_scores = []
     avg_gaps = []  # 新增：存储平均价差
@@ -640,7 +647,7 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
     for individual in population:
         individual['debug'] = debug
         try:
-            score, avg_gap, avg_amount_use_pct = evaluate_params(stocks_data, strategy_name, individual)
+            score, avg_gap, avg_amount_use_pct = evaluate_params(selected_data, strategy_name, individual)
             fitness_scores.append(score)
             avg_gaps.append(avg_gap)  # 存储avg_gap
             avg_amount_use_pcts.append(avg_amount_use_pct)  # 存储avg_amount_use_pct
@@ -762,7 +769,7 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
         for individual in population:
             individual['debug'] = debug
             try:
-                score, avg_gap, avg_amount_use_pct = evaluate_params(stocks_data, strategy_name, individual)
+                score, avg_gap, avg_amount_use_pct = evaluate_params(selected_data, strategy_name, individual)
                 fitness_scores.append(score)
                 avg_gaps.append(avg_gap)
                 avg_amount_use_pcts.append(avg_amount_use_pct)
@@ -1099,14 +1106,14 @@ def evaluate_params(stocks_data, strategy_name, params):
     total_gap = 0
     count = 0
     
-    # 如果股票数据太多，随机选择150个进行评估
-    if len(stocks_data) > 150:
-        selected_data = random.sample(stocks_data, 150)
-        print(f"策略 {strategy_name}: 从 {len(stocks_data)} 只股票中随机选择 150 只进行评估")
-    else:
-        selected_data = stocks_data
-        print(f"策略 {strategy_name}: 使用全部 {len(stocks_data)} 只股票进行评估")
-    
+    # # 如果股票数据太多，随机选择150个进行评估
+    # if len(stocks_data) > 150:
+    #     selected_data = random.sample(stocks_data, 150)
+    #     print(f"策略 {strategy_name}: 从 {len(stocks_data)} 只股票中随机选择 150 只进行评估")
+    # else:
+    #     selected_data = stocks_data
+    #     print(f"策略 {strategy_name}: 使用全部 {len(stocks_data)} 只股票进行评估")
+    selected_data = stocks_data
     # 创建进度条
     progress_bar = tqdm(
         total=len(selected_data),

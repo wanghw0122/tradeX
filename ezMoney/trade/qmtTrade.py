@@ -496,7 +496,7 @@ class QMTTrader:
                                 manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
                     updated_oids.clear()
                 if len(self.sell_stock_infos) == 0:
-                    order_logger.info("无监听卖出/任务执行完毕，等待继续任务")
+                    # order_logger.info("无监听卖出/任务执行完毕，等待继续任务")
                     time.sleep(1)
                     continue
                 order_logger.info(f"监听卖出，任务执行。 {self.sell_stock_infos}")

@@ -468,6 +468,8 @@ def backtest_single_stock(stock_data, strategy_name, params):
     prices = stock_data['prices']
     volumes = stock_data['volumes']
     last_close_price = stock_data['last_close_price']
+    datekey = stock_data['datekey']
+    stock_code = stock_data['stock_code']
     
     # 计算实际最低价（修正：使用传入数据中的最低价）
     min_price = min(prices)
@@ -560,9 +562,14 @@ def backtest_single_stock(stock_data, strategy_name, params):
             left_base_budget = 0
             buy_points.append((raw_price, base_buy_budget, 0))
             last_base_buy_tick_time = i
-        elif raw_price < base_price and i - last_base_buy_tick_time > 100:
+        elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0:
             base_buy_budget = min(left_base_budget, base_budget * 1/3)
             left_base_budget = left_base_budget - base_buy_budget
+            buy_points.append((raw_price, base_buy_budget, 0))
+            last_base_buy_tick_time = i
+        elif i > 200 and raw_price < base_price and left_base_budget > 0:
+            base_buy_budget = left_base_budget
+            left_base_budget = 0
             buy_points.append((raw_price, base_buy_budget, 0))
             last_base_buy_tick_time = i
 
@@ -572,14 +579,16 @@ def backtest_single_stock(stock_data, strategy_name, params):
         total_amount = sum(amount for _, amount, _ in buy_points)
         if total_amount <= 0:
             raise ValueError(f"总金额必须大于0 {buy_points} {strategy_name}")
+        amount_use_pct = total_amount / (base_budget + total_budget)
         avg_cost = total_value / total_amount
     else:
         avg_cost = base_price
+        amount_use_pct = 0
     
     # 计算成本差距
     gap_ratio = (avg_cost - min_price) / min_price
     
-    return avg_cost, min_price, gap_ratio, len(buy_points)
+    return avg_cost, min_price, gap_ratio, len(buy_points), amount_use_pct, stock_code, datekey
 
 def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
                                   population_size=30, generations=1200,
@@ -623,40 +632,63 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
                 individual[param] = value
         population.append(individual)
     
-    # 评估初始种群
+    # 评估初始种群 - 修改：同时存储avg_gap和avg_amount_use_pct
     fitness_scores = []
+    avg_gaps = []  # 新增：存储平均价差
+    avg_amount_use_pcts = []  # 新增：存储平均仓位使用率
+    
     for individual in population:
         individual['debug'] = debug
         try:
-            score = evaluate_params(stocks_data, strategy_name, individual)
+            score, avg_gap, avg_amount_use_pct = evaluate_params(stocks_data, strategy_name, individual)
             fitness_scores.append(score)
+            avg_gaps.append(avg_gap)  # 存储avg_gap
+            avg_amount_use_pcts.append(avg_amount_use_pct)  # 存储avg_amount_use_pct
         except Exception as e:
             logger.error(f"评估失败: {e}")
             fitness_scores.append(float('inf'))
+            avg_gaps.append(float('inf'))  # 添加默认值
+            avg_amount_use_pcts.append(float('inf'))  # 添加默认值
     
     # 找到当前最佳个体
     best_idx = np.argmin(fitness_scores)
     best_params = population[best_idx].copy()
     best_score = fitness_scores[best_idx]
+    best_avg_gap = avg_gaps[best_idx]  # 新增：最佳个体的avg_gap
+    best_avg_amount_use_pct = avg_amount_use_pcts[best_idx]  # 新增：最佳个体的avg_amount_use_pct
     
-    # 历史记录
+    # 历史记录 - 新增字段
     history = {
         'generation': [],
         'best_score': [],
+        'best_avg_gap': [],  # 新增：记录每代最佳avg_gap
+        'best_avg_amount_use_pct': [],  # 新增：记录每代最佳仓位使用率
         'avg_score': [],
         'params': []
     }
     
-    # 记录每一代的最佳分数
+    # 记录第一代（0代）结果
     history['generation'].append(0)
     history['best_score'].append(best_score)
+    history['best_avg_gap'].append(best_avg_gap)  # 新增
+    history['best_avg_amount_use_pct'].append(best_avg_amount_use_pct)  # 新增
     history['avg_score'].append(np.mean(fitness_scores))
     history['params'].append(best_params.copy())
+    
     output_dir = f"optimization_results/{strategy_name}"
     os.makedirs(output_dir, exist_ok=True)
     
     # 保存初始状态
     save_intermediate_result(strategy_name, 0, best_params, best_score, output_dir)
+    
+    # 打印初始状态
+    print(
+        f"{strategy_name} - 初始状态: "
+        f"最佳得分={best_score:.6f}, "
+        f"平均价差={best_avg_gap:.6f}, "
+        f"平均仓位使用率={best_avg_amount_use_pct:.6f}"
+    )
+    
     # 遗传算法主循环
     for gen in range(1, generations + 1):
         # 选择操作 - 锦标赛选择
@@ -714,18 +746,6 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
                             new_val = int(round(new_val))
                         
                         individual[param] = new_val
-        if gen % 10 == 0:
-            logger.info(
-                f"策略 [{strategy_name}] 第 {gen}/{generations} 代 - "
-                f"最佳得分: {best_score:.6f} - "
-                f"平均得分: {np.mean(fitness_scores):.6f}"
-            )
-            
-            # 保存中间结果
-            if gen % 30 == 0:
-                save_intermediate_result(strategy_name, gen, best_params, best_score, output_dir)
-                logger.info(f"已保存中间结果: {output_dir}")
-        
         
         # 精英保留
         sorted_population = sorted(zip(fitness_scores, population), key=lambda x: x[0])
@@ -734,41 +754,278 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
         # 替换种群
         population = elite + new_population[:population_size - elite_size]
         
-        # 评估新种群
+        # 评估新种群 - 修改：同时存储avg_gap和avg_amount_use_pct
         fitness_scores = []
+        avg_gaps = []  # 重置
+        avg_amount_use_pcts = []  # 重置
+        
         for individual in population:
             individual['debug'] = debug
             try:
-                score = evaluate_params(stocks_data, strategy_name, individual)
+                score, avg_gap, avg_amount_use_pct = evaluate_params(stocks_data, strategy_name, individual)
                 fitness_scores.append(score)
+                avg_gaps.append(avg_gap)
+                avg_amount_use_pcts.append(avg_amount_use_pct)
             except Exception as e:
                 logger.error(f"评估失败: {e}")
                 fitness_scores.append(float('inf'))
+                avg_gaps.append(float('inf'))
+                avg_amount_use_pcts.append(float('inf'))
         
         # 更新最佳个体
         current_best_idx = np.argmin(fitness_scores)
         current_best_score = fitness_scores[current_best_idx]
+        current_avg_gap = avg_gaps[current_best_idx]  # 当前代最佳avg_gap
+        current_avg_amount_use_pct = avg_amount_use_pcts[current_best_idx]  # 当前代最佳仓位使用率
         
+        # 如果当前代有更好的个体，更新全局最佳
         if current_best_score < best_score:
             best_params = population[current_best_idx].copy()
             best_score = current_best_score
+            best_avg_gap = current_avg_gap
+            best_avg_amount_use_pct = current_avg_amount_use_pct
         
         # 记录历史
         history['generation'].append(gen)
         history['best_score'].append(best_score)
+        history['best_avg_gap'].append(best_avg_gap)  # 新增
+        history['best_avg_amount_use_pct'].append(best_avg_amount_use_pct)  # 新增
         history['avg_score'].append(np.mean(fitness_scores))
         history['params'].append(best_params.copy())
 
-        # 打印进度到终端
+        # 打印进度到终端 - 修改：添加avg_gap和avg_amount_use_pct
         print(
             f"{strategy_name} - 第 {gen}/{generations} 代: "
             f"最佳得分={best_score:.6f}, "
+            f"平均价差={best_avg_gap:.6f}, "
+            f"平均仓位使用率={best_avg_amount_use_pct:.6f}, "
             f"平均得分={np.mean(fitness_scores):.6f}"
         )
-        # 打印进度
-        # print(f"Generation {gen}/{generations} - Best: {best_score:.6f} - Avg: {np.mean(fitness_scores):.6f}")
-    logger.info(f"策略 [{strategy_name}] 优化完成! 最佳得分: {best_score:.6f}")
+
+        if gen % 10 == 0:
+            logger.info(
+                f"策略 [{strategy_name}] 第 {gen}/{generations} 代 - "
+                f"最佳得分: {best_score:.6f} - "
+                f"平均价差: {best_avg_gap:.6f} - "
+                f"平均仓位使用率: {best_avg_amount_use_pct:.6f} - "
+                f"平均得分: {np.mean(fitness_scores):.6f}"
+            )
+            
+            # 保存中间结果
+            if gen % 30 == 0:
+                save_intermediate_result(strategy_name, gen, best_params, best_score, output_dir)
+                logger.info(f"已保存中间结果: {output_dir}")
+    
+    # 最终结果打印
+    logger.info(
+        f"策略 [{strategy_name}] 优化完成! "
+        f"最佳得分: {best_score:.6f} - "
+        f"平均价差: {best_avg_gap:.6f} - "
+        f"平均仓位使用率: {best_avg_amount_use_pct:.6f}"
+    )
+    
     return best_params, best_score, history
+
+# def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
+#                                   population_size=30, generations=1200,
+#                                   crossover_rate=0.85, mutation_rate=0.15,
+#                                   elite_size=5, debug=False):
+#     """
+#     遗传算法参数优化
+#     :param stocks_data: list of dict - 股票数据集
+#     :param param_ranges: dict - 参数范围 {param_name: (min, max)}
+#     :param population_size: int - 种群大小
+#     :param generations: int - 迭代代数
+#     :param crossover_rate: float - 交叉概率
+#     :param mutation_rate: float - 变异概率
+#     :param elite_size: int - 精英保留数量
+#     :return: (best_params, best_score, history)
+#     """
+    
+#     logger.info(f"开始优化策略: {strategy_name}")
+#     logger.info(f"参数范围: {param_ranges}")
+#     logger.info(f"种群大小: {population_size}, 代数: {generations}")
+#     # 需要取整的参数列表
+#     int_params = ['sg_window', 'macd_fast', 'macd_signal', 'ema_fast', 'volume_window', 
+#                  'price_confirm_ticks', 'strength_confirm_ticks', 'max_confirm_ticks']
+    
+#     # 布尔参数列表（0或1）
+#     bool_params = ['use_price_confirm', 'use_strength_confirm']
+    
+#     # 初始化种群
+#     population = []
+#     for _ in range(population_size):
+#         individual = {}
+#         for param, (min_val, max_val) in param_ranges.items():
+#             if param in bool_params:
+#                 # 布尔参数：随机选择0或1
+#                 individual[param] = random.choice([True, False])
+#             else:
+#                 value = random.uniform(min_val, max_val)
+#                 # 对整数参数进行取整
+#                 if param in int_params:
+#                     value = int(round(value))
+#                 individual[param] = value
+#         population.append(individual)
+    
+#     # 评估初始种群
+#     fitness_scores = []
+#     for individual in population:
+#         individual['debug'] = debug
+#         try:
+#             score, avg_gap, avg_amount_use_pct = evaluate_params(stocks_data, strategy_name, individual)
+#             fitness_scores.append(score)
+#         except Exception as e:
+#             logger.error(f"评估失败: {e}")
+#             fitness_scores.append(float('inf'))
+    
+#     # 找到当前最佳个体
+#     best_idx = np.argmin(fitness_scores)
+#     best_params = population[best_idx].copy()
+#     best_score = fitness_scores[best_idx]
+    
+#     # 历史记录
+#     history = {
+#         'generation': [],
+#         'best_score': [],
+#         'avg_score': [],
+#         'params': []
+#     }
+    
+#     # 记录每一代的最佳分数
+#     history['generation'].append(0)
+#     history['best_score'].append(best_score)
+#     history['avg_score'].append(np.mean(fitness_scores))
+#     history['params'].append(best_params.copy())
+#     output_dir = f"optimization_results/{strategy_name}"
+#     os.makedirs(output_dir, exist_ok=True)
+    
+#     # 保存初始状态
+#     save_intermediate_result(strategy_name, 0, best_params, best_score, output_dir)
+#     # 遗传算法主循环
+#     for gen in range(1, generations + 1):
+#         # 选择操作 - 锦标赛选择
+#         selected_parents = []
+#         for _ in range(population_size):
+#             # 随机选择3个个体进行锦标赛
+#             tournament = random.sample(range(population_size), 3)
+#             tournament_scores = [fitness_scores[i] for i in tournament]
+#             winner_idx = tournament[np.argmin(tournament_scores)]
+#             selected_parents.append(population[winner_idx])
+        
+#         # 交叉操作
+#         new_population = []
+#         for i in range(0, population_size, 2):
+#             parent1 = selected_parents[i]
+#             parent2 = selected_parents[i + 1] if i + 1 < population_size else selected_parents[0]
+            
+#             child1 = parent1.copy()
+#             child2 = parent2.copy()
+            
+#             # 以一定概率进行交叉
+#             if random.random() < crossover_rate:
+#                 for param in param_ranges.keys():
+#                     if param in bool_params:
+#                         # 布尔参数：50%概率交换
+#                         if random.random() < 0.5:
+#                             child1[param], child2[param] = child2[param], child1[param]
+#                     else:
+#                         # 数值参数：均匀交叉
+#                         if random.random() < 0.5:
+#                             child1[param], child2[param] = child2[param], child1[param]
+            
+#             new_population.append(child1)
+#             if len(new_population) < population_size:
+#                 new_population.append(child2)
+        
+#         # 变异操作
+#         for individual in new_population:
+#             for param in param_ranges.keys():
+#                 if random.random() < mutation_rate:
+#                     if param in bool_params:
+#                         # 布尔参数：翻转值
+#                         individual[param] = not individual[param]
+#                     else:
+#                         min_val, max_val = param_ranges[param]
+#                         # 高斯变异
+#                         mutation = random.gauss(0, (max_val - min_val) * 0.2)
+#                         new_val = individual[param] + mutation
+                        
+#                         # 确保参数在范围内
+#                         new_val = max(min_val, min(max_val, new_val))
+                        
+#                         # 对整数参数进行取整
+#                         if param in int_params:
+#                             new_val = int(round(new_val))
+                        
+#                         individual[param] = new_val
+#         # if gen % 10 == 0:
+#         #     logger.info(
+#         #         f"策略 [{strategy_name}] 第 {gen}/{generations} 代 - "
+#         #         f"最佳得分: {best_score:.6f} - "
+#         #         f"平均得分: {np.mean(fitness_scores):.6f}"
+#         #     )
+            
+#         #     # 保存中间结果
+#         #     if gen % 30 == 0:
+#         #         save_intermediate_result(strategy_name, gen, best_params, best_score, output_dir)
+#         #         logger.info(f"已保存中间结果: {output_dir}")
+        
+        
+#         # 精英保留
+#         sorted_population = sorted(zip(fitness_scores, population), key=lambda x: x[0])
+#         elite = [ind for _, ind in sorted_population[:elite_size]]
+        
+#         # 替换种群
+#         population = elite + new_population[:population_size - elite_size]
+        
+#         # 评估新种群
+#         fitness_scores = []
+#         for individual in population:
+#             individual['debug'] = debug
+#             try:
+#                 score, avg_gap, avg_amount_use_pct = evaluate_params(stocks_data, strategy_name, individual)
+#                 fitness_scores.append(score)
+#             except Exception as e:
+#                 logger.error(f"评估失败: {e}")
+#                 fitness_scores.append(float('inf'))
+        
+#         # 更新最佳个体
+#         current_best_idx = np.argmin(fitness_scores)
+#         current_best_score = fitness_scores[current_best_idx]
+        
+#         if current_best_score < best_score:
+#             best_params = population[current_best_idx].copy()
+#             best_score = current_best_score
+        
+#         # 记录历史
+#         history['generation'].append(gen)
+#         history['best_score'].append(best_score)
+#         history['avg_score'].append(np.mean(fitness_scores))
+#         history['params'].append(best_params.copy())
+
+#         # 打印进度到终端
+#         print(
+#             f"{strategy_name} - 第 {gen}/{generations} 代: "
+#             f"最佳得分={best_score:.6f}, "
+#             f"平均得分={np.mean(fitness_scores):.6f}"
+#         )
+
+#         if gen % 10 == 0:
+#             logger.info(
+#                 f"策略 [{strategy_name}] 第 {gen}/{generations} 代 - "
+#                 f"最佳得分: {best_score:.6f} - "
+#                 f"平均得分: {np.mean(fitness_scores):.6f}"
+#             )
+            
+#             # 保存中间结果
+#             if gen % 30 == 0:
+#                 save_intermediate_result(strategy_name, gen, best_params, best_score, output_dir)
+#                 logger.info(f"已保存中间结果: {output_dir}")
+#         # 打印进度
+#         # print(f"Generation {gen}/{generations} - Best: {best_score:.6f} - Avg: {np.mean(fitness_scores):.6f}")
+#     logger.info(f"策略 [{strategy_name}] 优化完成! 最佳得分: {best_score:.6f}")
+#     return best_params, best_score, history
 
 
 
@@ -858,12 +1115,27 @@ def evaluate_params(stocks_data, strategy_name, params):
     )
     # 存储失败的回测信息
     failed_tests = []
-    
+    total_amount_use_pct = 0
+    max_amount_use_pct = 0
+    min_amount_use_pct = 1
+    max_amount_use_code = ''
+    min_amount_use_code = ''
+    max_amount_use_datekey = ''
+    min_amount_use_datekey = ''
     for idx, stock_data in enumerate(selected_data):
         progress_bar.set_postfix_str(f"当前: {idx+1}/{len(selected_data)}")
         
         try:
-            _, _, gap_ratio, buy_count = backtest_single_stock(stock_data, strategy_name, params)
+            _, _, gap_ratio, buy_count, amount_use_pct, stock_code, datekey = backtest_single_stock(stock_data, strategy_name, params)
+            if amount_use_pct > max_amount_use_pct:
+                max_amount_use_pct = amount_use_pct
+                max_amount_use_code = stock_code
+                max_amount_use_datekey = datekey
+            if amount_use_pct < min_amount_use_pct:
+                min_amount_use_pct = amount_use_pct
+                min_amount_use_code = stock_code
+                min_amount_use_datekey = datekey
+            total_amount_use_pct += amount_use_pct
             total_gap += gap_ratio
             count += 1
             stock_code = stock_data.get('stock_code', '未知')
@@ -895,8 +1167,9 @@ def evaluate_params(stocks_data, strategy_name, params):
     # 计算平均差距
     if count > 0:
         avg_gap = total_gap / count
-        print(f"策略 {strategy_name}: 参数评估完成, 平均成本差距={avg_gap:.6f}, 成功回测={count}/{len(selected_data)}")
-        return avg_gap
+        avg_amount_use_pct = total_amount_use_pct / count
+        print(f"策略 {strategy_name}: 参数评估完成, 平均成本差距={avg_gap:.6f}, 成功回测={count}/{len(selected_data)}, 平均使用资金比例={avg_amount_use_pct:.6f}, 最大使用资金比例={max_amount_use_pct:.6f}, 最大使用资金股票={max_amount_use_code}, 最大使用资金日期={max_amount_use_datekey}, 最小使用资金比例={min_amount_use_pct:.6f}, 最小使用资金股票={min_amount_use_code}, 最小使用资金日期={min_amount_use_datekey}")
+        return avg_gap / (avg_amount_use_pct + 1e-6), avg_gap, avg_amount_use_pct
     else:
         print(f"策略 {strategy_name}: 所有回测均失败, 返回无限大值")
         return float('inf')
@@ -956,7 +1229,8 @@ def build_all_stock_datas(strategy_name, min_num=3):
                 datekey, stock_code = future_to_task[future]
                 try:
                     data = future.result()
-                    results.append(data)
+                    if data:
+                        results.append(data)
                 except Exception as e:
                     print(f"\n下载失败 [{datekey} {stock_code}]: {str(e)}")
                 finally:
@@ -1014,6 +1288,7 @@ def build_stock_datas(stock_code, datekey):
     budget = 50000
     base_budget = 50000
     last_volume = pre_volume
+    min_price = 100000
     for index, row in filtered_df.iterrows():
         current_tick_steps = current_tick_steps + 1
         if current_tick_steps > 410:
@@ -1021,6 +1296,7 @@ def build_stock_datas(stock_code, datekey):
         data = row.to_dict()
         timestamp = data['time']
         lastPrice = data['lastPrice']
+        min_price = min(min_price, lastPrice)
         open = data['open']
         high = data['high']
         low = data['low']
@@ -1052,17 +1328,21 @@ def build_stock_datas(stock_code, datekey):
             last_close_price = lastClose
         prices.append(lastPrice)
 
+    if min_price <= base_price:
 
-    return {
-        'base_price': base_price,
-        'budget': budget,
-        'prices': prices,
-        'base_budget': base_budget,
-        'volumes': volumes,
-        'down_price': limit_down_price,
-        'last_close_price': last_close_price,
-        'stock_code': stock_code
-    }
+        return {
+            'base_price': base_price,
+            'budget': budget,
+            'prices': prices,
+            'base_budget': base_budget,
+            'volumes': volumes,
+            'down_price': limit_down_price,
+            'last_close_price': last_close_price,
+            'stock_code': stock_code,
+            'datekey': datekey
+        }
+    else:
+        return {}
 
 # 修改运行策略优化函数
 def run_strategy_optimization(strategy_name):
@@ -1102,11 +1382,11 @@ def run_strategy_optimization(strategy_name):
         # 运行优化
         best_params, best_score, history = genetic_algorithm_optimization(
             stocks_data, param_ranges, strategy_name,
-            population_size=60,
-            generations=1200,
+            population_size=40,
+            generations=300,
             crossover_rate=0.85,
             mutation_rate=0.25,
-            elite_size=10,
+            elite_size=8,
             debug=False
         )
         

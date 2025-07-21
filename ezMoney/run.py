@@ -4561,12 +4561,15 @@ def start_limit_up_monitor():
                 strategy_logger.info(f"[start_limit_up_monitor] 监听股票打板: {stock_code}")
             monitor_stock_codes = list(stock_code_to_row_ids.keys())
             def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_limit_up_monitor):
-                for stock in stocks:
-                    if stock not in res:
-                        continue
-                    data = res[stock]
-                    s_monitor = monitor_dict[stock]
-                    s_monitor.consume(data)
+                try:
+                    for stock in stocks:
+                        if stock not in res:
+                            continue
+                        data = res[stock]
+                        s_monitor = monitor_dict[stock]
+                        s_monitor.consume(data)
+                except Exception as e:
+                    strategy_logger.error(f"回调函数出错: {e}")
 
             sid = xtdata.subscribe_whole_quote(monitor_stock_codes, callback=monitor_call_back)
             if sid < 0:
@@ -4589,7 +4592,7 @@ def start_min_cost_order_monitor(min_cost_queue):
     have_sub_scribe = False
     monitor_stock_codes = []
     try:
-        while True:
+        while True and not have_sub_scribe:
             data = min_cost_queue.get()
             if type(data) == tuple:
                 stock_code, strategy_name, budget, base_budget = data
@@ -4899,13 +4902,13 @@ if __name__ == "__main__":
                         q.put('end')
                     if end_subscribe:
                         qq.put('end')
-                    scheduler.shutdown()
+                    scheduler.shutdown(wait=False)
                     break
                 time.sleep(3)
                 print_latest_tick(full_tick_info_dict)
         except (KeyboardInterrupt, SystemExit):
             # 关闭调度器
-            scheduler.shutdown()
+            scheduler.shutdown(wait=False)
         
         print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
         if not use_threading_buyer:

@@ -819,7 +819,7 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
             )
             
             # 保存中间结果
-            if gen % 30 == 0:
+            if gen % 10 == 0:
                 save_intermediate_result(strategy_name, gen, best_params, best_score, output_dir)
                 logger.info(f"已保存中间结果: {output_dir}")
     

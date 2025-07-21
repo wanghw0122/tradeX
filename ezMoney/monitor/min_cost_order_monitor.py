@@ -17,13 +17,13 @@ from logger import strategy_logger as logger
 
 
 strategy_name_to_max_down_pct = {
-    '高强中低开低吸': 7,
+    '高强中低开低吸': 5.5,
     '低位高强中低开低吸': 3,
-    '低位高强低吸': 6,
-    '低位孕线低吸': 7,
-    '低位中强中低开低吸': 7,
-    '中强中低开低吸': 7,
-    '首红断低吸': 7
+    '低位高强低吸': 5.5,
+    '低位孕线低吸': 5.5,
+    '低位中强中低开低吸': 5.5,
+    '中强中低开低吸': 5.5,
+    '首红断低吸': 5.5
 }
 
 strategy_name_to_main_strategy_name = {
@@ -166,36 +166,36 @@ class SignalDetector:
         
         # 计算MACD (简化的增量计算)
         if self.macd_dif is None:
-            # self.macd_dif = 0
-            # self.macd_dea = 0
-            # self.ema_fast_macd = price
-            # self.ema_slow_macd = price
-            self.macd_dif = price
-            self.macd_dea = price
+            self.macd_dif = 0
+            self.macd_dea = 0
+            self.ema_fast_macd = price
+            self.ema_slow_macd = price
+            # self.macd_dif = price
+            # self.macd_dea = price
         else:
-            # # 计算快速EMA
-            # alpha_fast = 2 / (self.macd_fast + 1)
-            # self.ema_fast_macd += alpha_fast * (price - self.ema_fast_macd)
-            
-            # # 计算慢速EMA
-            # alpha_slow = 2 / (self.macd_slow + 1)
-            # self.ema_slow_macd += alpha_slow * (price - self.ema_slow_macd)
-            
-            # # 计算DIF = EMA(fast) - EMA(slow)
-            # self.macd_dif = self.ema_fast_macd - self.ema_slow_macd
-            
-            # # 计算DEA（信号线）= EMA(DIF, signal_period)
-            # alpha_signal = 2 / (self.macd_signal + 1)
-            # self.macd_dea += alpha_signal * (self.macd_dif - self.macd_dea)
-            # DIF = EMA(close, fast) - EMA(close, slow)
+            # 计算快速EMA
             alpha_fast = 2 / (self.macd_fast + 1)
-            alpha_slow = 2 / (self.macd_slow + 1)
-            self.macd_dif = self.macd_dif + alpha_fast * (price - self.macd_dif)
-            self.macd_dif = self.macd_dif - alpha_slow * (price - self.macd_dif)
+            self.ema_fast_macd += alpha_fast * (price - self.ema_fast_macd)
             
-            # DEA = EMA(DIF, signal)
+            # 计算慢速EMA
+            alpha_slow = 2 / (self.macd_slow + 1)
+            self.ema_slow_macd += alpha_slow * (price - self.ema_slow_macd)
+            
+            # 计算DIF = EMA(fast) - EMA(slow)
+            self.macd_dif = self.ema_fast_macd - self.ema_slow_macd
+            
+            # 计算DEA（信号线）= EMA(DIF, signal_period)
             alpha_signal = 2 / (self.macd_signal + 1)
-            self.macd_dea = self.macd_dea + alpha_signal * (self.macd_dif - self.macd_dea)
+            self.macd_dea += alpha_signal * (self.macd_dif - self.macd_dea)
+            # DIF = EMA(close, fast) - EMA(close, slow)
+            # alpha_fast = 2 / (self.macd_fast + 1)
+            # alpha_slow = 2 / (self.macd_slow + 1)
+            # self.macd_dif = self.macd_dif + alpha_fast * (price - self.macd_dif)
+            # self.macd_dif = self.macd_dif - alpha_slow * (price - self.macd_dif)
+            
+            # # DEA = EMA(DIF, signal)
+            # alpha_signal = 2 / (self.macd_signal + 1)
+            # self.macd_dea = self.macd_dea + alpha_signal * (self.macd_dif - self.macd_dea)
         
         # 更新EMA
         self.last_ema_fast = self.ema_fast_val
@@ -616,7 +616,7 @@ class MinCostOrderMonitor(object):
 
 
     def start_monitor_orders(self):
-        logger.info(f"start limit up orders monitor {self.stock_code} {self.stock_name}")
+        logger.info(f"start min cost orders monitor {self.stock_code} {self.stock_name}")
         if not self.monitor_orders_running:
             self.monitor_orders_running = True
             self.monitor_orders_thread = threading.Thread(target=self._monitor_orders_loop)
@@ -741,6 +741,9 @@ class MinCostOrderMonitor(object):
                 if self.current_tick_steps == 0 or self.base_price < 0:
                     self.base_price = lastPrice
                     self.reference_price = self.base_price
+                if self.current_tick_steps > 410:
+                    logger.error(f"current_tick_steps > 410 break. {self.current_tick_steps} {time} {self.stock_code} {self.stock_name}")
+                    break
                 self.smooth_price = self.filter.update(lastPrice)
                 self.signal = self.detector.update(self.smooth_price, volume - self.pre_volume)
 
@@ -770,10 +773,10 @@ class MinCostOrderMonitor(object):
                         
                     # 只有跌幅超过1%才买入
                     if price_diff >= 0.01 and self.remaining_budget > 0:
-                        buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[self.strategy_name] if self.strategy_name in strategy_name_to_max_down_pct else price_diff * 100 / 6
-                        buy_amount = buy_pct * self.total_budget
+                        buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[self.strategy_name] if self.strategy_name in strategy_name_to_max_down_pct else price_diff * 100 / 5.5
+                        buy_amount = min(buy_pct * self.total_budget, self.remaining_budget)
                         
-                        if buy_pct > 1/4 or buy_amount > 20000:
+                        if buy_pct > 1/4 or buy_amount > 7000:
                             # 执行买入
                             buy_total_budget = buy_amount
                             self.remaining_budget = max(0, self.remaining_budget - buy_amount)
@@ -789,16 +792,21 @@ class MinCostOrderMonitor(object):
                     if buy_total_budget + base_buy_budget > 0:
                         self.send_orders(data, buy_total_budget + base_buy_budget)
 
-                elif (lastPrice - self.limit_down_price) / self.base_price < 0.01 and self.left_base_budget > 0 and lastPrice <= self.base_price:
+                elif (lastPrice - self.limit_down_price) / self.base_price < 0.01 and self.left_base_budget > 0 and lastPrice <= self.base_price * 0.99:
                     base_buy_budget = self.left_base_budget
                     self.left_base_budget = 0
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
 
-                elif lastPrice < self.base_price * 0.095 and self.current_tick_steps - self.last_base_buy_tick_time > 100 and self.left_base_budget > 0:
+                elif lastPrice < self.base_price * 0.99 and self.current_tick_steps - self.last_base_buy_tick_time > 100 and self.left_base_budget > 0:
 
                     base_buy_budget = min(self.left_base_budget, self.base_budget * 1/3)
                     self.left_base_budget = self.left_base_budget - base_buy_budget
+                    self.last_base_buy_tick_time = self.current_tick_steps
+                    self.send_orders(data, base_buy_budget)
+                elif self.current_tick_steps > 200 and lastPrice < self.base_price * 0.99 and self.left_base_budget > 0:
+                    base_buy_budget = self.left_base_budget
+                    self.left_base_budget = 0
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
                 self.pre_volume = volume

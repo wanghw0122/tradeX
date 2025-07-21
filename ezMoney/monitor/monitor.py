@@ -183,6 +183,7 @@ class StockMonitor(object):
     def start_monitor(self):
         logger.info(f"start monitor {self.stock_code} {self.stock_name}")
         self.thread = threading.Thread(target=self.monitor)
+        self.thread.setDaemon(True)
         self.thread.start()
         return self.thread
     

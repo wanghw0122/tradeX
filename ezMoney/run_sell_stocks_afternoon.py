@@ -326,8 +326,45 @@ if __name__ == '__main__':
     print('done')
 
     print('xtdc.listen')
+    port_list = [58611, 58612, 58613, 58614, 58615, 58616, 58617, 58618]
+    selected_port = None
+    listen_addr = None
 
-    listen_addr = xtdc.listen(port = 58611)
+    # 尝试监听端口列表中的端口
+    for port in port_list:
+        try:
+            logger.info(f"尝试监听端口: {port}")
+
+            listen_addr = xtdc.listen(port=port)
+            selected_port = port
+            logger.info(f"成功监听端口: {selected_port}, 监听地址: {listen_addr}")
+
+            break  # 成功监听后跳出循环
+        except OSError as e:
+            logger.error(f"端口 {port} 监听失败: {e}")
+            # 继续尝试下一个端口
+
+    # 如果所有端口都失败
+    if selected_port is None:
+        logger.info("所有备选端口均监听失败，尝试扩展端口范围...")
+        # 尝试58619到58630的扩展端口
+        for port in range(58619, 58631):
+            try:
+                logger.info(f"尝试扩展端口: {port}")
+
+                listen_addr = xtdc.listen(port=port)
+                selected_port = port
+                logger.info(f"成功监听扩展端口: {selected_port}, 监听地址: {listen_addr}")
+                break
+            except OSError as e:
+                logger.error(f"扩展端口 {port} 监听失败: {e}")
+        
+    # 如果扩展端口也失败
+    if selected_port is None:
+        logger.error("所有端口均无法监听，程序退出")
+        raise RuntimeError("所有端口均无法监听，程序退出")
+
+    # listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
     qmt_trader.init_order_context(flag = True)

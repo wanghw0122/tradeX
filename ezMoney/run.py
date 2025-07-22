@@ -3534,12 +3534,12 @@ def consumer_to_subscribe(qq):
 
 
 
-def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q):
+def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, selected_port):
     if not subscribe:
         return
     # from multiprocessing import Manager
     from xtquant import xtdata
-    xtdata.connect(port=58611)
+    xtdata.connect(port=selected_port)
     print ("consumer_to_subscribe_whole connect success")
     subscribe_ids = []
     subscribe_codes = []
@@ -4838,8 +4838,47 @@ if __name__ == "__main__":
         # xtdc.set_allow_optmize_address(addr_list)
 
         # xtdc.set_kline_mirror_enabled(True) 
+
+        # 定义备选端口列表
+        port_list = [58611, 58612, 58613, 58614, 58615, 58616, 58617, 58618]
+        selected_port = None
+        listen_addr = None
+
+        # 尝试监听端口列表中的端口
+        for port in port_list:
+            try:
+                logger.info(f"尝试监听端口: {port}")
+
+                listen_addr = xtdc.listen(port=port)
+                selected_port = port
+                logger.info(f"成功监听端口: {selected_port}, 监听地址: {listen_addr}")
+
+                break  # 成功监听后跳出循环
+            except OSError as e:
+                logger.error(f"端口 {port} 监听失败: {e}")
+                # 继续尝试下一个端口
+
+        # 如果所有端口都失败
+        if selected_port is None:
+            logger.info("所有备选端口均监听失败，尝试扩展端口范围...")
+            # 尝试58619到58630的扩展端口
+            for port in range(58619, 58631):
+                try:
+                    logger.info(f"尝试扩展端口: {port}")
+
+                    listen_addr = xtdc.listen(port=port)
+                    selected_port = port
+                    logger.info(f"成功监听扩展端口: {selected_port}, 监听地址: {listen_addr}")
+                    break
+                except OSError as e:
+                    logger.error(f"扩展端口 {port} 监听失败: {e}")
+            
+        # 如果扩展端口也失败
+        if selected_port is None:
+            logger.error("所有端口均无法监听，程序退出")
+            raise RuntimeError("所有端口均无法监听，程序退出")
         
-        listen_addr = xtdc.listen(port = 58611)
+        # listen_addr = xtdc.listen(port = 58611)
         print(f'done, listen_addr:{listen_addr}')
 
         xtdata.connect(port=listen_addr)
@@ -4864,7 +4903,7 @@ if __name__ == "__main__":
         # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
         # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
 
-        subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q))
+        subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q, selected_port))
         consumer_thread.start()
         subscribe_thread.start()
         cached_auction_infos.clear()

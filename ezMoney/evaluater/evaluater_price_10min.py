@@ -421,7 +421,7 @@ class SignalDetector:
         avg_length = min(self.volume_window, len(self.volume_history))
         if avg_length > 0:
             avg_volume = sum(self.volume_history[-avg_length:]) / avg_length
-            volume_strength = volume / (avg_volume + 1) - 1.0  # 0-1范围
+            volume_strength = min(volume / (avg_volume + 1), 5) - 1.0  # 0-1范围
         else:
             volume_strength = 0.0
         

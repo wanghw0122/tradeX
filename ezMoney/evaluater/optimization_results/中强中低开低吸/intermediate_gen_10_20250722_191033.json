@@ -1,0 +1,28 @@
+{
+    "strategy": "中强中低开低吸",
+    "generation": 10,
+    "best_score": 0.02269930765034681,
+    "best_params": {
+        "ema_alpha": 0.24721804349769436,
+        "kalman_q": 0.018403693575759744,
+        "kalman_r": 0.029545318442010197,
+        "sg_window": 17,
+        "macd_fast": 3,
+        "macd_slow_ratio": 1.900303944739966,
+        "macd_signal": 5,
+        "ema_fast": 4,
+        "ema_slow_ratio": 2.6677783374604127,
+        "volume_window": 13,
+        "price_confirm_ticks": 3,
+        "strength_confirm_ticks": 5,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.9284862858541763,
+        "use_price_confirm": false,
+        "use_strength_confirm": false,
+        "dead_cross_threshold": 0.0042861856037673144,
+        "price_drop_threshold": 0.007,
+        "max_confirm_ticks": 19,
+        "debug": false
+    },
+    "timestamp": "20250722_191033"
+}

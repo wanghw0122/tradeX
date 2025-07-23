@@ -453,7 +453,7 @@ class SignalDetector:
         
         return None
 
-def backtest_single_stock(stock_data, strategy_name, params):
+def backtest_single_stock_once(stock_data, strategy_name, params):
     """单只股票回测（带详细日志和可视化）"""
     # 创建输出目录
     output_dir = f"backtest_results/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{strategy_name}"
@@ -736,142 +736,142 @@ def backtest_single_stock(stock_data, strategy_name, params):
     return avg_cost, min_price, gap_ratio, len(buy_points), amount_use_pct, stock_code, datekey
 
 
-# def backtest_single_stock(stock_data, strategy_name, params):
+def backtest_single_stock(stock_data, strategy_name, params):
 
-#     """
-#     单只股票回测
-#     :param stock_data: dict - {base_price, budget, prices, volumes}
-#     :param params: dict - 策略参数
-#     :return: (avg_cost, min_price, gap_ratio)
-#     """
-#     base_price = stock_data['base_price']
-#     total_budget = stock_data['budget']
-#     base_budget = stock_data['base_budget']
-#     down_price = stock_data['down_price']
-#     prices = stock_data['prices']
-#     volumes = stock_data['volumes']
-#     last_close_price = stock_data['last_close_price']
-#     datekey = stock_data['datekey']
-#     stock_code = stock_data['stock_code']
+    """
+    单只股票回测
+    :param stock_data: dict - {base_price, budget, prices, volumes}
+    :param params: dict - 策略参数
+    :return: (avg_cost, min_price, gap_ratio)
+    """
+    base_price = stock_data['base_price']
+    total_budget = stock_data['budget']
+    base_budget = stock_data['base_budget']
+    down_price = stock_data['down_price']
+    prices = stock_data['prices']
+    volumes = stock_data['volumes']
+    last_close_price = stock_data['last_close_price']
+    datekey = stock_data['datekey']
+    stock_code = stock_data['stock_code']
     
-#     # 计算实际最低价（修正：使用传入数据中的最低价）
-#     min_price = min(prices)
-#     if min_price <= 0:
-#         raise ValueError(f"最低价必须大于0 {min_price} {strategy_name}")
-#     max_down_pct = (base_price - down_price) / base_price
+    # 计算实际最低价（修正：使用传入数据中的最低价）
+    min_price = min(prices)
+    if min_price <= 0:
+        raise ValueError(f"最低价必须大于0 {min_price} {strategy_name}")
+    max_down_pct = (base_price - down_price) / base_price
     
-#     # 初始化组件
-#     filter = TripleFilter(
-#         ema_alpha=params['ema_alpha'],
-#         kalman_q=params['kalman_q'],
-#         kalman_r=params['kalman_r'],
-#         sg_window=params['sg_window']
-#     )
+    # 初始化组件
+    filter = TripleFilter(
+        ema_alpha=params['ema_alpha'],
+        kalman_q=params['kalman_q'],
+        kalman_r=params['kalman_r'],
+        sg_window=params['sg_window']
+    )
     
-#     detector = SignalDetector(
-#         macd_fast=params['macd_fast'],
-#         macd_slow_ratio=params['macd_slow_ratio'],
-#         macd_signal=params['macd_signal'],
-#         ema_fast=params['ema_fast'],
-#         ema_slow_ratio=params['ema_slow_ratio'],
-#         volume_window=params['volume_window'],
-#         price_confirm_ticks=params['price_confirm_ticks'],
-#         strength_confirm_ticks=params['strength_confirm_ticks'],
-#         strength_threshold=params['strength_threshold'],
-#         use_price_confirm=params['use_price_confirm'],
-#         use_strength_confirm=params['use_strength_confirm'],
-#         dead_cross_threshold=params.get('dead_cross_threshold', 0.3),
-#         price_drop_threshold=params.get('price_drop_threshold', 0.005),
-#         max_confirm_ticks=params.get('max_confirm_ticks', 10),
-#         volume_weight=params['volume_weight'],
-#         debug=params.get('debug', False)
-#     )
+    detector = SignalDetector(
+        macd_fast=params['macd_fast'],
+        macd_slow_ratio=params['macd_slow_ratio'],
+        macd_signal=params['macd_signal'],
+        ema_fast=params['ema_fast'],
+        ema_slow_ratio=params['ema_slow_ratio'],
+        volume_window=params['volume_window'],
+        price_confirm_ticks=params['price_confirm_ticks'],
+        strength_confirm_ticks=params['strength_confirm_ticks'],
+        strength_threshold=params['strength_threshold'],
+        use_price_confirm=params['use_price_confirm'],
+        use_strength_confirm=params['use_strength_confirm'],
+        dead_cross_threshold=params.get('dead_cross_threshold', 0.3),
+        price_drop_threshold=params.get('price_drop_threshold', 0.005),
+        max_confirm_ticks=params.get('max_confirm_ticks', 10),
+        volume_weight=params['volume_weight'],
+        debug=params.get('debug', False)
+    )
     
-#     # 状态变量
-#     buy_points = []  # (价格, 金额, 信号强度)
-#     reference_price = base_price
-#     remaining_budget = total_budget
-#     left_base_budget = base_budget
-#     last_base_buy_tick_time = 0
+    # 状态变量
+    buy_points = []  # (价格, 金额, 信号强度)
+    reference_price = base_price
+    remaining_budget = total_budget
+    left_base_budget = base_budget
+    last_base_buy_tick_time = 0
     
-#     # 处理每个tick
-#     for i, (raw_price, volume) in enumerate(zip(prices, volumes)):
+    # 处理每个tick
+    for i, (raw_price, volume) in enumerate(zip(prices, volumes)):
         
-#         # 平滑价格
-#         smooth_price = filter.update(raw_price)
+        # 平滑价格
+        smooth_price = filter.update(raw_price)
         
-#         # 检测信号
-#         signal = detector.update(smooth_price, volume)
+        # 检测信号
+        signal = detector.update(smooth_price, volume)
         
-#         if signal:
-#             # 计算价格差异（相对于基准价）
-#             price_diff = (reference_price - raw_price) / base_price
-#             base_buy_budget = 0
-#             buy_total_budget = 0
-#             if (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0:
-#                 base_buy_budget = left_base_budget
-#                 left_base_budget = 0
-#                 last_base_buy_tick_time = i
+        if signal:
+            # 计算价格差异（相对于基准价）
+            price_diff = (reference_price - raw_price) / base_price
+            base_buy_budget = 0
+            buy_total_budget = 0
+            if (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0:
+                base_buy_budget = left_base_budget
+                left_base_budget = 0
+                last_base_buy_tick_time = i
 
-#             elif (base_price - raw_price) / base_price > 0.01 and left_base_budget > 0:
-#                 down_base_pct = (base_price - raw_price) / base_price
-#                 base_buy_budget = max(1/3, down_base_pct / max_down_pct) * base_budget
-#                 base_buy_budget = min(base_buy_budget, left_base_budget)
-#                 left_base_budget = left_base_budget - base_buy_budget
-#                 last_base_buy_tick_time = i
+            elif (base_price - raw_price) / base_price > 0.01 and left_base_budget > 0:
+                down_base_pct = (base_price - raw_price) / base_price
+                base_buy_budget = max(1/3, down_base_pct / max_down_pct) * base_budget
+                base_buy_budget = min(base_buy_budget, left_base_budget)
+                left_base_budget = left_base_budget - base_buy_budget
+                last_base_buy_tick_time = i
                 
-#             # 只有跌幅超过1%才买入
-#             if price_diff >= 0.01 and remaining_budget > 0:
-#                 buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[strategy_name]
-#                 buy_amount = buy_pct * total_budget
+            # 只有跌幅超过1%才买入
+            if price_diff >= 0.01 and remaining_budget > 0:
+                buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[strategy_name]
+                buy_amount = buy_pct * total_budget
                 
-#                 if buy_pct > 1/4 or buy_amount > 20000:
-#                     # 执行买入
-#                     buy_total_budget = buy_amount
-#                     remaining_budget -= buy_amount
+                if buy_pct > 1/4 or buy_amount > 20000:
+                    # 执行买入
+                    buy_total_budget = buy_amount
+                    remaining_budget -= buy_amount
                     
-#                     # 更新基准价格为当前买入价
-#                     reference_price = raw_price
+                    # 更新基准价格为当前买入价
+                    reference_price = raw_price
                     
-#                     # 调试输出
-#                     if params.get('debug', False):
-#                         logger.info(f"买入点: 价格={raw_price:.4f}, "
-#                                    f"金额={buy_amount:.2f}, "
-#                                    f"强度={signal['strength']:.4f}")
-#             if buy_total_budget + base_buy_budget > 0:
-#                 buy_points.append((raw_price, buy_total_budget + base_buy_budget, signal['strength']))
-#         elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price:
-#             base_buy_budget = left_base_budget
-#             left_base_budget = 0
-#             buy_points.append((raw_price, base_buy_budget, 0))
-#             last_base_buy_tick_time = i
-#         elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0:
-#             base_buy_budget = min(left_base_budget, base_budget * 1/3)
-#             left_base_budget = left_base_budget - base_buy_budget
-#             buy_points.append((raw_price, base_buy_budget, 0))
-#             last_base_buy_tick_time = i
-#         elif i > 200 and raw_price < base_price and left_base_budget > 0:
-#             base_buy_budget = left_base_budget
-#             left_base_budget = 0
-#             buy_points.append((raw_price, base_buy_budget, 0))
-#             last_base_buy_tick_time = i
+                    # 调试输出
+                    if params.get('debug', False):
+                        logger.info(f"买入点: 价格={raw_price:.4f}, "
+                                   f"金额={buy_amount:.2f}, "
+                                   f"强度={signal['strength']:.4f}")
+            if buy_total_budget + base_buy_budget > 0:
+                buy_points.append((raw_price, buy_total_budget + base_buy_budget, signal['strength']))
+        elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price:
+            base_buy_budget = left_base_budget
+            left_base_budget = 0
+            buy_points.append((raw_price, base_buy_budget, 0))
+            last_base_buy_tick_time = i
+        elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0:
+            base_buy_budget = min(left_base_budget, base_budget * 1/3)
+            left_base_budget = left_base_budget - base_buy_budget
+            buy_points.append((raw_price, base_buy_budget, 0))
+            last_base_buy_tick_time = i
+        elif i > 200 and raw_price < base_price and left_base_budget > 0:
+            base_buy_budget = left_base_budget
+            left_base_budget = 0
+            buy_points.append((raw_price, base_buy_budget, 0))
+            last_base_buy_tick_time = i
 
-#     # 计算平均成本
-#     if buy_points:
-#         total_value = sum(price * amount for price, amount, _ in buy_points)
-#         total_amount = sum(amount for _, amount, _ in buy_points)
-#         if total_amount <= 0:
-#             raise ValueError(f"总金额必须大于0 {buy_points} {strategy_name}")
-#         amount_use_pct = total_amount / (base_budget + total_budget)
-#         avg_cost = total_value / total_amount
-#     else:
-#         avg_cost = base_price
-#         amount_use_pct = 0
+    # 计算平均成本
+    if buy_points:
+        total_value = sum(price * amount for price, amount, _ in buy_points)
+        total_amount = sum(amount for _, amount, _ in buy_points)
+        if total_amount <= 0:
+            raise ValueError(f"总金额必须大于0 {buy_points} {strategy_name}")
+        amount_use_pct = total_amount / (base_budget + total_budget)
+        avg_cost = total_value / total_amount
+    else:
+        avg_cost = base_price
+        amount_use_pct = 0
     
-#     # 计算成本差距
-#     gap_ratio = (avg_cost - min_price) / min_price
+    # 计算成本差距
+    gap_ratio = (avg_cost - min_price) / min_price
     
-#     return avg_cost, min_price, gap_ratio, len(buy_points), amount_use_pct, stock_code, datekey
+    return avg_cost, min_price, gap_ratio, len(buy_points), amount_use_pct, stock_code, datekey
 
 def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
                                   population_size=30, generations=1200,

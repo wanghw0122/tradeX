@@ -678,9 +678,9 @@ class MinCostOrderMonitor(object):
 
                         with SQLiteManager(r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db') as manager:
                             if sub_strategy_name:
-                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'order_type': 11, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'stock_name': '', 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
+                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'order_type': 1, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'stock_name': '', 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
                             else:
-                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'order_type': 11, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'stock_name': '', 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
+                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'order_type': 1, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'stock_name': '', 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
 
                     except Exception as e:
                         logger.error(f"插入数据失败 {e}")
@@ -790,10 +790,34 @@ class MinCostOrderMonitor(object):
                                         f"金额={buy_amount:.2f}, "
                                         "强度=0.0")
                     if buy_total_budget + base_buy_budget > 0:
+                        logger.info(
+                            f"📨 发送订单 | 策略 '{self.strategy_name}' | "
+                            f"Tick步数: {self.current_tick_steps}/410 | "
+                            f"触发原因: {'信号触发+价格偏离' if buy_total_budget > 0 else ''}"
+                            f"{'基础预算保护' if base_buy_budget > 0 else ''} | "
+                            f"总预算: {self.total_budget:.2f} | "
+                            f"剩余预算: {self.remaining_budget:.2f} | "
+                            f"基础预算剩余: {self.left_base_budget:.2f} | "
+                            f"本次分配: [信号部分={buy_total_budget:.2f}] "
+                            f"[基础部分={base_buy_budget:.2f}] | "
+                            f"参考价/基价: {self.reference_price:.4f}/{self.base_price:.4f} | "
+                            f"当前价: {lastPrice:.4f} | "
+                            f"偏离: {price_diff*100:.2f}%"
+                        )
                         self.send_orders(data, buy_total_budget + base_buy_budget)
 
                 elif (lastPrice - self.limit_down_price) / self.base_price < 0.01 and self.left_base_budget > 0 and lastPrice <= self.base_price * 0.99:
                     base_buy_budget = self.left_base_budget
+                    logger.info(
+                        f"🛡️ 发送订单 | 策略 '{self.strategy_name}' | "
+                        f"Tick步数: {self.current_tick_steps}/410 | "
+                        f"触发原因: 接近跌停保护 | "
+                        f"总预算: {self.total_budget:.2f} | "
+                        f"基础预算剩余: {self.left_base_budget:.2f}→0 | "
+                        f"本次分配: {base_buy_budget:.2f} | "
+                        f"基价/跌停价: {self.base_price:.4f}/{self.limit_down_price:.4f} | "
+                        f"当前价: {lastPrice:.4f}"
+                    )
                     self.left_base_budget = 0
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
@@ -801,11 +825,31 @@ class MinCostOrderMonitor(object):
                 elif lastPrice < self.base_price * 0.99 and self.current_tick_steps - self.last_base_buy_tick_time > 100 and self.left_base_budget > 0:
 
                     base_buy_budget = min(self.left_base_budget, self.base_budget * 1/3)
+                    logger.info(
+                        f"⏱️ 发送订单 | 策略 '{self.strategy_name}' | "
+                        f"Tick步数: {self.current_tick_steps}/410 | "
+                        f"触发原因: 超时补仓(>{self.last_base_buy_tick_time}+100ticks) | "
+                        f"总预算: {self.total_budget:.2f} | "
+                        f"基础预算剩余: {self.left_base_budget:.2f}→{self.left_base_budget - base_buy_budget:.2f} | "
+                        f"本次分配: {base_buy_budget:.2f} | "
+                        f"基价: {self.base_price:.4f} | "
+                        f"折价: {(self.base_price - lastPrice)/self.base_price*100:.2f}%"
+                    )
                     self.left_base_budget = self.left_base_budget - base_buy_budget
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
                 elif self.current_tick_steps > 200 and lastPrice < self.base_price * 0.99 and self.left_base_budget > 0:
                     base_buy_budget = self.left_base_budget
+                    logger.info(
+                        f"⌛ 发送订单 | 策略 '{self.strategy_name}' | "
+                        f"Tick步数: {self.current_tick_steps}/410 | "
+                        f"触发原因: 尾盘保护(>200ticks) | "
+                        f"总预算: {self.total_budget:.2f} | "
+                        f"基础预算剩余: {self.left_base_budget:.2f}→0 | "
+                        f"本次分配: {base_buy_budget:.2f} | "
+                        f"基价: {self.base_price:.4f} | "
+                        f"折价: {(self.base_price - lastPrice)/self.base_price*100:.2f}%"
+                    )
                     self.left_base_budget = 0
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)

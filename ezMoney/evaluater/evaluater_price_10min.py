@@ -454,13 +454,12 @@ class SignalDetector:
         return None
 
 def backtest_single_stock(stock_data, strategy_name, params):
-
-    """
-    单只股票回测
-    :param stock_data: dict - {base_price, budget, prices, volumes}
-    :param params: dict - 策略参数
-    :return: (avg_cost, min_price, gap_ratio)
-    """
+    """单只股票回测（带详细日志和可视化）"""
+    # 创建输出目录
+    output_dir = f"backtest_results/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{strategy_name}"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 提取股票数据
     base_price = stock_data['base_price']
     total_budget = stock_data['budget']
     base_budget = stock_data['base_budget']
@@ -471,7 +470,7 @@ def backtest_single_stock(stock_data, strategy_name, params):
     datekey = stock_data['datekey']
     stock_code = stock_data['stock_code']
     
-    # 计算实际最低价（修正：使用传入数据中的最低价）
+    # 计算实际最低价
     min_price = min(prices)
     if min_price <= 0:
         raise ValueError(f"最低价必须大于0 {min_price} {strategy_name}")
@@ -484,6 +483,10 @@ def backtest_single_stock(stock_data, strategy_name, params):
         kalman_r=params['kalman_r'],
         sg_window=params['sg_window']
     )
+    
+    # 启用调试模式
+    detector_params = params.copy()
+    detector_params['debug'] = True
     
     detector = SignalDetector(
         macd_fast=params['macd_fast'],
@@ -501,82 +504,169 @@ def backtest_single_stock(stock_data, strategy_name, params):
         price_drop_threshold=params.get('price_drop_threshold', 0.005),
         max_confirm_ticks=params.get('max_confirm_ticks', 10),
         volume_weight=params['volume_weight'],
-        debug=params.get('debug', False)
+        debug=True  # 强制启用调试模式
     )
     
     # 状态变量
-    buy_points = []  # (价格, 金额, 信号强度)
+    buy_points = []  # (tick_index, 价格, 金额, 信号强度, 买入原因)
     reference_price = base_price
     remaining_budget = total_budget
     left_base_budget = base_budget
     last_base_buy_tick_time = 0
     
+    # 记录平滑价格和原始价格
+    smooth_prices = []
+    raw_prices = []
+    
+    # 记录每个tick的状态
+    tick_logs = []
+    
+    logger.info(f"\n{'='*80}")
+    logger.info(f"开始回测: 股票 {stock_code}, 日期 {datekey}, 策略 {strategy_name}")
+    logger.info(f"初始价格: {base_price:.4f}, 总预算: {total_budget:.2f}, 基准预算: {base_budget:.2f}")
+    logger.info(f"参数设置: {params}")
+    logger.info(f"{'='*80}\n")
+    
     # 处理每个tick
     for i, (raw_price, volume) in enumerate(zip(prices, volumes)):
+        # 记录当前状态
+        tick_info = {
+            'tick': i,
+            'raw_price': raw_price,
+            'volume': volume,
+            'remaining_budget': remaining_budget,
+            'left_base_budget': left_base_budget,
+            'reference_price': reference_price,
+            'action': None,
+            'action_reason': None,
+            'action_amount': 0
+        }
         
         # 平滑价格
         smooth_price = filter.update(raw_price)
+        smooth_prices.append(smooth_price)
+        raw_prices.append(raw_price)
         
         # 检测信号
         signal = detector.update(smooth_price, volume)
         
-        if signal:
+        buy_action = False
+        buy_reason = None
+        buy_amount = 0
+        base_buy_budget = 0
+        buy_total_budget = 0
+        
+        if signal and i <= 410:
             # 计算价格差异（相对于基准价）
             price_diff = (reference_price - raw_price) / base_price
-            base_buy_budget = 0
-            buy_total_budget = 0
+            
+            # 基准预算买入逻辑
             if (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0:
                 base_buy_budget = left_base_budget
                 left_base_budget = 0
                 last_base_buy_tick_time = i
-
+                buy_reason = f"触及下跌价格线({down_price:.4f})"
+                buy_action = True
             elif (base_price - raw_price) / base_price > 0.01 and left_base_budget > 0:
                 down_base_pct = (base_price - raw_price) / base_price
                 base_buy_budget = max(1/3, down_base_pct / max_down_pct) * base_budget
                 base_buy_budget = min(base_buy_budget, left_base_budget)
                 left_base_budget = left_base_budget - base_buy_budget
                 last_base_buy_tick_time = i
+                buy_reason = f"价格下跌({down_base_pct*100:.2f}%)触发基准买入"
+                buy_action = True
                 
-            # 只有跌幅超过1%才买入
+            # 信号买入逻辑
             if price_diff >= 0.01 and remaining_budget > 0:
                 buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[strategy_name]
-                buy_amount = buy_pct * total_budget
+                buy_total_budget = buy_pct * total_budget
                 
-                if buy_pct > 1/4 or buy_amount > 20000:
+                if buy_pct > 1/4 or buy_total_budget > 20000:
                     # 执行买入
-                    buy_total_budget = buy_amount
-                    remaining_budget -= buy_amount
-                    
-                    # 更新基准价格为当前买入价
+                    remaining_budget -= buy_total_budget
                     reference_price = raw_price
-                    
-                    # 调试输出
-                    if params.get('debug', False):
-                        logger.info(f"买入点: 价格={raw_price:.4f}, "
-                                   f"金额={buy_amount:.2f}, "
-                                   f"强度={signal['strength']:.4f}")
+                    buy_reason = f"信号买入({signal['type']}, 强度:{signal['strength']:.4f})"
+                    buy_action = True
+            
             if buy_total_budget + base_buy_budget > 0:
-                buy_points.append((raw_price, buy_total_budget + base_buy_budget, signal['strength']))
-        elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price:
+                total_buy_amount = buy_total_budget + base_buy_budget
+                buy_points.append((i, raw_price, total_buy_amount, signal['strength'] if signal else 0, buy_reason))
+                
+                # 记录买入日志
+                logger.info(f"Tick {i:4d} - 买入操作: {buy_reason}")
+                logger.info(f"    价格: {raw_price:.4f}, 金额: {total_buy_amount:.2f} "
+                          f"(信号部分: {buy_total_budget:.2f}, 基准部分: {base_buy_budget:.2f})")
+                logger.info(f"    剩余总预算: {remaining_budget:.2f}, 剩余基准预算: {left_base_budget:.2f}")
+                
+                tick_info['action'] = 'BUY'
+                tick_info['action_reason'] = buy_reason
+                tick_info['action_amount'] = total_buy_amount
+                
+        # 其他买入逻辑
+        elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price and i <= 410:
             base_buy_budget = left_base_budget
             left_base_budget = 0
-            buy_points.append((raw_price, base_buy_budget, 0))
+            buy_points.append((i, raw_price, base_buy_budget, 0, "触及下跌价格线"))
             last_base_buy_tick_time = i
-        elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0:
+            buy_action = True
+            
+            logger.info(f"Tick {i:4d} - 买入操作: 触及下跌价格线({down_price:.4f})")
+            logger.info(f"    价格: {raw_price:.4f}, 金额: {base_buy_budget:.2f}")
+            logger.info(f"    剩余基准预算: {left_base_budget:.2f}")
+            
+            tick_info['action'] = 'BUY'
+            tick_info['action_reason'] = "触及下跌价格线"
+            tick_info['action_amount'] = base_buy_budget
+            
+        elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0 and i <= 410:
             base_buy_budget = min(left_base_budget, base_budget * 1/3)
             left_base_budget = left_base_budget - base_buy_budget
-            buy_points.append((raw_price, base_buy_budget, 0))
+            buy_points.append((i, raw_price, base_buy_budget, 0, "长时间未买入"))
             last_base_buy_tick_time = i
-        elif i > 200 and raw_price < base_price and left_base_budget > 0:
+            buy_action = True
+            
+            logger.info(f"Tick {i:4d} - 买入操作: 长时间未买入(超过100 ticks)")
+            logger.info(f"    价格: {raw_price:.4f}, 金额: {base_buy_budget:.2f}")
+            logger.info(f"    剩余基准预算: {left_base_budget:.2f}")
+            
+            tick_info['action'] = 'BUY'
+            tick_info['action_reason'] = "长时间未买入"
+            tick_info['action_amount'] = base_buy_budget
+            
+        elif i > 200 and raw_price < base_price and left_base_budget > 0 and i <= 410:
             base_buy_budget = left_base_budget
             left_base_budget = 0
-            buy_points.append((raw_price, base_buy_budget, 0))
+            buy_points.append((i, raw_price, base_buy_budget, 0, "尾盘买入"))
             last_base_buy_tick_time = i
+            buy_action = True
+            
+            logger.info(f"Tick {i:4d} - 买入操作: 尾盘买入(超过200 ticks)")
+            logger.info(f"    价格: {raw_price:.4f}, 金额: {base_buy_budget:.2f}")
+            logger.info(f"    剩余基准预算: {left_base_budget:.2f}")
+            
+            tick_info['action'] = 'BUY'
+            tick_info['action_reason'] = "尾盘买入"
+            tick_info['action_amount'] = base_buy_budget
+        
+        # 记录tick日志
+        tick_info.update({
+            'smooth_price': smooth_price,
+            'remaining_budget_after': remaining_budget,
+            'left_base_budget_after': left_base_budget,
+            'reference_price_after': reference_price
+        })
+        
+        tick_logs.append(tick_info)
+        
+        # 详细tick日志（每10个tick或当有操作时）
+        if buy_action or i % 10 == 0:
+            logger.debug(f"Tick {i:4d} - 价格: {raw_price:.4f} (平滑: {smooth_price:.4f}), "
+                       f"成交量: {volume}, 预算: {remaining_budget:.2f}/{left_base_budget:.2f}")
 
     # 计算平均成本
     if buy_points:
-        total_value = sum(price * amount for price, amount, _ in buy_points)
-        total_amount = sum(amount for _, amount, _ in buy_points)
+        total_value = sum(price * amount for _, price, amount, _, _ in buy_points)
+        total_amount = sum(amount for _, _, amount, _, _ in buy_points)
         if total_amount <= 0:
             raise ValueError(f"总金额必须大于0 {buy_points} {strategy_name}")
         amount_use_pct = total_amount / (base_budget + total_budget)
@@ -588,7 +678,200 @@ def backtest_single_stock(stock_data, strategy_name, params):
     # 计算成本差距
     gap_ratio = (avg_cost - min_price) / min_price
     
+    # 记录最终结果
+    logger.info(f"\n{'='*80}")
+    logger.info(f"回测结果: 股票 {stock_code}, 日期 {datekey}")
+    logger.info(f"平均成本: {avg_cost:.4f}, 最低价: {min_price:.4f}, 差距比率: {gap_ratio:.4f}")
+    logger.info(f"买入次数: {len(buy_points)}, 预算使用率: {amount_use_pct*100:.2f}%")
+    logger.info(f"剩余总预算: {remaining_budget:.2f}, 剩余基准预算: {left_base_budget:.2f}")
+    
+    # 记录买入点详情
+    logger.info("\n买入点详情:")
+    for idx, (tick, price, amount, strength, reason) in enumerate(buy_points):
+        logger.info(f"#{idx+1} - Tick {tick}: 价格={price:.4f}, 金额={amount:.2f}, "
+                   f"强度={strength:.4f}, 原因={reason}")
+    
+    # 保存详细日志到CSV
+    df_logs = pd.DataFrame(tick_logs)
+    df_logs.to_csv(f"{output_dir}/{stock_code}_{datekey}_tick_logs.csv", index=False)
+    
+    # 绘制价格曲线
+    plt.figure(figsize=(15, 8))
+    
+    # 原始价格和平滑价格
+    plt.plot(raw_prices, label='原始价格', alpha=0.7, linewidth=1)
+    plt.plot(smooth_prices, label='平滑价格', alpha=0.9, linewidth=1.5)
+    
+    # 标记买入点
+    buy_ticks = [point[0] for point in buy_points]
+    buy_prices = [point[1] for point in buy_points]
+    plt.scatter(buy_ticks, buy_prices, color='red', s=50, zorder=5, label='买入点')
+    
+    # 添加文本标注
+    for i, (tick, price, amount, _, reason) in enumerate(buy_points):
+        plt.annotate(f"#{i+1}: {reason}\n${price:.2f}", 
+                    (tick, price),
+                    textcoords="offset points", 
+                    xytext=(0,10),
+                    ha='center',
+                    fontsize=8)
+    
+    # 添加参考线
+    plt.axhline(y=base_price, color='green', linestyle='--', alpha=0.5, label='基准价格')
+    plt.axhline(y=down_price, color='purple', linestyle='--', alpha=0.5, label='下跌价格线')
+    plt.axhline(y=min_price, color='blue', linestyle='--', alpha=0.5, label='最低价格')
+    
+    plt.title(f"价格走势 - {stock_code} ({datekey})")
+    plt.xlabel("Tick")
+    plt.ylabel("价格")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # 保存图像
+    plt.savefig(f"{output_dir}/{stock_code}_{datekey}_price_chart.png", dpi=150)
+    plt.close()
+    
+    logger.info(f"结果和图表已保存到: {output_dir}")
+    
     return avg_cost, min_price, gap_ratio, len(buy_points), amount_use_pct, stock_code, datekey
+
+
+# def backtest_single_stock(stock_data, strategy_name, params):
+
+#     """
+#     单只股票回测
+#     :param stock_data: dict - {base_price, budget, prices, volumes}
+#     :param params: dict - 策略参数
+#     :return: (avg_cost, min_price, gap_ratio)
+#     """
+#     base_price = stock_data['base_price']
+#     total_budget = stock_data['budget']
+#     base_budget = stock_data['base_budget']
+#     down_price = stock_data['down_price']
+#     prices = stock_data['prices']
+#     volumes = stock_data['volumes']
+#     last_close_price = stock_data['last_close_price']
+#     datekey = stock_data['datekey']
+#     stock_code = stock_data['stock_code']
+    
+#     # 计算实际最低价（修正：使用传入数据中的最低价）
+#     min_price = min(prices)
+#     if min_price <= 0:
+#         raise ValueError(f"最低价必须大于0 {min_price} {strategy_name}")
+#     max_down_pct = (base_price - down_price) / base_price
+    
+#     # 初始化组件
+#     filter = TripleFilter(
+#         ema_alpha=params['ema_alpha'],
+#         kalman_q=params['kalman_q'],
+#         kalman_r=params['kalman_r'],
+#         sg_window=params['sg_window']
+#     )
+    
+#     detector = SignalDetector(
+#         macd_fast=params['macd_fast'],
+#         macd_slow_ratio=params['macd_slow_ratio'],
+#         macd_signal=params['macd_signal'],
+#         ema_fast=params['ema_fast'],
+#         ema_slow_ratio=params['ema_slow_ratio'],
+#         volume_window=params['volume_window'],
+#         price_confirm_ticks=params['price_confirm_ticks'],
+#         strength_confirm_ticks=params['strength_confirm_ticks'],
+#         strength_threshold=params['strength_threshold'],
+#         use_price_confirm=params['use_price_confirm'],
+#         use_strength_confirm=params['use_strength_confirm'],
+#         dead_cross_threshold=params.get('dead_cross_threshold', 0.3),
+#         price_drop_threshold=params.get('price_drop_threshold', 0.005),
+#         max_confirm_ticks=params.get('max_confirm_ticks', 10),
+#         volume_weight=params['volume_weight'],
+#         debug=params.get('debug', False)
+#     )
+    
+#     # 状态变量
+#     buy_points = []  # (价格, 金额, 信号强度)
+#     reference_price = base_price
+#     remaining_budget = total_budget
+#     left_base_budget = base_budget
+#     last_base_buy_tick_time = 0
+    
+#     # 处理每个tick
+#     for i, (raw_price, volume) in enumerate(zip(prices, volumes)):
+        
+#         # 平滑价格
+#         smooth_price = filter.update(raw_price)
+        
+#         # 检测信号
+#         signal = detector.update(smooth_price, volume)
+        
+#         if signal:
+#             # 计算价格差异（相对于基准价）
+#             price_diff = (reference_price - raw_price) / base_price
+#             base_buy_budget = 0
+#             buy_total_budget = 0
+#             if (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0:
+#                 base_buy_budget = left_base_budget
+#                 left_base_budget = 0
+#                 last_base_buy_tick_time = i
+
+#             elif (base_price - raw_price) / base_price > 0.01 and left_base_budget > 0:
+#                 down_base_pct = (base_price - raw_price) / base_price
+#                 base_buy_budget = max(1/3, down_base_pct / max_down_pct) * base_budget
+#                 base_buy_budget = min(base_buy_budget, left_base_budget)
+#                 left_base_budget = left_base_budget - base_buy_budget
+#                 last_base_buy_tick_time = i
+                
+#             # 只有跌幅超过1%才买入
+#             if price_diff >= 0.01 and remaining_budget > 0:
+#                 buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[strategy_name]
+#                 buy_amount = buy_pct * total_budget
+                
+#                 if buy_pct > 1/4 or buy_amount > 20000:
+#                     # 执行买入
+#                     buy_total_budget = buy_amount
+#                     remaining_budget -= buy_amount
+                    
+#                     # 更新基准价格为当前买入价
+#                     reference_price = raw_price
+                    
+#                     # 调试输出
+#                     if params.get('debug', False):
+#                         logger.info(f"买入点: 价格={raw_price:.4f}, "
+#                                    f"金额={buy_amount:.2f}, "
+#                                    f"强度={signal['strength']:.4f}")
+#             if buy_total_budget + base_buy_budget > 0:
+#                 buy_points.append((raw_price, buy_total_budget + base_buy_budget, signal['strength']))
+#         elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price:
+#             base_buy_budget = left_base_budget
+#             left_base_budget = 0
+#             buy_points.append((raw_price, base_buy_budget, 0))
+#             last_base_buy_tick_time = i
+#         elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0:
+#             base_buy_budget = min(left_base_budget, base_budget * 1/3)
+#             left_base_budget = left_base_budget - base_buy_budget
+#             buy_points.append((raw_price, base_buy_budget, 0))
+#             last_base_buy_tick_time = i
+#         elif i > 200 and raw_price < base_price and left_base_budget > 0:
+#             base_buy_budget = left_base_budget
+#             left_base_budget = 0
+#             buy_points.append((raw_price, base_buy_budget, 0))
+#             last_base_buy_tick_time = i
+
+#     # 计算平均成本
+#     if buy_points:
+#         total_value = sum(price * amount for price, amount, _ in buy_points)
+#         total_amount = sum(amount for _, amount, _ in buy_points)
+#         if total_amount <= 0:
+#             raise ValueError(f"总金额必须大于0 {buy_points} {strategy_name}")
+#         amount_use_pct = total_amount / (base_budget + total_budget)
+#         avg_cost = total_value / total_amount
+#     else:
+#         avg_cost = base_price
+#         amount_use_pct = 0
+    
+#     # 计算成本差距
+#     gap_ratio = (avg_cost - min_price) / min_price
+    
+#     return avg_cost, min_price, gap_ratio, len(buy_points), amount_use_pct, stock_code, datekey
 
 def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
                                   population_size=30, generations=1200,

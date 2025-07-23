@@ -46,6 +46,9 @@ if __name__ == "__main__":
             order_id = int(data['order_id'])
             strategy_name = data['strategy_name']
             sub_strategy_name = data['sub_strategy_name']
+            order_type = data['order_type']
+            if order_type == 1:
+                continue
             order_volume = int(data['order_volume'])
             if order_id not in order_id_to_order_infos_dict:
                 order_id_to_order_infos_dict[order_id] = []

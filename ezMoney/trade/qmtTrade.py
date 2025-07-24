@@ -311,7 +311,8 @@ class QMTTrader:
                             stock_code = trade_info['stock_code']
                             strategy_name = trade_info['strategy_name']
                             sub_strategy_name = trade_info['sub_strategy_name']
-                            if sub_strategy_name:
+                            order_type = trade_info['order_type']
+                            if sub_strategy_name and order_type != 1:
                                 strategy_name = f"{strategy_name}:{sub_strategy_name}"
                             profit = trade_info['profit']
                             profit_pct = trade_info['profit_pct']
@@ -342,56 +343,61 @@ class QMTTrader:
                                 strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
                             if not strategy_meta_infos:
                                 raise
-                            strategy_meta_info = strategy_meta_infos[0]
-                            win_delta_budget = strategy_meta_info['win_delta_budget']
-                            budget = strategy_meta_info['budget']
-                            loss_delta_budget = strategy_meta_info['loss_delta_budget']
-                            win_budget_alpha = strategy_meta_info['win_budget_alpha']
-                            loss_budget_alpha = strategy_meta_info['loss_budget_alpha']
-                            profit_loss_log = strategy_meta_info['profit_loss_log']
-                            budget_change_log = strategy_meta_info['budget_change_log']
-                            total_profit = strategy_meta_info['total_profit']
+                            total_budget = 0
+                            for strategy_meta_info in strategy_meta_infos:
+                                total_budget =  total_budget + strategy_meta_info['budget'] if strategy_meta_info['budget'] > 0 else 0
+                            if total_budget <= 0:
+                                raise Exception(f"总预算小于等于0 {strategy_name}")
+                            for strategy_meta_info in strategy_meta_infos:
+                                id = strategy_meta_info['id']
+                                win_delta_budget = strategy_meta_info['win_delta_budget']
+                                budget = strategy_meta_info['budget']
+                                loss_delta_budget = strategy_meta_info['loss_delta_budget']
+                                win_budget_alpha = strategy_meta_info['win_budget_alpha']
+                                loss_budget_alpha = strategy_meta_info['loss_budget_alpha']
+                                profit_loss_log = strategy_meta_info['profit_loss_log']
+                                budget_change_log = strategy_meta_info['budget_change_log']
+                                total_profit = strategy_meta_info['total_profit']
 
-                            try:
-                                profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
-                            except json.JSONDecodeError:
-                                profit_loss_log_json = []
+                                if budget <= 0:
+                                    continue
 
-                            try:
-                                budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
-                            except json.JSONDecodeError:
-                                budget_change_log_json = []
-                            
-                            profit_loss_log_json.extend(profit_infos)
-                            cur_day_profit = strategy_to_profits[strategy_name] if strategy_name in strategy_to_profits else 0
-                            if cur_day_profit > 0:
-                                add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
-                                budget = budget + add_profit
-                                order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
-                                budget_change_log_json.append({
-                                    "date": date_key,
-                                    "add_budget": add_profit,
-                                    "timetag": "afternoon"
-                                })
-                            elif cur_day_profit < 0:
-                                add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
-                                budget = budget + add_profit
-                                order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
-                                budget_change_log_json.append({
-                                    "date": date_key,
-                                    "add_budget": add_profit,
-                                    "timetag": "afternoon"
-                                })
-                            budget_change_log_json_str = json.dumps(budget_change_log_json)
-                            profit_loss_log_json_str = json.dumps(profit_loss_log_json)
-                            total_profit = total_profit + cur_day_profit
+                                budget_pct = budget / total_budget
 
-                            if ':' in strategy_name:
-                                sub_strategy_name = strategy_name.split(':')[1]
-                                query_strategy_name = strategy_name.split(':')[0]
-                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
-                            else:
-                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'strategy_name': strategy_name})
+                                try:
+                                    profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
+                                except json.JSONDecodeError:
+                                    profit_loss_log_json = []
+
+                                try:
+                                    budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
+                                except json.JSONDecodeError:
+                                    budget_change_log_json = []
+                                
+                                profit_loss_log_json.extend(profit_infos)
+                                cur_day_profit = strategy_to_profits[strategy_name] * budget_pct if strategy_name in strategy_to_profits else 0
+                                if cur_day_profit > 0:
+                                    add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
+                                    budget = budget + add_profit
+                                    order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
+                                    budget_change_log_json.append({
+                                        "date": date_key,
+                                        "add_budget": add_profit,
+                                        "timetag": "afternoon"
+                                    })
+                                elif cur_day_profit < 0:
+                                    add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
+                                    budget = budget + add_profit
+                                    order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
+                                    budget_change_log_json.append({
+                                        "date": date_key,
+                                        "add_budget": add_profit,
+                                        "timetag": "afternoon"
+                                    })
+                                budget_change_log_json_str = json.dumps(budget_change_log_json)
+                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                total_profit = total_profit + cur_day_profit
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'id': id})
         if monning:
             updated_ids = []
             updated_oids = []

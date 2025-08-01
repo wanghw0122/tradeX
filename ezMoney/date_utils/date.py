@@ -125,6 +125,13 @@ def get_previous_trade_date(current_date = get_current_date()):
         return pre_day
     else:
         return pre_date
+    
+def get_previous_trade_date_n(current_date = get_current_date(), n = 3):
+    res_dates = []
+    for i in range(n):
+        current_date = get_previous_trade_date(current_date)
+        res_dates.append(current_date)
+    return res_dates
 
 def is_trade_date(date_str):
     """
@@ -248,9 +255,9 @@ def get_trade_dates(start_date, end_date, trade_days = 30):
 
 if __name__ == "__main__":
     
-    print(trade_date_list)
+    # print(trade_date_list)
     # print(is_trading_day("2025-03-03"))
 
     # print(get_trade_dates_by_end("2025-03-01"))
     # print(find_next_nth_date('2025-05-05', 10))
-    print(get_previous_trade_date('2025-06-17'))
+    print(get_previous_trade_date_n('2025-07-21'))

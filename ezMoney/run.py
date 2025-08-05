@@ -75,7 +75,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-07-30"
+test_date = "2025-08-05"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1436,12 +1436,65 @@ strategies = {
         "sub_strategies": {
             "一进二弱转强": {
                 "code": "9G0003",
-                "returnNum": 3,
+                "returnNum": 5,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
                     {
-                    'filtered': True,
+                    'mark': '倒接力5',
+                    'limit': 5,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '倒接力4',
+                    'limit': 4,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '倒接力3',
+                    'limit': 3,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '正接力',
+                    'limit': 3,
+                    'filtered': False,
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 101,
@@ -1455,6 +1508,7 @@ strategies = {
                     'except_is_ppp': False,
                     'except_is_track': False
                     }
+
                 ]
             }
           
@@ -1927,6 +1981,8 @@ def group_filter_fuc(candicates, code_to_index_dict,filtered = True, fx_filtered
     if not codes:
         return []
     if not filtered:
+        if topn < 0:
+            return codes[-1:]
         return codes[:topn]
     code_to_index_dict = {key: value for key, value in code_to_index_dict.items() if key in codes}
     if fx_filtered:

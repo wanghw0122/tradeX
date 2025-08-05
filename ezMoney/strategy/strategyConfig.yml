@@ -1164,10 +1164,10 @@ Strategies:
             desc: "过滤竞王分"
             logged: false
             params:
-              xcjwScore: 10
+              xcjwScore: 0
           - name: "jl_filter"
             index: 5
             desc: "过滤接力分"
             logged: false
             params:
-              xcjlScore: 1
+              xcjlScore: 0

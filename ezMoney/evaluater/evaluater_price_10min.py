@@ -42,7 +42,9 @@ strategy_name_to_max_down_pct = {
     '低位孕线低吸': 7,
     '低位中强中低开低吸': 7,
     '中强中低开低吸': 7,
-    '首红断低吸': 7
+    '首红断低吸': 7,
+    '一进二弱转强': 5,
+    '高位高强追涨': 6.5,
 }
 
 class TripleFilter:
@@ -935,6 +937,7 @@ def genetic_algorithm_optimization(stocks_data, param_ranges, strategy_name,
             avg_gaps.append(avg_gap)  # 存储avg_gap
             avg_amount_use_pcts.append(avg_amount_use_pct)  # 存储avg_amount_use_pct
         except Exception as e:
+            
             logger.error(f"评估失败: {e}")
             fitness_scores.append(float('inf'))
             avg_gaps.append(float('inf'))  # 添加默认值
@@ -1435,9 +1438,10 @@ def evaluate_params(stocks_data, strategy_name, params):
         except Exception as e:
             error_msg = f"回测失败: {str(e)}"
             progress_bar.write(f"【错误】{error_msg}")
+            progress_bar.write(f"【堆栈跟踪】{traceback.format_exc()}")
             failed_tests.append({
                 "stock": stock_data.get('stock_code', '未知'),
-                "date": stock_data.get('date', '未知'),
+                "date": stock_data.get('datekey', '未知'),
                 "error": error_msg,
                 "traceback": traceback.format_exc()
             })
@@ -1476,7 +1480,8 @@ def build_all_stock_datas(strategy_name, min_num=3):
 
     # 定义查询月份
     months = ['202409', '202410', '202411', '202412', '202501', '202502', 
-              '202503', '202504', '202505', '202506', '202507']
+              '202503', '202504', '202505', '202506', '202507', '202508']
+
     
     # 从数据库合并数据
     combined_df = pd.DataFrame()
@@ -1757,9 +1762,14 @@ if __name__ == "__main__":
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
+    # strategy_names = [
+    #     '高强中低开低吸', '低位高强低吸', '低位中强中低开低吸', 
+    #     '中强中低开低吸', '首红断低吸', '低位高强中低开低吸', '低位孕线低吸'
+    # ]
+
     strategy_names = [
-        '高强中低开低吸', '低位高强低吸', '低位中强中低开低吸', 
-        '中强中低开低吸', '首红断低吸', '低位高强中低开低吸', '低位孕线低吸'
+        '一进二弱转强',
+        '高位高强追涨',
     ]
     
     import concurrent.futures

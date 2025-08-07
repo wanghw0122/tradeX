@@ -23,7 +23,10 @@ strategy_name_to_max_down_pct = {
     '低位孕线低吸': 5.5,
     '低位中强中低开低吸': 5.5,
     '中强中低开低吸': 5.5,
-    '首红断低吸': 5.5
+    '首红断低吸': 5.5,
+    '一进二弱转强': 4,
+    '高位高强追涨': 5.5,
+
 }
 
 strategy_name_to_main_strategy_name = {
@@ -33,7 +36,10 @@ strategy_name_to_main_strategy_name = {
     '低位孕线低吸': '低吸-低位孕线低吸',
     '低位中强中低开低吸': '低吸-低位中强中低开低吸',
     '中强中低开低吸': '低吸-中强中低开低吸',
-    '首红断低吸': '低吸-首红断低吸'
+    '首红断低吸': '低吸-首红断低吸',
+    '一进二弱转强': '接力-一进二弱转强',
+    '高位高强追涨': '追涨-高位高强追涨',
+
 }
 
 strategy_name_to_sub_strategy_name = {
@@ -43,7 +49,9 @@ strategy_name_to_sub_strategy_name = {
     '低位孕线低吸': '第一高频',
     '低位中强中低开低吸': '第一高频',
     '中强中低开低吸': '第二高频',
-    '首红断低吸': ''
+    '首红断低吸': '',
+    '一进二弱转强': '倒接力4',
+    '高位高强追涨': '',
 }
 
 
@@ -806,7 +814,7 @@ class MinCostOrderMonitor(object):
                         )
                         self.send_orders(data, buy_total_budget + base_buy_budget)
 
-                elif (lastPrice - self.limit_down_price) / self.base_price < 0.01 and self.left_base_budget > 0 and lastPrice <= self.base_price * 0.99:
+                elif (lastPrice - self.limit_down_price) / self.base_price < 0.01 and self.left_base_budget > 0 and lastPrice <= self.base_price * 0.992:
                     base_buy_budget = self.left_base_budget
                     logger.info(
                         f"🛡️ 发送订单 | 策略 '{self.strategy_name}' | "
@@ -822,7 +830,7 @@ class MinCostOrderMonitor(object):
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
 
-                elif lastPrice < self.base_price * 0.99 and self.current_tick_steps - self.last_base_buy_tick_time > 100 and self.left_base_budget > 0:
+                elif lastPrice < self.base_price * 0.992 and (self.current_tick_steps - self.last_base_buy_tick_time > 100 or self.last_base_buy_tick_time == 0) and self.left_base_budget > 0:
 
                     base_buy_budget = min(self.left_base_budget, self.base_budget * 1/3)
                     logger.info(
@@ -838,7 +846,7 @@ class MinCostOrderMonitor(object):
                     self.left_base_budget = self.left_base_budget - base_buy_budget
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
-                elif self.current_tick_steps > 200 and lastPrice < self.base_price * 0.99 and self.left_base_budget > 0:
+                elif self.current_tick_steps > 200 and lastPrice < self.base_price * 0.992 and self.left_base_budget > 0:
                     base_buy_budget = self.left_base_budget
                     logger.info(
                         f"⌛ 发送订单 | 策略 '{self.strategy_name}' | "

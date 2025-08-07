@@ -781,7 +781,7 @@ class MinCostOrderMonitor(object):
                         
                     # 只有跌幅超过1%才买入
                     if price_diff >= 0.01 and self.remaining_budget > 0:
-                        buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[self.strategy_name] if self.strategy_name in strategy_name_to_max_down_pct else price_diff * 100 / 5.5
+                        buy_pct = price_diff * 100 / (strategy_name_to_max_down_pct[self.strategy_name] if self.strategy_name in strategy_name_to_max_down_pct else price_diff * 100 / 5.5)
                         buy_amount = min(buy_pct * self.total_budget, self.remaining_budget)
                         
                         if buy_pct > 1/4 or buy_amount > 7000:

@@ -36,15 +36,15 @@ def init_process():
 
 
 strategy_name_to_max_down_pct = {
-    '高强中低开低吸': 7,
+    '高强中低开低吸': 5.5,
     '低位高强中低开低吸': 3,
-    '低位高强低吸': 6,
-    '低位孕线低吸': 7,
-    '低位中强中低开低吸': 7,
-    '中强中低开低吸': 7,
-    '首红断低吸': 7,
-    '一进二弱转强': 5,
-    '高位高强追涨': 6.5,
+    '低位高强低吸': 5.5,
+    '低位孕线低吸': 5.5,
+    '低位中强中低开低吸': 5.5,
+    '中强中低开低吸': 5.5,
+    '首红断低吸': 5.5,
+    '一进二弱转强': 4,
+    '高位高强追涨': 5.5,
 }
 
 class TripleFilter:
@@ -823,14 +823,15 @@ def backtest_single_stock(stock_data, strategy_name, params):
                 last_base_buy_tick_time = i
                 
             # 只有跌幅超过1%才买入
-            if price_diff >= 0.01 and remaining_budget > 0:
+            if price_diff >= 0.005 and remaining_budget > 0:
                 buy_pct = price_diff * 100 / strategy_name_to_max_down_pct[strategy_name]
-                buy_amount = buy_pct * total_budget
+                buy_amount = min(buy_pct * total_budget, remaining_budget)
                 
-                if buy_pct > 1/4 or buy_amount > 20000:
+                if buy_pct > 1/5 or buy_amount > 5000:
                     # 执行买入
                     buy_total_budget = buy_amount
-                    remaining_budget -= buy_amount
+                    # remaining_budget -= buy_amount
+                    remaining_budget = max(0, remaining_budget - buy_amount)
                     
                     # 更新基准价格为当前买入价
                     reference_price = raw_price
@@ -842,17 +843,17 @@ def backtest_single_stock(stock_data, strategy_name, params):
                                    f"强度={signal['strength']:.4f}")
             if buy_total_budget + base_buy_budget > 0:
                 buy_points.append((raw_price, buy_total_budget + base_buy_budget, signal['strength']))
-        elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price:
+        elif (raw_price - down_price) / base_price < 0.01 and left_base_budget > 0 and raw_price <= base_price :
             base_buy_budget = left_base_budget
             left_base_budget = 0
             buy_points.append((raw_price, base_buy_budget, 0))
             last_base_buy_tick_time = i
-        elif raw_price < base_price and i - last_base_buy_tick_time > 100 and left_base_budget > 0:
+        elif raw_price < base_price * 0.992 and (i - last_base_buy_tick_time >= 100 or last_base_buy_tick_time == 0) and left_base_budget > 0:
             base_buy_budget = min(left_base_budget, base_budget * 1/3)
             left_base_budget = left_base_budget - base_buy_budget
             buy_points.append((raw_price, base_buy_budget, 0))
             last_base_buy_tick_time = i
-        elif i > 200 and raw_price < base_price and left_base_budget > 0:
+        elif i > 200 and raw_price < base_price * 0.992 and left_base_budget > 0:
             base_buy_budget = left_base_budget
             left_base_budget = 0
             buy_points.append((raw_price, base_buy_budget, 0))
@@ -1586,7 +1587,7 @@ def build_stock_datas(stock_code, datekey):
     min_price = 100000
     for index, row in filtered_df.iterrows():
         current_tick_steps = current_tick_steps + 1
-        if current_tick_steps > 410:
+        if current_tick_steps > 405:
             break
         data = row.to_dict()
         timestamp = data['time']
@@ -1623,7 +1624,7 @@ def build_stock_datas(stock_code, datekey):
             last_close_price = lastClose
         prices.append(lastPrice)
 
-    if min_price <= base_price:
+    if min_price < base_price:
 
         return {
             'base_price': base_price,
@@ -1653,24 +1654,24 @@ def run_strategy_optimization(strategy_name):
         
         # 定义参数范围
         param_ranges = {
-            'ema_alpha': (0.05, 0.3),
+            'ema_alpha': (0.03, 0.3),
             'kalman_q': (0.01, 0.05),
             'kalman_r': (0.02, 0.1),
             'sg_window': (7, 21),
-            'macd_fast': (3, 12),
+            'macd_fast': (2, 12),
             'macd_slow_ratio': (1.2, 3),
-            'macd_signal': (3, 15),
-            'ema_fast': (3, 12),
+            'macd_signal': (2, 15),
+            'ema_fast': (2, 12),
             'ema_slow_ratio': (1.2, 3),
-            'volume_window': (3, 14),
+            'volume_window': (2, 14),
             'price_confirm_ticks': (1, 10),
             'strength_confirm_ticks': (1, 10),
             'strength_threshold': (0.3, 5),
             'volume_weight': (0.05, 1.0),
             'use_price_confirm': (True, False),  # 布尔值范围
             'use_strength_confirm': (True, False),  # 布尔值范围
-            'dead_cross_threshold': (0, 0.01),
-            'price_drop_threshold': (0.001, 0.007),
+            'dead_cross_threshold': (0, 0.05),
+            'price_drop_threshold': (0.001, 0.02),
             'max_confirm_ticks': (1, 20)
         }
         
@@ -1762,15 +1763,17 @@ if __name__ == "__main__":
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
-    # strategy_names = [
-    #     '高强中低开低吸', '低位高强低吸', '低位中强中低开低吸', 
-    #     '中强中低开低吸', '首红断低吸', '低位高强中低开低吸', '低位孕线低吸'
-    # ]
-
     strategy_names = [
+        '高强中低开低吸', '低位高强低吸', '低位中强中低开低吸', 
+        '中强中低开低吸', '首红断低吸', '低位高强中低开低吸', '低位孕线低吸',
         '一进二弱转强',
         '高位高强追涨',
     ]
+
+    # strategy_names = [
+    #     '一进二弱转强',
+    #     '高位高强追涨',
+    # ]
     
     import concurrent.futures
 

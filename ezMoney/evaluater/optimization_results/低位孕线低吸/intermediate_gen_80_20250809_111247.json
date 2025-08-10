@@ -1,0 +1,28 @@
+{
+    "strategy": "低位孕线低吸",
+    "generation": 80,
+    "best_score": 0.01624839945911366,
+    "best_params": {
+        "ema_alpha": 0.19220874409971964,
+        "kalman_q": 0.040460885327528784,
+        "kalman_r": 0.02,
+        "sg_window": 9,
+        "macd_fast": 3,
+        "macd_slow_ratio": 1.7192410766943276,
+        "macd_signal": 2,
+        "ema_fast": 5,
+        "ema_slow_ratio": 1.8313294663413804,
+        "volume_window": 13,
+        "price_confirm_ticks": 3,
+        "strength_confirm_ticks": 5,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.9196872980885701,
+        "use_price_confirm": false,
+        "use_strength_confirm": false,
+        "dead_cross_threshold": 0.03617051193505334,
+        "price_drop_threshold": 0.016146653963047163,
+        "max_confirm_ticks": 9,
+        "debug": false
+    },
+    "timestamp": "20250809_111247"
+}

@@ -1783,6 +1783,10 @@ def get_min_cost_strategy_by_strategy_name(strategy_name):
         return '首红断低吸'
     elif '中强中低开低吸' in strategy_name:
         return '中强中低开低吸'
+    elif '一进二弱转强' in strategy_name:
+        return '一进二弱转强'
+    elif '高位高强追涨' in strategy_name:
+        return '高位高强追涨'
     else:
         return None
 
@@ -3039,6 +3043,8 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
             elif type(data) == dict and len(data) > 0:
                 code_to_order_info_dict = {}
                 code_strategy_name_to_base_budget = {}
+                code_strategy_name_to_sub_strategy_names = {}
+
                 for code_info, (code_info, position, buffers, mark_info) in data.items():
                     strategy_name = code_info.split('|')[0]
                     sub_strategy_name = ''
@@ -3069,6 +3075,8 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         min_budget = all_data[0]['min_budget']
                         base_pct = all_data[0]['base_pct']
                         down_pct = all_data[0]['down_pct']
+                        down_pct = min(down_pct, 1)
+                        down_pct = max(down_pct, 0)
                             
                         down_budget = total_assert * down_pct
                         total_assert = total_assert - down_budget
@@ -3083,6 +3091,11 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                                 code_strategy_name_to_base_budget[(code, min_cost_strategy_name)] = {}
                                 code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['budget'] = down_budget
                                 code_strategy_name_to_base_budget[(code, min_cost_strategy_name)]['base_budget'] = base_budget
+                            if sub_strategy_name:
+                                if (code, min_cost_strategy_name) in code_strategy_name_to_sub_strategy_names:
+                                    code_strategy_name_to_sub_strategy_names[(code, min_cost_strategy_name)].append(sub_strategy_name)
+                                else:
+                                    code_strategy_name_to_sub_strategy_names[(code, min_cost_strategy_name)] = [sub_strategy_name]
 
                         total_assert = min(total_assert, max_budget)
                         total_assert = max(total_assert, min_budget)
@@ -3100,15 +3113,23 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                 order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
 
                 order_logger.info(f"code_strategy_name_to_base_budget: {code_strategy_name_to_base_budget}")
+                order_logger.info(f"code_strategy_name_to_sub_strategy_names: {code_strategy_name_to_sub_strategy_names}")
+
 
                 if code_strategy_name_to_base_budget:
                     for code_strategy_name, base_budgets in code_strategy_name_to_base_budget.items():
+                        sub_strategy_names = []
+                        if code_strategy_name in code_strategy_name_to_sub_strategy_names:
+                            sub_strategy_names = code_strategy_name_to_sub_strategy_names[code_strategy_name]
+                        else:
+                            sub_strategy_names = []
+                        sub_strategy_str = ','.join(sub_strategy_names)
                         code = code_strategy_name[0]
                         strategy_name = code_strategy_name[1]
                         budget = base_budgets['budget']
                         base_budget = base_budgets['base_budget']
-                        min_cost_q.put((code, strategy_name, budget, base_budget))
-                        logger.info(f"min_cost_q: {code, strategy_name, budget, base_budget}")
+                        min_cost_q.put((code, strategy_name, budget, base_budget, sub_strategy_str))
+                        logger.info(f"min_cost_q: {code, strategy_name, budget, base_budget, sub_strategy_str}")
 
                 cash_thresh, t_cash = get_order_info_dict_cash_thresh(code_to_order_info_dict=code_to_order_info_dict, cash = cash, cash_discount=cash_discount)
                 if cash_thresh < 0.99999:
@@ -4652,7 +4673,8 @@ def start_min_cost_order_monitor(min_cost_queue):
         while True and not have_sub_scribe:
             data = min_cost_queue.get()
             if type(data) == tuple:
-                stock_code, strategy_name, budget, base_budget = data
+                stock_code, strategy_name, budget, base_budget, sub_strategy_str = data
+
                 if budget <=0 and base_budget <= 0:
                     continue
                 stock_name = offlineStockQuery.get_stock_name(stock_code)
@@ -4667,7 +4689,7 @@ def start_min_cost_order_monitor(min_cost_queue):
                     continue
                 params['budget'] = budget
                 params['base_budget'] = base_budget
-                stock_monitor = MinCostOrderMonitor(stock_code=stock_code, stock_name=stock_name, strategy_name=strategy_name, params=params,  qmt_trader=qmt_trader)
+                stock_monitor = MinCostOrderMonitor(stock_code=stock_code, stock_name=stock_name, strategy_name=strategy_name, params=params, sub_strategy_str=sub_strategy_str, qmt_trader=qmt_trader)
                 if stock_code in code_to_min_cost_order_monitor:
                     code_to_min_cost_order_monitor[stock_code].append(stock_monitor)
                 else:

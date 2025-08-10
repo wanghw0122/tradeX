@@ -1,6 +1,7 @@
 import pprint
 import re
 import time, sys
+from turtle import down
 from arrow import get
 from numpy import true_divide
 from xtquant import xttrader
@@ -300,7 +301,9 @@ class QMTTrader:
             if updated_oids:
                 order_logger.info(f"准备收益和预算更新，更新ids {updated_oids}")
                 strategy_to_profits = {}
+                strategy_to_base_profits = {}
                 strategy_to_logs = {}
+                strategy_to_base_logs = {}
                 # 更新收益和预算
                 with SQLiteManager(db_name) as manager:
                     for oid in updated_oids:
@@ -309,6 +312,7 @@ class QMTTrader:
                             trade_info = trade_infos[0]
                             date_key = trade_info['date_key']
                             stock_code = trade_info['stock_code']
+                            stock_name = trade_info['stock_name']
                             strategy_name = trade_info['strategy_name']
                             sub_strategy_name = trade_info['sub_strategy_name']
                             order_type = trade_info['order_type']
@@ -324,15 +328,29 @@ class QMTTrader:
                             profit_info = {
                                 "date": date_key,
                                 "stock_code": stock_code,
+                                "stock_name": stock_name,
+                                "order_type": order_type,
                                 "profit": profit,
                                 "profit_pct": profit_pct
                             }
-                            if strategy_name not in strategy_to_logs:
-                                strategy_to_logs[strategy_name] = []
-                            if strategy_name not in strategy_to_profits:
-                                strategy_to_profits[strategy_name] = 0
-                            strategy_to_logs[strategy_name].append(profit_info)
-                            strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
+
+                            if order_type != 1:
+                                if strategy_name not in strategy_to_logs:
+                                    strategy_to_logs[strategy_name] = []
+                                    
+                                if strategy_name not in strategy_to_profits:
+                                    strategy_to_profits[strategy_name] = 0
+                                strategy_to_logs[strategy_name].append(profit_info)
+                                strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
+                            elif order_type == 1:
+                                if strategy_name not in strategy_to_base_logs:
+                                    strategy_to_base_logs[strategy_name] = []
+                                    
+                                if strategy_name not in strategy_to_base_profits:
+                                    strategy_to_base_profits[strategy_name] = 0
+                                strategy_to_base_logs[strategy_name].append(profit_info)
+                                strategy_to_base_profits[strategy_name] = strategy_to_base_profits[strategy_name] + profit
+
                     for strategy_name, profit_infos in strategy_to_logs.items():
                             sub_strategy_name = ''
                             if ':' in strategy_name:
@@ -341,13 +359,23 @@ class QMTTrader:
                                 strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': query_strategy_name, 'sub_strategy_name': sub_strategy_name})
                             else:
                                 strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+                            
                             if not strategy_meta_infos:
-                                raise
+                                continue
                             total_budget = 0
                             for strategy_meta_info in strategy_meta_infos:
-                                total_budget =  total_budget + strategy_meta_info['budget'] if strategy_meta_info['budget'] > 0 else 0
+                                down_pct = strategy_meta_info['down_pct']
+                                down_pct = min(down_pct, 1)
+                                down_pct = max(down_pct, 0)
+                                budget = strategy_meta_info['budget']
+                                if budget <= 0:
+                                    continue
+                                cur_budget = budget * (1 - down_pct)
+                                total_budget =  total_budget + cur_budget
+                            
                             if total_budget <= 0:
-                                raise Exception(f"总预算小于等于0 {strategy_name}")
+                                order_logger.error(f"总预算小于等于0 跳过 {strategy_name}")
+                                continue
                             for strategy_meta_info in strategy_meta_infos:
                                 id = strategy_meta_info['id']
                                 win_delta_budget = strategy_meta_info['win_delta_budget']
@@ -358,11 +386,15 @@ class QMTTrader:
                                 profit_loss_log = strategy_meta_info['profit_loss_log']
                                 budget_change_log = strategy_meta_info['budget_change_log']
                                 total_profit = strategy_meta_info['total_profit']
+                                
+                                down_pct = strategy_meta_info['down_pct']
+                                down_pct = min(down_pct, 1)
+                                down_pct = max(down_pct, 0)
+                                cur_budget = budget * (1 - down_pct)
 
-                                if budget <= 0:
+                                if cur_budget <= 0:
                                     continue
-
-                                budget_pct = budget / total_budget
+                                budget_pct = cur_budget / total_budget
 
                                 try:
                                     profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
@@ -376,28 +408,127 @@ class QMTTrader:
                                 
                                 profit_loss_log_json.extend(profit_infos)
                                 cur_day_profit = strategy_to_profits[strategy_name] * budget_pct if strategy_name in strategy_to_profits else 0
+                                if cur_day_profit == 0:
+                                    continue
+                                
                                 if cur_day_profit > 0:
                                     add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
-                                    budget = budget + add_profit
+
+                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=False)
+
                                     order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
                                         "add_budget": add_profit,
-                                        "timetag": "afternoon"
+                                        "timetag": "moning"
                                     })
                                 elif cur_day_profit < 0:
                                     add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
-                                    budget = budget + add_profit
+                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=False)
                                     order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
                                         "add_budget": add_profit,
-                                        "timetag": "afternoon"
+                                        "timetag": "moning"
                                     })
                                 budget_change_log_json_str = json.dumps(budget_change_log_json)
                                 profit_loss_log_json_str = json.dumps(profit_loss_log_json)
                                 total_profit = total_profit + cur_day_profit
-                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'id': id})
+                                
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+                    for strategy_name, profit_infos in strategy_to_base_logs.items():
+                        if ':' in strategy_name:
+                            sub_strategy_name = strategy_name.split(':')[1]
+                            query_strategy_name = strategy_name.split(':')[0]
+                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
+                        else:
+                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+
+                        if not strategy_meta_infos:
+                            continue
+                        for profit_info in profit_infos:
+                            sub_strategy_str = profit_info['stock_name']
+                            # order_type = profit_info['order_type']
+                            cur_profit = profit_info['profit']
+                            if sub_strategy_str:
+                                new_strategy_meta_infos = self.filter_strategy_meta_infos(strategy_meta_infos, sub_strategy_str)
+                            else:
+                                new_strategy_meta_infos = strategy_meta_infos
+                            
+                            if not new_strategy_meta_infos:
+                                continue
+                            total_budget = 0
+                            for strategy_meta_info in new_strategy_meta_infos:
+                                down_pct = strategy_meta_info['down_pct']
+                                down_pct = min(down_pct, 1)
+                                down_pct = max(down_pct, 0)
+                                budget = strategy_meta_info['budget']
+                                if budget <= 0:
+                                    continue
+                                cur_budget = budget * down_pct
+                                total_budget =  total_budget + cur_budget
+                            
+                            if total_budget <= 0:
+                                order_logger.error(f"总预算小于等于0 跳过 {strategy_name}")
+                                continue
+                            for strategy_meta_info in new_strategy_meta_infos:
+                                id = strategy_meta_info['id']
+                                win_delta_budget = strategy_meta_info['win_delta_budget']
+                                budget = strategy_meta_info['budget']
+                                loss_delta_budget = strategy_meta_info['loss_delta_budget']
+                                win_budget_alpha = strategy_meta_info['win_budget_alpha']
+                                loss_budget_alpha = strategy_meta_info['loss_budget_alpha']
+                                profit_loss_log = strategy_meta_info['profit_loss_log']
+                                budget_change_log = strategy_meta_info['budget_change_log']
+                                total_profit = strategy_meta_info['total_profit']
+                                down_pct = strategy_meta_info['down_pct']
+                                down_pct = min(down_pct, 1)
+                                down_pct = max(down_pct, 0)
+                                cur_budget = budget * down_pct
+
+                                if cur_budget <= 0:
+                                    continue
+
+                                budget_pct = cur_budget / total_budget
+
+                                try:
+                                    profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
+                                except json.JSONDecodeError:
+                                    profit_loss_log_json = []
+
+                                try:
+                                    budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
+                                except json.JSONDecodeError:
+                                    budget_change_log_json = []
+                                
+                                profit_loss_log_json.append(profit_info)
+                                cur_day_profit = cur_profit * budget_pct
+                                if cur_day_profit > 0:
+                                    add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
+
+                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+
+                                    order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
+                                    budget_change_log_json.append({
+                                        "date": date_key,
+                                        "add_budget": add_profit,
+                                        "timetag": "moning"
+                                    })
+                                elif cur_day_profit < 0:
+                                    add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
+                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+                                    order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
+                                    budget_change_log_json.append({
+                                        "date": date_key,
+                                        "add_budget": add_profit,
+                                        "timetag": "moning"
+                                    })
+                                budget_change_log_json_str = json.dumps(budget_change_log_json)
+                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                total_profit = total_profit + cur_day_profit
+                                
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+
         if monning:
             updated_ids = []
             updated_oids = []
@@ -411,7 +542,9 @@ class QMTTrader:
                 if len(updated_oids) > 0:
                     order_logger.info(f"准备收益和预算更新，更新ids {updated_oids}")
                     strategy_to_profits = {}
+                    strategy_to_base_profits = {}
                     strategy_to_logs = {}
+                    strategy_to_base_logs = {}
                     # 更新收益和预算
                     with SQLiteManager(db_name) as manager:
                         for oid in updated_oids:
@@ -420,6 +553,7 @@ class QMTTrader:
                                 trade_info = trade_infos[0]
                                 date_key = trade_info['date_key']
                                 stock_code = trade_info['stock_code']
+                                stock_name = trade_info['stock_name']
                                 strategy_name = trade_info['strategy_name']
                                 sub_strategy_name = trade_info['sub_strategy_name']
                                 order_type = trade_info['order_type']
@@ -434,15 +568,28 @@ class QMTTrader:
                                 profit_info = {
                                     "date": date_key,
                                     "stock_code": stock_code,
+                                    "stock_name": stock_name,
+                                    "order_type": order_type,
                                     "profit": profit,
                                     "profit_pct": profit_pct
                                 }
-                                if strategy_name not in strategy_to_logs:
-                                    strategy_to_logs[strategy_name] = []
-                                if strategy_name not in strategy_to_profits:
-                                    strategy_to_profits[strategy_name] = 0
-                                strategy_to_logs[strategy_name].append(profit_info)
-                                strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
+                                if order_type != 1:
+                                    if strategy_name not in strategy_to_logs:
+                                        strategy_to_logs[strategy_name] = []
+                                        
+                                    if strategy_name not in strategy_to_profits:
+                                        strategy_to_profits[strategy_name] = 0
+                                    strategy_to_logs[strategy_name].append(profit_info)
+                                    strategy_to_profits[strategy_name] = strategy_to_profits[strategy_name] + profit
+                                elif order_type == 1:
+                                    if strategy_name not in strategy_to_base_logs:
+                                        strategy_to_base_logs[strategy_name] = []
+                                        
+                                    if strategy_name not in strategy_to_base_profits:
+                                        strategy_to_base_profits[strategy_name] = 0
+                                    strategy_to_base_logs[strategy_name].append(profit_info)
+                                    strategy_to_base_profits[strategy_name] = strategy_to_base_profits[strategy_name] + profit
+
                         for strategy_name, profit_infos in strategy_to_logs.items():
                             if ':' in strategy_name:
                                 sub_strategy_name = strategy_name.split(':')[1]
@@ -451,12 +598,21 @@ class QMTTrader:
                             else:
                                 strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
                             if not strategy_meta_infos:
-                                raise
+                                continue
                             total_budget = 0
                             for strategy_meta_info in strategy_meta_infos:
-                                total_budget =  total_budget + strategy_meta_info['budget'] if strategy_meta_info['budget'] > 0 else 0
+                                down_pct = strategy_meta_info['down_pct']
+                                down_pct = min(down_pct, 1)
+                                down_pct = max(down_pct, 0)
+                                budget = strategy_meta_info['budget']
+                                if budget <= 0:
+                                    continue
+                                cur_budget = budget * (1 - down_pct)
+                                total_budget =  total_budget + cur_budget
+                            
                             if total_budget <= 0:
-                                raise Exception(f"总预算小于等于0 {strategy_name}")
+                                order_logger.error(f"总预算小于等于0 跳过 {strategy_name}")
+                                continue
                             for strategy_meta_info in strategy_meta_infos:
                                 id = strategy_meta_info['id']
                                 win_delta_budget = strategy_meta_info['win_delta_budget']
@@ -467,11 +623,15 @@ class QMTTrader:
                                 profit_loss_log = strategy_meta_info['profit_loss_log']
                                 budget_change_log = strategy_meta_info['budget_change_log']
                                 total_profit = strategy_meta_info['total_profit']
+                                down_pct = strategy_meta_info['down_pct']
+                                down_pct = min(down_pct, 1)
+                                down_pct = max(down_pct, 0)
+                                cur_budget = budget * (1 - down_pct)
 
-                                if budget <= 0:
+                                if cur_budget <= 0:
                                     continue
 
-                                budget_pct = budget / total_budget
+                                budget_pct = cur_budget / total_budget
 
                                 try:
                                     profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
@@ -485,9 +645,13 @@ class QMTTrader:
                                 
                                 profit_loss_log_json.extend(profit_infos)
                                 cur_day_profit = strategy_to_profits[strategy_name] * budget_pct if strategy_name in strategy_to_profits else 0
+                                if cur_day_profit == 0:
+                                    continue
                                 if cur_day_profit > 0:
                                     add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
-                                    budget = budget + add_profit
+
+                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=False)
+
                                     order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
@@ -496,7 +660,7 @@ class QMTTrader:
                                     })
                                 elif cur_day_profit < 0:
                                     add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
-                                    budget = budget + add_profit
+                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=False)
                                     order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
@@ -507,7 +671,102 @@ class QMTTrader:
                                 profit_loss_log_json_str = json.dumps(profit_loss_log_json)
                                 total_profit = total_profit + cur_day_profit
                                 
-                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit}, {'id': id})
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+                        for strategy_name, profit_infos in strategy_to_base_logs.items():
+                            if ':' in strategy_name:
+                                sub_strategy_name = strategy_name.split(':')[1]
+                                query_strategy_name = strategy_name.split(':')[0]
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': query_strategy_name,'sub_strategy_name': sub_strategy_name})
+                            else:
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'strategy_name': strategy_name})
+
+                            if not strategy_meta_infos:
+                                continue
+                            for profit_info in profit_infos:
+                                sub_strategy_str = profit_info['stock_name']
+                                # order_type = profit_info['order_type']
+                                cur_profit = profit_info['profit']
+                                if sub_strategy_str:
+                                    new_strategy_meta_infos = self.filter_strategy_meta_infos(strategy_meta_infos, sub_strategy_str)
+                                else:
+                                    new_strategy_meta_infos = strategy_meta_infos
+                                
+                                if not new_strategy_meta_infos:
+                                    continue
+                                total_budget = 0
+                                for strategy_meta_info in new_strategy_meta_infos:
+                                    down_pct = strategy_meta_info['down_pct']
+                                    down_pct = min(down_pct, 1)
+                                    down_pct = max(down_pct, 0)
+                                    budget = strategy_meta_info['budget']
+                                    if budget <= 0:
+                                        continue
+                                    cur_budget = budget * down_pct
+                                    total_budget =  total_budget + cur_budget
+                                
+                                if total_budget <= 0:
+                                    order_logger.error(f"总预算小于等于0 跳过 {strategy_name}")
+                                    continue
+                                for strategy_meta_info in new_strategy_meta_infos:
+                                    id = strategy_meta_info['id']
+                                    win_delta_budget = strategy_meta_info['win_delta_budget']
+                                    budget = strategy_meta_info['budget']
+                                    loss_delta_budget = strategy_meta_info['loss_delta_budget']
+                                    win_budget_alpha = strategy_meta_info['win_budget_alpha']
+                                    loss_budget_alpha = strategy_meta_info['loss_budget_alpha']
+                                    profit_loss_log = strategy_meta_info['profit_loss_log']
+                                    budget_change_log = strategy_meta_info['budget_change_log']
+                                    total_profit = strategy_meta_info['total_profit']
+                                    down_pct = strategy_meta_info['down_pct']
+                                    down_pct = min(down_pct, 1)
+                                    down_pct = max(down_pct, 0)
+                                    cur_budget = budget * down_pct
+
+                                    if cur_budget <= 0:
+                                        continue
+
+                                    budget_pct = cur_budget / total_budget
+
+                                    try:
+                                        profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
+                                    except json.JSONDecodeError:
+                                        profit_loss_log_json = []
+
+                                    try:
+                                        budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
+                                    except json.JSONDecodeError:
+                                        budget_change_log_json = []
+                                    
+                                    profit_loss_log_json.append(profit_info)
+                                    cur_day_profit = cur_profit * budget_pct
+                                    if cur_day_profit == 0:
+                                        continue
+                                    if cur_day_profit > 0:
+                                        add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
+
+                                        down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+
+                                        order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
+                                        budget_change_log_json.append({
+                                            "date": date_key,
+                                            "add_budget": add_profit,
+                                            "timetag": "moning"
+                                        })
+                                    elif cur_day_profit < 0:
+                                        add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
+                                        down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+                                        order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
+                                        budget_change_log_json.append({
+                                            "date": date_key,
+                                            "add_budget": add_profit,
+                                            "timetag": "moning"
+                                        })
+                                    budget_change_log_json_str = json.dumps(budget_change_log_json)
+                                    profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                    total_profit = total_profit + cur_day_profit
+                                    
+                                    manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+
                     updated_oids.clear()
                 if len(self.sell_stock_infos) == 0:
                     # order_logger.info("无监听卖出/任务执行完毕，等待继续任务")
@@ -1479,6 +1738,43 @@ class QMTTrader:
             }
 
         return active_orders
+    
+    def update_base_buget_pct(self, budget, add_budget, base_pct, is_base = False):
+        base_pct = min(base_pct, 1)
+        base_pct = max(base_pct, 0)
+
+        if budget <= 0:
+            return 0, 0
+        base_budget = budget * base_pct
+        origin_budget = budget - base_budget
+        if is_base:
+            base_budget += add_budget
+        else:
+            origin_budget += add_budget
+        if base_budget <= 0 and is_base:
+            return 0, origin_budget
+
+        if origin_budget <= 0 and not is_base:
+            return 1, base_budget
+
+        return base_budget / (base_budget + origin_budget), budget + add_budget
+
+
+
+    def filter_strategy_meta_infos(self, strategy_meta_infos, sub_strategy_str):
+        if not sub_strategy_str:
+            return strategy_meta_infos
+        sub_strategy_names = sub_strategy_str.split(',')
+        new_strategy_meta_infos = []
+
+        for strategy_meta_info in strategy_meta_infos:
+            # id = strategy_meta_info['id']
+            sub_strategy_name = strategy_meta_info['sub_strategy_name']
+            strategy_name = strategy_meta_info['strategy_name']
+            if sub_strategy_name in sub_strategy_names:
+                new_strategy_meta_infos.append(strategy_meta_info)
+
+        return new_strategy_meta_infos
 
 
 

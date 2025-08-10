@@ -1,0 +1,28 @@
+{
+    "strategy": "高位高强追涨",
+    "generation": 90,
+    "best_score": 0.03106567773237212,
+    "best_params": {
+        "ema_alpha": 0.3,
+        "kalman_q": 0.05,
+        "kalman_r": 0.02,
+        "sg_window": 21,
+        "macd_fast": 4,
+        "macd_slow_ratio": 1.8717016943297586,
+        "macd_signal": 2,
+        "ema_fast": 2,
+        "ema_slow_ratio": 1.5310544627684108,
+        "volume_window": 9,
+        "price_confirm_ticks": 2,
+        "strength_confirm_ticks": 7,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.991587538398273,
+        "use_price_confirm": false,
+        "use_strength_confirm": false,
+        "dead_cross_threshold": 0.01389090410169503,
+        "price_drop_threshold": 0.02,
+        "max_confirm_ticks": 2,
+        "debug": false
+    },
+    "timestamp": "20250809_063852"
+}

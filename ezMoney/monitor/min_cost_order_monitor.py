@@ -473,9 +473,9 @@ class SignalDetector:
     
 
 class MinCostOrderMonitor(object):
-    def __init__(self, stock_code, stock_name, strategy_name, params, qmt_trader = None):
+    def __init__(self, stock_code, stock_name, strategy_name, params, sub_strategy_str = '', qmt_trader = None):
 
-
+        self.sub_strategy_str = sub_strategy_str
         self.total_budget = params['budget']
         self.base_budget = params['base_budget']
         self.params = params
@@ -686,9 +686,9 @@ class MinCostOrderMonitor(object):
 
                         with SQLiteManager(r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db') as manager:
                             if sub_strategy_name:
-                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'order_type': 1, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'stock_name': '', 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
+                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'sub_strategy_name': sub_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'stock_name': self.sub_strategy_str, 'order_type': 1, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
                             else:
-                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code,'order_type': 1, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'stock_name': '', 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
+                                manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id,'strategy_name': main_strategy_name, 'buy0_or_sell1': 0,'stock_code': self.stock_code, 'stock_name': self.sub_strategy_str, 'order_type': 1, 'order_price': self.base_price, 'order_volume': self.order_id_to_budget[order_id][1], 'trade_price': self.base_price, 'trade_volume': self.order_id_to_budget[order_id][1], 'trade_amount': self.order_id_to_budget[order_id][0], 'left_volume': self.order_id_to_budget[order_id][1]})
 
                     except Exception as e:
                         logger.error(f"插入数据失败 {e}")

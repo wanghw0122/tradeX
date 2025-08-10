@@ -1,0 +1,28 @@
+{
+    "strategy": "低位高强低吸",
+    "generation": 20,
+    "best_score": 0.0173360587498294,
+    "best_params": {
+        "ema_alpha": 0.3,
+        "kalman_q": 0.0239428254805357,
+        "kalman_r": 0.02,
+        "sg_window": 10,
+        "macd_fast": 2,
+        "macd_slow_ratio": 1.7520762309674165,
+        "macd_signal": 2,
+        "ema_fast": 10,
+        "ema_slow_ratio": 3,
+        "volume_window": 9,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 2,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.8565307865976055,
+        "use_price_confirm": false,
+        "use_strength_confirm": false,
+        "dead_cross_threshold": 0.0430866464516971,
+        "price_drop_threshold": 0.013816746066619213,
+        "max_confirm_ticks": 1,
+        "debug": false
+    },
+    "timestamp": "20250809_024429"
+}

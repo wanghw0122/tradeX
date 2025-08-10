@@ -10,7 +10,8 @@ try:
     trade_date_df = ak.tool_trade_date_hist_sina()
     trade_date_list = trade_date_df["trade_date"].astype(str).tolist()
     trade_date_list.sort()
-except:
+except Exception as e:
+    raise Exception(f"获取交易日历失败 {e}")
     trade_date_list = []
 
 

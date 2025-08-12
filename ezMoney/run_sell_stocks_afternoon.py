@@ -1,3 +1,4 @@
+from numpy import real
 from trade.qmtTrade import *
 import datetime
 
@@ -129,15 +130,22 @@ def schedule_sell_stocks_everyday_at_1457():
                     if sub_strategy_name:
                         strategy_name = f"{strategy_name}:{sub_strategy_name}"
                     stock_code = trade_day_data['stock_code']
-                    left_volume = trade_day_data['left_volume']
+                    order_type = trade_day_data['order_type']
+                    order_price = trade_day_data['order_price']
                     trade_price = trade_day_data['trade_price']
+                    real_trade_price = trade_day_data['trade_price']
+                    if order_type == 1:
+                        trade_price = order_price
+                    left_volume = trade_day_data['left_volume']
+                    
                     order_id = trade_day_data['order_id']
                     row_id =  trade_day_data['id']
                     if trade_day not in days_strategy_to_stock_volume:
                         days_strategy_to_stock_volume[trade_day] = {}
                     if strategy_name not in days_strategy_to_stock_volume[trade_day]:
                         days_strategy_to_stock_volume[trade_day][strategy_name] = []
-                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id))
+                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id, real_trade_price))
+
 
         if not days_strategy_to_stock_volume:
             order_logger.info("无数据可出售")
@@ -193,7 +201,8 @@ def schedule_sell_stocks_everyday_at_1457():
                             trade_price = strategy_stock_volume_info[2]
                             order_id = strategy_stock_volume_info[3]
                             row_id = strategy_stock_volume_info[4]
-                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id))
+                            real_trade_price = strategy_stock_volume_info[5]
+                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id, real_trade_price))
                     else:
                         for strategy_stock_volume_info in strategy_stock_volumes:
                             stock_code = strategy_stock_volume_info[0]
@@ -201,6 +210,7 @@ def schedule_sell_stocks_everyday_at_1457():
                             trade_price = strategy_stock_volume_info[2]
                             order_id = strategy_stock_volume_info[3]
                             row_id = strategy_stock_volume_info[4]
+                            real_trade_price = strategy_stock_volume_info[5]
 
                             full_tick = xtdata.get_full_tick([stock_code])
         
@@ -220,11 +230,12 @@ def schedule_sell_stocks_everyday_at_1457():
                             current_price = full_tick[stock_code]['lastPrice']
                             cur_profit = current_price / trade_price - 1
                             if cur_profit > take_profit_pct:
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id))
+                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, real_trade_price))
+
                             elif cur_profit < stop_loss_pct:
                                 if gap_days >= 3 and '低位高强低吸' in strategy_name:
                                     continue
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id))
+                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, real_trade_price))
                             else:
                                 continue
         
@@ -251,6 +262,7 @@ def schedule_sell_stocks_everyday_at_1457():
                 trade_day = sells_candidate[5]
                 reason = sells_candidate[6]
                 row_id = sells_candidate[7]
+                real_trade_price = sells_candidate[8]
 
                 if left_volume <= 0:
                     continue
@@ -272,9 +284,9 @@ def schedule_sell_stocks_everyday_at_1457():
                     else:
                         codes_to_sell_volume[stock_code] = all_volume
                     if stock_code in codes_to_sell_infos:
-                        codes_to_sell_infos[stock_code].append((stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, all_volume))
+                        codes_to_sell_infos[stock_code].append((stock_code, left_volume, real_trade_price, row_id, strategy_name, trade_day, reason, all_volume))
                     else:
-                        codes_to_sell_infos[stock_code] = [(stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, all_volume)]
+                        codes_to_sell_infos[stock_code] = [(stock_code, left_volume, real_trade_price, row_id, strategy_name, trade_day, reason, all_volume)]
                     # oid = qmt_trader.sell_quickly(stock_code, all_volume, order_remark= strategy_name,  buffer=-0.002, extra_info = sells_candidate)
                     # if oid > 0:
                     stock_to_trade_volume[stock_code] = 0
@@ -286,9 +298,9 @@ def schedule_sell_stocks_everyday_at_1457():
                     else:
                         codes_to_sell_volume[stock_code] = left_volume
                     if stock_code in codes_to_sell_infos:
-                        codes_to_sell_infos[stock_code].append((stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, left_volume))
+                        codes_to_sell_infos[stock_code].append((stock_code, left_volume, real_trade_price, row_id, strategy_name, trade_day, reason, left_volume))
                     else:
-                        codes_to_sell_infos[stock_code] = [(stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, left_volume)]
+                        codes_to_sell_infos[stock_code] = [(stock_code, left_volume, real_trade_price, row_id, strategy_name, trade_day, reason, left_volume)]
 
                     # oid = qmt_trader.sell_quickly(stock_code, left_volume, order_remark= strategy_name,  buffer=-0.002, extra_info = sells_candidate)
                     # if oid > 0:

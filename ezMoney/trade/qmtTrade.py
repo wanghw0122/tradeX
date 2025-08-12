@@ -3,6 +3,7 @@ import re
 import time, sys
 from turtle import down
 from arrow import get
+from matplotlib.pylab import add
 from numpy import true_divide
 from xtquant import xttrader
 from xtquant import xtdata
@@ -446,6 +447,8 @@ class QMTTrader:
 
                         if not strategy_meta_infos:
                             continue
+
+                        to_update_id_infos = {}
                         for profit_info in profit_infos:
                             sub_strategy_str = profit_info['stock_name']
                             # order_type = profit_info['order_type']
@@ -491,22 +494,20 @@ class QMTTrader:
 
                                 budget_pct = cur_budget / total_budget
 
-                                try:
-                                    profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
-                                except json.JSONDecodeError:
-                                    profit_loss_log_json = []
+                                profit_loss_log_json = []
 
-                                try:
-                                    budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
-                                except json.JSONDecodeError:
-                                    budget_change_log_json = []
+                                budget_change_log_json = []
                                 
                                 profit_loss_log_json.append(profit_info)
                                 cur_day_profit = cur_profit * budget_pct
+
+                                add_profit = 0
+                                if cur_day_profit == 0:
+                                    continue
                                 if cur_day_profit > 0:
                                     add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
 
-                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+                                    # down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
 
                                     order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                     budget_change_log_json.append({
@@ -516,18 +517,69 @@ class QMTTrader:
                                     })
                                 elif cur_day_profit < 0:
                                     add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
-                                    down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+                                    # down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
                                     order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
-                                budget_change_log_json_str = json.dumps(budget_change_log_json)
-                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
-                                total_profit = total_profit + cur_day_profit
+                                
+                                # budget_change_log_json_str = json.dumps(budget_change_log_json)
+                                # profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                if id in to_update_id_infos:
+                                    origin_update_id_info = to_update_id_infos[id]
+                                    add_profit = origin_update_id_info[0] + add_profit
+                                    cur_day_profit = origin_update_id_info[1] + cur_day_profit
+                                    profit_loss_log_json.extend(origin_update_id_info[2])
+                                    budget_change_log_json.extend(origin_update_id_info[3])
+
+                                    to_update_id_infos[id] = (add_profit, cur_day_profit, profit_loss_log_json, budget_change_log_json)
+
+                                else:
+                                    to_update_id_infos[id] = (add_profit, cur_day_profit, profit_loss_log_json, budget_change_log_json)
+                                    
                                 
                                 manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+                        for row_id, update_info in to_update_id_infos.items():
+                            strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'id': row_id})
+                            if not strategy_meta_infos:
+                                continue
+                            strategy_meta_info = strategy_meta_infos[0]
+
+                            origin_budget = strategy_meta_info['budget']
+                            origin_total_profit = strategy_meta_info['total_profit']
+                            origin_profit_loss_log = strategy_meta_info['profit_loss_log']
+                            origin_budget_change_log = strategy_meta_info['budget_change_log']
+                            origin_down_pct = strategy_meta_info['down_pct']
+
+
+                            try:
+                                profit_loss_log_json = json.loads(origin_profit_loss_log) if origin_profit_loss_log else []
+                            except json.JSONDecodeError:
+                                profit_loss_log_json = []
+                            
+                            try:
+                                budget_change_log_json = json.loads(origin_budget_change_log) if origin_budget_change_log else []
+                            except json.JSONDecodeError:
+                                budget_change_log_json = []
+
+
+
+                            add_profit, cur_day_profit, profit_loss_log_json_update, budget_change_log_json_update = update_info
+                            profit_loss_log_json.extend(profit_loss_log_json_update)
+                            budget_change_log_json.extend(budget_change_log_json_update)
+
+                            profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                            budget_change_log_json_str = json.dumps(budget_change_log_json)
+
+                            # new_budget = origin_budget + add_profit
+
+                            total_profit = origin_total_profit + cur_day_profit
+
+                            down_pct_update, new_budget = self.update_base_buget_pct(origin_budget, add_profit, origin_down_pct, is_base=True)
+
+                            manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': row_id})
 
         if monning:
             updated_ids = []
@@ -682,6 +734,8 @@ class QMTTrader:
 
                             if not strategy_meta_infos:
                                 continue
+                            to_update_id_infos = {}
+
                             for profit_info in profit_infos:
                                 sub_strategy_str = profit_info['stock_name']
                                 # order_type = profit_info['order_type']
@@ -727,24 +781,19 @@ class QMTTrader:
 
                                     budget_pct = cur_budget / total_budget
 
-                                    try:
-                                        profit_loss_log_json = json.loads(profit_loss_log) if profit_loss_log else []
-                                    except json.JSONDecodeError:
-                                        profit_loss_log_json = []
+                                    profit_loss_log_json = []
 
-                                    try:
-                                        budget_change_log_json = json.loads(budget_change_log) if budget_change_log else []
-                                    except json.JSONDecodeError:
-                                        budget_change_log_json = []
+                                    budget_change_log_json = []
                                     
                                     profit_loss_log_json.append(profit_info)
                                     cur_day_profit = cur_profit * budget_pct
+                                    add_profit = 0
                                     if cur_day_profit == 0:
                                         continue
                                     if cur_day_profit > 0:
                                         add_profit = win_delta_budget + win_budget_alpha * cur_day_profit
 
-                                        down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+                                        # down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
 
                                         order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                         budget_change_log_json.append({
@@ -754,18 +803,68 @@ class QMTTrader:
                                         })
                                     elif cur_day_profit < 0:
                                         add_profit = loss_delta_budget + loss_budget_alpha * cur_day_profit
-                                        down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
+                                        # down_pct_update, new_budget = self.update_base_buget_pct(budget, add_profit, down_pct, is_base=True)
                                         order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                         budget_change_log_json.append({
                                             "date": date_key,
                                             "add_budget": add_profit,
                                             "timetag": "moning"
                                         })
-                                    budget_change_log_json_str = json.dumps(budget_change_log_json)
-                                    profit_loss_log_json_str = json.dumps(profit_loss_log_json)
-                                    total_profit = total_profit + cur_day_profit
+                                    # budget_change_log_json_str = json.dumps(budget_change_log_json)
+                                    # profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                    if id in to_update_id_infos:
+                                        origin_update_id_info = to_update_id_infos[id]
+                                        add_profit = origin_update_id_info[0] + add_profit
+                                        cur_day_profit = origin_update_id_info[1] + cur_day_profit
+                                        profit_loss_log_json.extend(origin_update_id_info[2])
+                                        budget_change_log_json.extend(origin_update_id_info[3])
+
+                                        to_update_id_infos[id] = (add_profit, cur_day_profit, profit_loss_log_json, budget_change_log_json)
+
+                                    else:
+                                        to_update_id_infos[id] = (add_profit, cur_day_profit, profit_loss_log_json, budget_change_log_json)
                                     
-                                    manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+                                    # total_profit = total_profit + cur_day_profit
+                            
+                            for row_id, update_info in to_update_id_infos.items():
+                                strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'id': row_id})
+                                if not strategy_meta_infos:
+                                    continue
+                                strategy_meta_info = strategy_meta_infos[0]
+
+                                origin_budget = strategy_meta_info['budget']
+                                origin_total_profit = strategy_meta_info['total_profit']
+                                origin_profit_loss_log = strategy_meta_info['profit_loss_log']
+                                origin_budget_change_log = strategy_meta_info['budget_change_log']
+                                origin_down_pct = strategy_meta_info['down_pct']
+
+
+                                try:
+                                    profit_loss_log_json = json.loads(origin_profit_loss_log) if origin_profit_loss_log else []
+                                except json.JSONDecodeError:
+                                    profit_loss_log_json = []
+                                
+                                try:
+                                    budget_change_log_json = json.loads(origin_budget_change_log) if origin_budget_change_log else []
+                                except json.JSONDecodeError:
+                                    budget_change_log_json = []
+
+
+
+                                add_profit, cur_day_profit, profit_loss_log_json_update, budget_change_log_json_update = update_info
+                                profit_loss_log_json.extend(profit_loss_log_json_update)
+                                budget_change_log_json.extend(budget_change_log_json_update)
+
+                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                budget_change_log_json_str = json.dumps(budget_change_log_json)
+
+                                # new_budget = origin_budget + add_profit
+
+                                total_profit = origin_total_profit + cur_day_profit
+
+                                down_pct_update, new_budget = self.update_base_buget_pct(origin_budget, add_profit, origin_down_pct, is_base=True)
+
+                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': row_id})
 
                     updated_oids.clear()
                 if len(self.sell_stock_infos) == 0:

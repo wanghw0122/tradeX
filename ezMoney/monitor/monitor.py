@@ -133,6 +133,21 @@ class StockMonitor(object):
                 logger.error(f"query_data_lists null. {stock_code}-{stock_name}")
             for query_data in self.query_data_lists:
                 row_id = query_data['id']
+                origin_row_id = query_data['origin_row_id']
+
+                trade_datas = db.query_data_dict("trade_data", {"id": origin_row_id})
+
+                if not trade_datas:
+                    continue
+                trade_data = trade_datas[0]
+
+                order_type = trade_data['order_type']
+                order_price = trade_data['order_price']
+                origin_trade_price = trade_data['trade_price']
+                if order_type == 1:
+                    query_data['origin_trade_price'] = order_price
+                else:
+                    query_data['origin_trade_price'] = origin_trade_price
                 strategy_name = query_data['strategy_name']
                 sub_strategy_name = query_data['sub_strategy_name']
                 if row_id not in self.left_row_ids:
@@ -381,6 +396,7 @@ class StockMonitor(object):
                         monitor_data = self.row_id_to_monitor_data[row_id]
                         strategy_name = monitor_data['strategy_name']
                         trade_price = monitor_data['trade_price']
+                        origin_trade_price = monitor_data['origin_trade_price']
                         limit_down_price = monitor_data['limit_down_price']
                         limit_up_price = monitor_data['limit_up_price']
                         if strategy_name not in self.monitor_configs:
@@ -432,7 +448,7 @@ class StockMonitor(object):
 
 
                         open_hc_line = self.open_price * (1 + stop_profit_open_hc_pct)
-                        stop_profit_line = trade_price * (1 + stop_profit_pct)
+                        stop_profit_line = origin_trade_price * (1 + stop_profit_pct)
 
                         zs_line = max(open_hc_line, stop_profit_line)
 

@@ -4340,15 +4340,21 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                     if sub_strategy_name:
                         strategy_name = strategy_name + ":" + sub_strategy_name
                     stock_code = trade_day_data['stock_code']
-                    left_volume = trade_day_data['left_volume']
+                    order_type = trade_day_data['order_type']
+                    order_price = trade_day_data['order_price']
                     trade_price = trade_day_data['trade_price']
+                    real_trade_price = trade_day_data['trade_price']
+                    if order_type == 1:
+                        trade_price = order_price
+                    left_volume = trade_day_data['left_volume']
                     order_id = trade_day_data['order_id']
                     row_id =  trade_day_data['id']
                     if trade_day not in days_strategy_to_stock_volume:
                         days_strategy_to_stock_volume[trade_day] = {}
                     if strategy_name not in days_strategy_to_stock_volume[trade_day]:
                         days_strategy_to_stock_volume[trade_day][strategy_name] = []
-                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id))
+                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id, real_trade_price))
+
 
         if not days_strategy_to_stock_volume:
             order_logger.info("[update_sell_stocks]无数据可出售")
@@ -4402,6 +4408,8 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                         trade_price = strategy_stock_volume_info[2]
                         order_id = strategy_stock_volume_info[3]
                         row_id = strategy_stock_volume_info[4]
+                        real_trade_price = strategy_stock_volume_info[5]
+
                         full_tick = xtdata.get_full_tick([stock_code])
     
                         if not full_tick or len(full_tick) == 0:
@@ -4421,13 +4429,16 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                         last_close_price = full_tick[stock_code]['lastClose']
                         cur_profit = current_price / trade_price - 1
                         if cur_profit > take_profit_pct:
-                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days))
+                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days, real_trade_price))
+
                         elif cur_profit < stop_loss_pct:
-                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days))
+                            sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days, real_trade_price))
+
                         else:
                             if gap_days >= max_trade_days:
                                 order_logger.info(f"[update_sell_stocks] 策略 {strategy_name} 最大交易天数 {max_trade_days} 已超过 {gap_days} 天")
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days))
+                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id, cur_profit, current_price, last_close_price, gap_days, max_trade_days, real_trade_price))
+
                                 continue
                             else:
                                 continue
@@ -4458,6 +4469,7 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                 last_close_price = sells_candidate[10]
                 gap_days = sells_candidate[11]
                 max_trade_days = sells_candidate[12]
+                real_trade_price = sells_candidate[13]
 
                 if left_volume <= 0:
                     continue
@@ -4492,7 +4504,7 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                         "date_key": date.get_current_date(),
                         "strategy_name": strategy_name,
                         "stock_code": stock_code,
-                        "trade_price": trade_price,
+                        "trade_price": real_trade_price,
                         "trade_date": trade_day,
                         "profit_pct": cur_profit,
                         "left_volume": all_volume,
@@ -4543,7 +4555,7 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                         "date_key": date.get_current_date(),
                         "strategy_name": strategy_name,
                         "stock_code": stock_code,
-                        "trade_price": trade_price,
+                        "trade_price": real_trade_price,
                         "trade_date": trade_day,
                         "profit_pct": cur_profit,
                         "left_volume": left_volume,

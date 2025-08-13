@@ -1075,13 +1075,13 @@ Strategies:
             desc: "过滤起爆分"
             logged: false
             params:
-              xcqbScore: 1
+              xcqbScore: 0.01
           - name: "jw_filter"
             index: 5
             desc: "过滤竞王分"
             logged: false
             params:
-              xcjwScore: 100
+              xcjwScore: 50
   - name: "接力"
     type: "小草追涨"
     status: 1

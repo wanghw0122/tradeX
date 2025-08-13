@@ -660,7 +660,7 @@ def openPctChangeRate_filter(openPctChangeRate = 0):
 
 @count_filtered_items
 @catch
-def qb_filter(xcqbScore = 100):
+def qb_filter(xcqbScore = 0.01):
     def inner_filter(*args, **kwargs):
         arr = args[0]
         return [item for item in arr if item.jssb and item.jssb >= xcqbScore]

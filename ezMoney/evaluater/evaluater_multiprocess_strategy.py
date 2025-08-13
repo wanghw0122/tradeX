@@ -639,15 +639,16 @@ def group_filter(group, filtered = True, fx_filtered = True, topn = 3, top_fx = 
 # max_stock_rank = 20
 
 
-months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503', '202504', '202505', '202506']
+months = [ '202409', '202410', '202411', '202412', '202501', '202502', '202503', '202504', '202505', '202506', '202507', '202508']
+
 
 # months = ['202501', '202502' ]
 
 # 交易天数范围
-trade_days_rang = [110, 25]
+trade_days_rang = [200, 25]
 gaps = [0]
 # 候选排名筛选
-max_stock_ranks = [10, 3]
+max_stock_ranks = [10, 5, 3]
 
 # 方向前几
 
@@ -687,7 +688,7 @@ filter_params = [
 ]
 
 sell_use_opens = [True]
-sell_days = [1,2,3]
+sell_days = [1,2,3,4]
 zhisun_lines  = [0, -0.01, -0.02,-0.03,-0.04,-0.05,-0.06,-0.07,-0.08, -0.09, -0.10,-0.11,-0.12, -1]
 zhiying_lines = [0, 0.01,0.02, 0.03, 0.04, 0.05, 0.06,0.07, 0.08, 0.09, 0.1, 2]
 
@@ -1368,7 +1369,8 @@ if __name__ == '__main__':
             print("No arguments provided.")
     
     if not filter_strategy_names:
-        filter_strategy_names = ['低吸', '追涨', '接力', 'xiao_cao_1j2db_1', 'xiao_cao_1j2db', 'xiao_cao_dwyxdx','xiao_cao_dwdx_a']
+        # total_args = 'total'
+        filter_strategy_names = ['低吸', '追涨', '接力']
     
     # filter_sub_strategy_names = ['低位高强低吸', '低位孕线低吸', '放宽低吸前3', '高强低吸', '高强中低开低吸', '高位高强中低开低吸', '连断低吸', '绿盘低吸', '低位低吸', '中位低吸', '中位断板低吸', '中位高强中低开低吸', '低位中强追涨', '小高开追涨', '中位孕线低吸', 'N', '孕线']
 
@@ -1390,7 +1392,7 @@ if __name__ == '__main__':
                     m[strategy_name] = []
                     m[strategy_name].append(sub_strategy_name)
 
-    last_100_trade_days = get_trade_dates_by_end(get_current_date(), 200)
+    last_100_trade_days = get_trade_dates_by_end(get_current_date(), 250)
     last_100_trade_days.sort(reverse=True)
 
     print("last_100_trade_days = ", last_100_trade_days)

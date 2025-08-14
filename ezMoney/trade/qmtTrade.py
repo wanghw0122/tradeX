@@ -540,7 +540,7 @@ class QMTTrader:
                                     to_update_id_infos[id] = (add_profit, cur_day_profit, profit_loss_log_json, budget_change_log_json)
                                     
                                 
-                                manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
+                                # manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
                         for row_id, update_info in to_update_id_infos.items():
                             strategy_meta_infos = manager.query_data_dict("strategy_meta_info", {'id': row_id})
                             if not strategy_meta_infos:
@@ -1845,18 +1845,18 @@ class QMTTrader:
         if budget <= 0:
             return 0, 0
         base_budget = budget * base_pct
-        origin_budget = budget - base_budget
+        origin_budget_t = budget - base_budget
         if is_base:
             base_budget += add_budget
         else:
-            origin_budget += add_budget
+            origin_budget_t += add_budget
         if base_budget <= 0 and is_base:
-            return 0, origin_budget
+            return 0, origin_budget_t
 
-        if origin_budget <= 0 and not is_base:
+        if origin_budget_t <= 0 and not is_base:
             return 1, base_budget
 
-        return base_budget / (base_budget + origin_budget), budget + add_budget
+        return base_budget / (base_budget + origin_budget_t), budget + add_budget
 
 
 

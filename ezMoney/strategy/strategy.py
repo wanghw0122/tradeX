@@ -746,6 +746,20 @@ def stock_type_filter(**args):
                 continue
             if 'isLargeLowOpen' in args and item.isLargeLowOpen!= args['isLargeLowOpen']:
                 continue
+            if 'trendGroup' in args and item.trendGroup!= args['trendGroup']:
+                continue
+            if 'trendBack' in args and item.trendBack!= args['trendBack']:
+                continue
+            if 'trendStart' in args and item.trendStart!= args['trendStart']:
+                continue
+            if 'trendGroup10' in args and item.trendGroup10!= args['trendGroup10']:
+                continue
+            if 'limitupGene' in args and item.limitupGene!= args['limitupGene']:
+                continue
+            if 'mainStart' in args and item.mainStart!= args['mainStart']:
+                continue
+            if 'mainFrequent' in args and item.mainFrequent!= args['mainFrequent']:
+                continue
 
             rtn.append(item)
         return rtn

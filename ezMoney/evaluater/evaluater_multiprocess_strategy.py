@@ -689,8 +689,8 @@ filter_params = [
 
 sell_use_opens = [True]
 sell_days = [1,2,3,4]
-zhisun_lines  = [0, -0.01, -0.02,-0.03,-0.04,-0.05,-0.06,-0.07,-0.08, -0.09, -0.10,-0.11,-0.12, -1]
-zhiying_lines = [0, 0.01,0.02, 0.03, 0.04, 0.05, 0.06,0.07, 0.08, 0.09, 0.1, 2]
+zhisun_lines  = [0, -0.01, -0.02,-0.03,-0.04,-0.05,-0.06,-0.07,-0.08, -0.09, -0.10,-0.11,-0.15, -1]
+zhiying_lines = [0, 0.01,0.02, 0.03, 0.04, 0.05, 0.06,0.07, 0.08, 0.09, 0.1, 0.15, 2, 5]
 
 
 class ResultWriter:
@@ -1005,8 +1005,8 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
             # 筛选出最近 7 个 date_key 对应的行
             a_trade_df = combined_df[combined_df['date_key'].isin(latest_trade_dates)]
 
-            if len(a_trade_df) < trade_days - 1:
-                continue
+            # if len(a_trade_df) < trade_days - 1:
+            #     continue
             # 重置索引
             for gap in gaps:
                 trade_df = a_trade_df.reset_index(drop=True)
@@ -1125,7 +1125,6 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
                                         min_date_trade_days = last_100_trade_days.index(min_date_key) + 1
 
                                         trade_frequency = min_date_trade_days / len(df)
-
 
                                         import datetime
                                         if not isinstance(min_date_key, datetime.datetime):
@@ -1323,6 +1322,8 @@ def process_strategy(strategy_name, sub_strategy_name, last_100_trade_days, outp
         print(e)
         traceback.print_exc()
         stack_trace = traceback.format_exc()
+        logger.error(f"Error processing strategy: {strategy_name}, sub_strategy_name: {sub_strategy_name} - {stack_trace}")
+
         print(stack_trace)
 
 if __name__ == '__main__':
@@ -1336,6 +1337,7 @@ if __name__ == '__main__':
     listen_addr = xtdc.listen(port = 58611)
     print(f'done, listen_addr:{listen_addr}')
 
+    logger.info("start")
     import yaml
     file_name = r'D:\workspace\TradeX\ezMoney\roll_back.yml'
     with open(file_name, 'r',  encoding='utf-8') as file:

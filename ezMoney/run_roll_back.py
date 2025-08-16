@@ -341,6 +341,15 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
             is_small_low_open = item.isSmallLowOpen
             is_middle_low_open = item.isMiddleLowOpen
             is_large_low_open = item.isLargeLowOpen
+            strong_limit_up_days = item.strongLimitUpDays
+            trend_group = item.trendGroup
+            trend_back = item.trendBack
+            trend_start = item.trendStart
+            trend_group_10 = item.trendGroup10
+            limitup_gene = item.limitupGene
+            main_start = item.mainStart
+            main_frequent = item.mainFrequent
+
             d = {}
             d['date_key'] = date
             d['stock_rank'] = ranker
@@ -471,7 +480,9 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                 d['cgyk_value'] = cgyk_value
             if htyk_value != None:
                 d['htyk_value'] = htyk_value
-
+            if strong_limit_up_days != None:
+                d['strong_limit_up_days'] = strong_limit_up_days
+            
             # bool 类型处理
             if is_strength_high:
                 d['is_strength_high'] = 1
@@ -493,6 +504,21 @@ def run_once(strategy_name, date, next_date, rslt, code_map, sub_task = None, pa
                 d['is_middle_low_open'] = 1
             if is_large_low_open:
                 d['is_large_low_open'] = 1
+            if trend_group:
+                d['trend_group'] = 1
+            if trend_back:
+                d['trend_back'] = 1
+            if trend_start:
+                d['trend_start'] = 1
+            if trend_group_10:
+                d['trend_group_10'] = 1
+            if limitup_gene:
+                d['limitup_gene'] = 1
+            if main_start:
+                d['main_start'] = 1
+            if main_frequent:
+                d['main_frequent'] = 1
+
 
             if 'code' in params:
                 code = params['code']

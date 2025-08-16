@@ -286,6 +286,15 @@ class SQLiteManager:
             "is_small_low_open": 0,
             "is_middle_low_open": 0,
             "is_large_low_open": 0,
+            "strong_limit_up_days": 0,
+            "trend_group": 0,
+            "trend_back": 0,
+            "trend_start": 0,
+            "trend_group_10": 0,
+            "limitup_gene": 0,
+            "main_start": 0,
+            "main_frequent": 0,
+
         }
 
         for data in data_list:
@@ -464,6 +473,14 @@ def create_strategy_table(prefix = "strategy_data_premarket_", specified_date = 
         "is_small_low_open": "INTEGER CHECK (is_small_low_open IN (0, 1)) DEFAULT 0",
         "is_middle_low_open": "INTEGER CHECK (is_middle_low_open IN (0, 1)) DEFAULT 0",
         "is_large_low_open": "INTEGER CHECK (is_large_low_open IN (0, 1)) DEFAULT 0",
+        "strong_limit_up_days": "INTEGER DEFAULT 0",
+        "trend_group": "INTEGER CHECK (trend_group IN (0, 1)) DEFAULT 0",
+        "trend_back": "INTEGER CHECK (trend_back IN (0, 1)) DEFAULT 0",
+        "trend_start": "INTEGER CHECK (trend_start IN (0, 1)) DEFAULT 0",
+        "trend_group_10": "INTEGER CHECK (trend_group_10 IN (0, 1)) DEFAULT 0",
+        "limitup_gene": "INTEGER CHECK (limitup_gene IN (0, 1)) DEFAULT 0",
+        "main_start": "INTEGER CHECK (main_start IN (0, 1)) DEFAULT 0",
+        "main_frequent": "INTEGER CHECK (main_frequent IN (0, 1)) DEFAULT 0",
     }
     with SQLiteManager(db_name) as manager:
         manager.create_table(table_name, columns)

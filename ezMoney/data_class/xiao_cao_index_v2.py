@@ -82,5 +82,20 @@ class XiaoCaoIndexResult:
     htyk: str
     cgykValue: float
     htykValue: float
+    strongLimitUpDays: int
+    trendGroup: bool
+    trendBack: bool
+    trendStart: bool
+    trendGroup10: bool
+    limitupGene: bool
+    mainStart: bool
+    mainFrequent: bool
+
+
+
+
+
+
+
 
 

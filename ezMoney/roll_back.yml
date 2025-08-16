@@ -1,7 +1,7 @@
 configs:
   - strategy_name: "xc_dx"
-    start: "2024-11-01"
-    end: "2025-07-05"
+    start: "2024-08-01"
+    end: "2025-08-16"
     sub_tasks: {}
     max_num: 1000
     valid: true
@@ -15,7 +15,7 @@ configs:
       returnFullInfo: true
   - strategy_name: "xc_jl"
     start: "2024-08-01"
-    end: "2025-07-05"
+    end: "2025-08-16"
     sub_tasks: {}
     max_num: 1000
     valid: true
@@ -29,7 +29,7 @@ configs:
       returnFullInfo: true
   - strategy_name: "xc_jw"
     start: "2024-08-01"
-    end: "2025-07-05"
+    end: "2025-08-16"
     sub_tasks: {}
     max_num: 1000
     valid: true
@@ -43,7 +43,7 @@ configs:
       returnFullInfo: true
   - strategy_name: "xc_qb"
     start: "2024-08-01"
-    end: "2025-07-05"
+    end: "2025-08-16"
     sub_tasks: {}
     max_num: 1000
     valid: true
@@ -55,76 +55,76 @@ configs:
     params:
       returnNum: 1000
       returnFullInfo: true
-  - strategy_name: "xiao_cao_1j2db_1"
-    start: "2024-08-01"
-    end: "2025-03-25"
-    sub_tasks: {}
-    max_num: 200
-    valid: true
-    daily: true
-    saved: true
-    save_type: "db"
-    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-    save_mod: "w"
-    params:
-      returnNum: 10
-      returnFullInfo: true
-  - strategy_name: "xiao_cao_1j2db"
-    start: "2024-08-01"
-    end: "2025-03-25"
-    sub_tasks: {}
-    max_num: 200
-    valid: true
-    daily: true
-    saved: true
-    save_type: "db"
-    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-    save_mod: "w"
-    params:
-      returnNum: 10
-      returnFullInfo: true
-  - strategy_name: "xiao_cao_dwyxdx"
-    start: "2024-08-01"
-    end: "2025-03-25"
-    sub_tasks: {}
-    max_num: 200
-    valid: true
-    daily: true
-    saved: true
-    save_type: "db"
-    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-    save_mod: "w"
-    params:
-      returnNum: 10
-      returnFullInfo: true
-  - strategy_name: "xiao_cao_dwndx"
-    start: "2024-08-01"
-    end: "2025-03-25"
-    sub_tasks: {}
-    max_num: 200
-    valid: true
-    daily: true
-    saved: true
-    save_type: "db"
-    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-    save_mod: "w"
-    params:
-      returnNum: 10
-      returnFullInfo: true
-  - strategy_name: "xiao_cao_dwdx_a"
-    start: "2024-08-01"
-    end: "2025-03-25"
-    sub_tasks: {}
-    max_num: 200
-    valid: true
-    daily: true
-    saved: true
-    save_type: "db"
-    save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-    save_mod: "w"
-    params:
-      returnNum: 10
-      returnFullInfo: true
+  # - strategy_name: "xiao_cao_1j2db_1"
+  #   start: "2024-08-01"
+  #   end: "2025-03-25"
+  #   sub_tasks: {}
+  #   max_num: 200
+  #   valid: true
+  #   daily: true
+  #   saved: true
+  #   save_type: "db"
+  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+  #   save_mod: "w"
+  #   params:
+  #     returnNum: 10
+  #     returnFullInfo: true
+  # - strategy_name: "xiao_cao_1j2db"
+  #   start: "2024-08-01"
+  #   end: "2025-03-25"
+  #   sub_tasks: {}
+  #   max_num: 200
+  #   valid: true
+  #   daily: true
+  #   saved: true
+  #   save_type: "db"
+  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+  #   save_mod: "w"
+  #   params:
+  #     returnNum: 10
+  #     returnFullInfo: true
+  # - strategy_name: "xiao_cao_dwyxdx"
+  #   start: "2024-08-01"
+  #   end: "2025-03-25"
+  #   sub_tasks: {}
+  #   max_num: 200
+  #   valid: true
+  #   daily: true
+  #   saved: true
+  #   save_type: "db"
+  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+  #   save_mod: "w"
+  #   params:
+  #     returnNum: 10
+  #     returnFullInfo: true
+  # - strategy_name: "xiao_cao_dwndx"
+  #   start: "2024-08-01"
+  #   end: "2025-03-25"
+  #   sub_tasks: {}
+  #   max_num: 200
+  #   valid: true
+  #   daily: true
+  #   saved: true
+  #   save_type: "db"
+  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+  #   save_mod: "w"
+  #   params:
+  #     returnNum: 10
+  #     returnFullInfo: true
+  # - strategy_name: "xiao_cao_dwdx_a"
+  #   start: "2024-08-01"
+  #   end: "2025-03-25"
+  #   sub_tasks: {}
+  #   max_num: 200
+  #   valid: true
+  #   daily: true
+  #   saved: true
+  #   save_type: "db"
+  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
+  #   save_mod: "w"
+  #   params:
+  #     returnNum: 10
+  #     returnFullInfo: true
   - strategy_name: "低吸"
     sub_tasks:
       - name: "绿盘低吸"
@@ -537,8 +537,88 @@ configs:
           code: "9G0167"
           returnNum: 10
           returnFullInfo: true
+      - name: "高位小低开低吸"
+        params:
+          code: "9G0201"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "高位中低开低吸"
+        params:
+          code: "9G0202"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "高位大低开低吸"
+        params:
+          code: "9G0203"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "中位小低开低吸"
+        params:
+          code: "9G0206"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "中位中低开低吸"
+        params:
+          code: "9G0207"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "中位大低开低吸"
+        params:
+          code: "9G0208"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "低位小低开低吸"
+        params:
+          code: "9G0211"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "低位中低开低吸"
+        params:
+          code: "9G0212"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "低位大低开低吸"
+        params:
+          code: "9G0213"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌小低开低吸"
+        params:
+          code: "9G0217"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌中低开低吸"
+        params:
+          code: "9G0218"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌大低开低吸"
+        params:
+          code: "9G0219"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "抱团低吸"
+        params:
+          code: "9G0220"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "回调低吸"
+        params:
+          code: "9G0221"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "启动低吸"
+        params:
+          code: "9G0222"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌大低开低吸2"
+        params:
+          code: "9G0231"
+          returnNum: 10
+          returnFullInfo: true
     start: "2024-08-01"
-    end: "2025-06-27"
+    end: "2025-08-16"
     max_num: 200
     valid: true
     daily: true
@@ -933,8 +1013,93 @@ configs:
           code: "9G0109"
           returnNum: 10
           returnFullInfo: true
+      - name: "高位中高开追涨"
+        params:
+          code: "9G0199"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "高位大高开追涨"
+        params:
+          code: "9G0200"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "中位中高开追涨"
+        params:
+          code: "9G0204"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "中位大高开追涨"
+        params:
+          code: "9G0205"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "低位中高开追涨"
+        params:
+          code: "9G0209"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "低位大高开追涨"
+        params:
+          code: "9G0210"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌小高开追涨"
+        params:
+          code: "9G0214"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌中高开追涨"
+        params:
+          code: "9G0215"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "下跌超跌大高开追涨"
+        params:
+          code: "9G0216"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "抱团小高开追涨"
+        params:
+          code: "9G0223"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "回调小高开追涨"
+        params:
+          code: "9G0224"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "启动小高开追涨"
+        params:
+          code: "9G0225"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "抱团中高开追涨"
+        params:
+          code: "9G0226"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "回调中高开追涨"
+        params:
+          code: "9G0227"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "启动中高开追涨"
+        params:
+          code: "9G0228"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "涨停基因追涨"
+        params:
+          code: "9G0229"
+          returnNum: 10
+          returnFullInfo: true
+      - name: "涨停基因小高开追涨"
+        params:
+          code: "9G0230"
+          returnNum: 10
+          returnFullInfo: true
     start: "2024-08-01"
-    end: "2025-03-25"
+    end: "2025-08-16"
     max_num: 200
     valid: true
     daily: true
@@ -1035,7 +1200,7 @@ configs:
           returnNum: 10
           returnFullInfo: true
     start: "2024-08-01"
-    end: "2025-03-25"
+    end: "2025-08-16"
     max_num: 200
     valid: true
     daily: true

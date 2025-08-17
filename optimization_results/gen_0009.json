@@ -1,0 +1,32 @@
+{
+  "generation": 9,
+  "fitness": 2.7717033162838707,
+  "total_return": 3.142284999999999,
+  "max_drawdown": 0.20769507150869296,
+  "sharpe_ratio": 6.641944321724472,
+  "params": {
+    "per_step_tick_gap": 6,
+    "cold_start_steps": 9,
+    "max_abserve_tick_steps": 160,
+    "max_abserce_avg_price_down_steps": 12,
+    "stop_profit_open_hc_pct": -0.03557692806013123,
+    "dynamic_hc_stop_profit_thres": 2.569086679170656,
+    "last_close_price_hc_pct": -0.011860625665103942,
+    "last_day_sell_thres": 0.8048167190849184,
+    "last_day_sell_huiche": 0.011434055472287173,
+    "stop_profit_pct": 0.0,
+    "static_hc_stop_profit_pct": 1.0
+  },
+  "timestamp": "2025-08-18T01:40:12.525911",
+  "individual": [
+    5.8109753025111806,
+    8.981226888383151,
+    16.151398714481545,
+    11.763440660804875,
+    -0.03557692806013123,
+    2.569086679170656,
+    -0.011860625665103942,
+    0.8048167190849184,
+    0.011434055472287173
+  ]
+}

@@ -1,0 +1,31 @@
+================================================================================
+STOCK MONITORING STRATEGY OPTIMIZATION REPORT
+================================================================================
+
+Optimization Date: 2025-08-18 01:47:46
+Total Generations: 11
+Best Fitness: 2.771703
+Total Return: 314.23%
+Max Drawdown: 20.77%
+Sharpe Ratio: 6.6419
+
+Optimized Parameters:
+--------------------------------------------------------------------------------
+per_step_tick_gap                  : 6.000000 (int)
+cold_start_steps                   : 9.000000 (int)
+max_abserve_tick_steps             : 160.000000 (int)
+max_abserce_avg_price_down_steps   : 12.000000 (int)
+stop_profit_open_hc_pct            : -0.035577 (float)
+dynamic_hc_stop_profit_thres       : 2.569087 (float)
+last_close_price_hc_pct            : -0.011861 (float)
+last_day_sell_thres                : 0.804817 (float)
+last_day_sell_huiche               : 0.011434 (float)
+stop_profit_pct                    : 0.000000 (float)
+static_hc_stop_profit_pct          : 1.000000 (float)
+
+Optimization Summary:
+--------------------------------------------------------------------------------
+Best generation: 2
+Best fitness in generation 2: 2.771703
+Max fitness improvement: 0.034824
+Average population fitness: 2.762524

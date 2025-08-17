@@ -218,7 +218,7 @@ def get_trade_dates_by_start(start_date, trade_days = 30):
     while str(start_date_t) not in trade_date_list:
         start_date_t = start_date_t + datetime.timedelta(days=1)
     start_date_index = trade_date_list.index(str(start_date_t))
-    return trade_date_list[start_date_index:start_date_index + trade_days]
+    return trade_date_list[start_date_index:start_date_index + trade_days + 1]
 
 def find_next_nth_date(date_key, n = 10):
     return get_trade_dates_by_start(date_key, trade_days=n)[-1]

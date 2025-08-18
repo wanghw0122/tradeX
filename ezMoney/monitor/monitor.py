@@ -812,7 +812,7 @@ class StockMonitor(object):
 
                                             else:
                                                 if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
-                                                    logger.info(f"跌破均价线，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
+                                                    logger.info(f"跌破开盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
                                         if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -1265,61 +1265,173 @@ class StockMonitor(object):
 
 
     def sell_all_row_ids(self, price):
+        position_stocks = self.qmt_trader.get_tradable_stocks()
+        
+        if not position_stocks:
+            return
+        
+        available_qty = 0
+        for position_stock_info in position_stocks:
+            stock_code = position_stock_info['stock_code']
+            if stock_code == self.stock_code:
+                available_qty = position_stock_info['available_qty']
+                break
+                
+        if available_qty <= 0:
+            logger.info(f"股票 {self.stock_code} {self.stock_name} 无可用量 无法卖出")
+            return
+            
         all_volume = 0
         extra_infos = []
-        for row_id in self.to_sell_row_ids:
-            if row_id in self.left_row_ids:
-                self.left_row_ids.remove(row_id)
+        temp_to_sell_row_ids = self.to_sell_row_ids[:]  # 复制一份避免修改影响遍历
+        self.to_sell_row_ids.clear()  # 先清空，未卖出的会重新加回
+        
+        for row_id in temp_to_sell_row_ids:
+            if all_volume >= available_qty:
+                self.to_sell_row_ids.append(row_id)
+                continue
+                
             if row_id not in self.row_id_to_monitor_data:
                 continue
+                
             data_dict = self.row_id_to_monitor_data[row_id]
-            strategy_name = data_dict['strategy_name']
-            trade_price = data_dict['trade_price']
-            limit_down_price = data_dict['limit_down_price']
-            limit_up_price = data_dict['limit_up_price']
             left_volume = data_dict['left_volume']
-            origin_row_id = data_dict['origin_row_id']
-            current_trade_days = data_dict['current_trade_days']
-            monitor_type = data_dict['monitor_type']
+            
             if left_volume <= 0:
                 continue
-            if row_id in self.selled_row_ids:
-                continue
-            all_volume = all_volume + left_volume
-            self.selled_row_ids.append(row_id)
-            extra_infos.append((self.stock_code, left_volume, trade_price, origin_row_id, strategy_name, current_trade_days,'max_days', left_volume))
-        self.to_sell_row_ids.clear()
+                
+            can_sell = min(left_volume, available_qty - all_volume)
+            
+            data_dict['left_volume'] = left_volume - can_sell
+            all_volume += can_sell
+            
+            # 准备卖出信息
+            strategy_name = data_dict['strategy_name']
+            trade_price = data_dict['trade_price']
+            origin_row_id = data_dict['origin_row_id']
+            current_trade_days = data_dict['current_trade_days']
+            
+            # 记录实际卖出量
+            extra_infos.append((
+                self.stock_code, 
+                can_sell,  # 实际卖出量
+                trade_price, 
+                origin_row_id, 
+                strategy_name, 
+                current_trade_days,
+                'max_days', 
+                can_sell  # 实际卖出量
+            ))
+            
+            # 检查是否完全卖出
+            if data_dict['left_volume'] == 0:
+                self.selled_row_ids.append(row_id)
+                if row_id in self.left_row_ids:
+                    self.left_row_ids.remove(row_id)
+                logger.debug(f"完全卖出 row_id={row_id}, 数量={can_sell}")
+            else:
+                logger.info(f"部分卖出 row_id={row_id}, 卖出={can_sell}, 剩余={data_dict['left_volume']}")
+        
         if all_volume > 0:
-            logger.info(f"卖出 {self.stock_code} {self.stock_name} {all_volume} {price} {extra_infos}")
-            if self.qmt_trader != None:
-                self.qmt_trader.sell_quickly(self.stock_code, self.stock_name, all_volume, order_remark= "sell_once",  buffer=0, extra_infos = extra_infos, up_sell=True, s_price = price, limit_up_monitor = True)
-
+            logger.info(f"执行卖出 {self.stock_code} {self.stock_name} 总量={all_volume} 价格={price}")
+            if self.qmt_trader is not None:
+                self.qmt_trader.sell_quickly(
+                    self.stock_code, 
+                    self.stock_name, 
+                    all_volume, 
+                    order_remark="sell_once",  
+                    buffer=0, 
+                    extra_infos=extra_infos, 
+                    up_sell=True, 
+                    s_price=price, 
+                    limit_up_monitor=True
+                )
+        else:
+            logger.info(f"无有效卖出量 {self.stock_code} {self.stock_name}")
 
     def sell_all(self, price):
+        # 获取可用持仓量
+        position_stocks = self.qmt_trader.get_tradable_stocks()
+        if not position_stocks:
+            return
+        
+        available_qty = 0
+        for position_stock_info in position_stocks:
+            if position_stock_info['stock_code'] == self.stock_code:
+                available_qty = position_stock_info['available_qty']
+                break
+                
+        if available_qty <= 0:
+            logger.info(f"股票 {self.stock_code} {self.stock_name} 无可用量 无法卖出")
+            return
+            
         all_volume = 0
         extra_infos = []
-        for row_id, data_dict in self.row_id_to_monitor_data.items():
-            if row_id in self.left_row_ids:
-                self.left_row_ids.remove(row_id)
-            strategy_name = data_dict['strategy_name']
-            trade_price = data_dict['trade_price']
-            limit_down_price = data_dict['limit_down_price']
-            limit_up_price = data_dict['limit_up_price']
-            left_volume = data_dict['left_volume']
-            origin_row_id = data_dict['origin_row_id']
-            current_trade_days = data_dict['current_trade_days']
-            monitor_type = data_dict['monitor_type']
-            if left_volume <= 0:
+        
+        # 创建临时列表用于安全遍历
+        temp_row_ids = list(self.row_id_to_monitor_data.keys())
+        
+        for row_id in temp_row_ids:
+            # 检查可用量是否已用完
+            if all_volume >= available_qty:
+                break
+                
+            data_dict = self.row_id_to_monitor_data.get(row_id)
+            if not data_dict:
                 continue
-            if row_id in self.selled_row_ids:
+                
+            left_volume = data_dict.get('left_volume', 0)
+            # 跳过已卖出或无效的数量
+            if left_volume <= 0 or row_id in self.selled_row_ids:
                 continue
-            all_volume = all_volume + left_volume
-            self.selled_row_ids.append(row_id)
-            extra_infos.append((self.stock_code, left_volume, trade_price, origin_row_id, strategy_name, current_trade_days,'max_days', left_volume))
+                
+            # 计算本次实际可卖出量
+            can_sell = min(left_volume, available_qty - all_volume)
+            
+            # 更新持仓数据
+            data_dict['left_volume'] = left_volume - can_sell
+            all_volume += can_sell
+            
+            # 准备卖出信息
+            strategy_name = data_dict.get('strategy_name', '')
+            trade_price = data_dict.get('trade_price', 0.0)
+            origin_row_id = data_dict.get('origin_row_id', '')
+            current_trade_days = data_dict.get('current_trade_days', 0)
+            
+            # 记录实际卖出量
+            extra_infos.append((
+                self.stock_code, 
+                can_sell,  # 实际卖出量
+                trade_price, 
+                origin_row_id, 
+                strategy_name, 
+                current_trade_days,
+                'max_days', 
+                can_sell  # 实际卖出量
+            ))
+            
+            # 检查是否完全卖出
+            if data_dict['left_volume'] == 0:
+                self.selled_row_ids.append(row_id)
+                if row_id in self.left_row_ids:
+                    self.left_row_ids.remove(row_id)
+                logger.debug(f"完全卖出 row_id={row_id}, 数量={can_sell}")
+            else:
+                logger.info(f"部分卖出 row_id={row_id}, 卖出={can_sell}, 剩余={data_dict['left_volume']}")
+        
         if all_volume > 0:
-            logger.info(f"卖出 {self.stock_code} {self.stock_name} {all_volume} {price} {extra_infos}")
-            if self.qmt_trader != None:
-                self.qmt_trader.sell_quickly(self.stock_code, self.stock_name, all_volume, order_remark= "sell_all",  buffer=0, extra_infos = extra_infos, up_sell=True, s_price = price, limit_up_monitor = True)
-
-
-        # (stock_code, left_volume, trade_price, row_id, strategy_name, trade_day, reason, all_volume)
+            logger.info(f"执行全部卖出 {self.stock_code} {self.stock_name} 总量={all_volume} 价格={price}")
+            if self.qmt_trader is not None:
+                self.qmt_trader.sell_quickly(
+                    self.stock_code, 
+                    self.stock_name, 
+                    all_volume, 
+                    order_remark="sell_all",  
+                    buffer=0, 
+                    extra_infos=extra_infos, 
+                    up_sell=True, 
+                    s_price=price, 
+                    limit_up_monitor=True
+                )
+        else:
+            logger.info(f"无有效卖出量 {self.stock_code} {self.stock_name}")

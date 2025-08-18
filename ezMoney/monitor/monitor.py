@@ -83,6 +83,8 @@ class StockMonitor(object):
         self.current_increase = 0
         # 平滑当天涨幅
         self.current_smooth_increase = 0
+        # 炸板次数
+        self.zb_times = 0
 
         # 当天最高价
         self.current_max_price = 0
@@ -305,18 +307,10 @@ class StockMonitor(object):
                     else:
                         self.sell_all(price = self.current_price)
                     continue
-                # 封单金额过小 卖
-                if buy1_price * buy1_vol * 100 < 35000000 and buy1_vol / self.max_limit_up_vol < 0.5:
-                    logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
-                    if buy1_price > 0:
-                        self.sell_all(price = buy1_price)
-                    else:
-                        self.sell_all(price = self.current_price)
-                    continue
-
+                
                 if self.limit_up_status:
                     self.limit_up_tick_times = self.limit_up_tick_times + 1
-                    if self.limit_up_tick_times > 3:
+                    if self.limit_up_tick_times > 5:
                         if not bidPrice or not bidVol:
                             self.sell_all(price = self.current_price)
                             continue
@@ -329,7 +323,7 @@ class StockMonitor(object):
                                 self.sell_all(price = self.current_price)
                             continue
                         # 封单金额过小 卖
-                        if buy1_price * buy1_vol * 100 < 8000000:
+                        if buy1_price * buy1_vol * 100 < 35000000 and buy1_vol / self.max_limit_up_vol < 0.5:
                             logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
                             if buy1_price > 0:
                                 self.sell_all(price = buy1_price)
@@ -342,36 +336,40 @@ class StockMonitor(object):
 
             elif self.limit_up_price > 0 and abs(self.smooth_current_price - self.limit_up_price) >= 0.0033:
                 self.max_limit_up_vol = -1
-                self.limit_up_tick_times = -1
+                
                 if self.limit_up_status:
                     # 涨停炸板卖
-                    logger.info(f"炸板了，卖出 {self.stock_code} {self.stock_name}")
-                    if not bidPrice or not bidVol:
-                        self.sell_all(price = self.current_price)
-                    else:
-                        buy1_price = bidPrice[0]
-                        buy1_vol = bidVol[0]
-                        if len(bidPrice) > 1 and len(bidVol) > 1:
-                            buy2_price = bidPrice[1]
-                            buy2_vol = bidVol[1]
+                    self.zb_times = self.zb_times + 1
+                    if self.zb_times > 1:
+                        logger.info(f"炸板了，卖出 {self.stock_code} {self.stock_name}")
+                        if not bidPrice or not bidVol:
+                            self.sell_all(price = self.current_price)
                         else:
-                            buy2_price = 0
-                            buy2_vol = 0
-                        if buy1_price * buy1_vol * 100 < 500000:
-                            if buy2_price > 0:
-                                self.sell_all(price = buy2_price)
+                            buy1_price = bidPrice[0]
+                            buy1_vol = bidVol[0]
+                            if len(bidPrice) > 1 and len(bidVol) > 1:
+                                buy2_price = bidPrice[1]
+                                buy2_vol = bidVol[1]
+                            else:
+                                buy2_price = 0
+                                buy2_vol = 0
+                            if buy1_price * buy1_vol * 100 < 500000:
+                                if buy2_price > 0:
+                                    self.sell_all(price = buy2_price)
+                                else:
+                                    if buy1_price > 0:
+                                        self.sell_all(price = buy1_price)
+                                    else:
+                                        self.sell_all(price = self.current_price)
                             else:
                                 if buy1_price > 0:
                                     self.sell_all(price = buy1_price)
                                 else:
                                     self.sell_all(price = self.current_price)
-                        else:
-                            if buy1_price > 0:
-                                self.sell_all(price = buy1_price)
-                            else:
-                                self.sell_all(price = self.current_price)
-                    self.limit_up_status = False
-                    continue
+                        self.limit_up_status = False
+                        self.limit_up_tick_times = -1
+                        continue
+                self.limit_up_tick_times = -1
                 self.limit_up_status = False
             else:
                 self.limit_up_status = False

@@ -1327,140 +1327,53 @@ strategies = {
                     'except_is_track': True
                     }
                 ]
+            },
+            "中位小低开低吸": {
+                "code": "9G0206",
+                "returnNum": 5,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    }
+                ]
+            },
+            "中位中强小低开低吸": {
+                "code": "9G0157",
+                "returnNum": 5,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
             }
-            # "低位中强低吸": {
-            #     "code": "9G0125",
-            #     "returnNum": 10,
-            #     "budget": "ddx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'mark': '方向低频前2',
-            #         'limit': 5,
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 101,
-            #         'top_cx': 2,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': True,
-            #         'min_trade_amount': 6000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': True
-            #         },
-            #         {
-            #         'mark': '方向低频前1',
-            #         'limit': 2,
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 101,
-            #         'top_cx': 1,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': True,
-            #         'min_trade_amount': 8000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': True
-            #         }
-            #     ]
-            # },
-            # "绿盘低吸": {
-            #     "code": "9G0002",
-            #     "returnNum": 5,
-            #     "budget": "ddx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 101,
-            #         'top_cx': 1,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': True,
-            #         'min_trade_amount': 8000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': True
-            #         }
-            #     ]
-            # },
-
-            # "孕线": {
-            #     "code": "9G0014",
-            #     "returnNum": 10,
-            #     "budget": "ddx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'mark': '方向1',
-            #         'limit': 10,
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 101,
-            #         'top_cx': 1,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': True,
-            #         'min_trade_amount': 8000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': True
-            #         },
-            #         {
-            #         'mark': '方向2',
-            #         'limit': 10,
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 1,
-            #         'top_cx': 1,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': True,
-            #         'min_trade_amount': 12000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': True
-            #         }
-            #     ]
-            # }
-
-            # "中位低吸": {
-            #     # 15日 中频 前2 有方向 胜率 60% 最近强势 创建日期 2025-03-20
-            #     "code": "9G0026",
-            #     "returnNum": 3,
-            #     "budget": "ddx",
-            #     'returnFullInfo': True,
-            #     'filter_params': [
-            #         {
-            #         'filtered': True,
-            #         'fx_filtered': True,
-            #         'topn': 1,
-            #         'top_fx': 3,
-            #         'top_cx': 1,
-            #         'only_fx': True,
-            #         'enbale_industry': False,
-            #         'empty_priority': True,
-            #         'min_trade_amount': 8000000,
-            #         'block_rank_filter': True,
-            #         'gap': 0,
-            #         'except_is_ppp': True,
-            #         'except_is_track': False
-            #         }
-            #     ]
-            # }
         }
     },
     # ,
@@ -1501,6 +1414,29 @@ strategies = {
                     'fx_filtered': True,
                     'topn': 1,
                     'top_fx': 2,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    }
+                ]
+            },
+            "小高开追涨": {
+                "code": "9G0019",
+                "returnNum": 10,
+                "budget": "ddx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
                     'top_cx': 1,
                     'only_fx': True,
                     'enbale_industry': False,
@@ -1633,7 +1569,9 @@ strategies_to_buffer = {
     "追涨-高位高强追涨": [0.018],
     "追涨-高强中高开追涨": [0.018],
     "低吸-低位中强低吸": [0.016],
-    "接力-一进二弱转强": [0.018]
+    "接力-一进二弱转强": [0.018],
+    "低吸-中位小低开低吸": [0.016],
+    "低吸-中位中强小低开低吸": [0.016],
 }
 
 default_positions = {
@@ -1664,7 +1602,9 @@ default_positions = {
     "低吸-断低吸": 0.25,
     "低吸-孕线": 0.25,
     "低吸-低位中强低吸": 0.25,
-    "接力-一进二弱转强": 0.25
+    "接力-一进二弱转强": 0.25,
+    "低吸-中位小低开低吸": 0.25,
+    "低吸-中位中强小低开低吸": 0.25,
 }
 
 # ... existing code ...
@@ -1701,6 +1641,9 @@ default_strategy_positions = {
     # "低吸-中强中低开低吸:方向低频": 0,
     "追涨-高位高强追涨": 1,
     "追涨-高强中高开追涨": 1,
+    "追涨-小高开追涨": 1,
+    "低吸-中位小低开低吸": 1,
+    "低吸-中位中强小低开低吸": 1,
     "接力-一进二弱转强": 1
 }
 
@@ -1903,6 +1846,50 @@ strategy_name_to_min_cost_params = {
         "max_confirm_ticks": 12,
         "debug": False
     },
+    '中位小低开低吸': {
+        "ema_alpha": 0.27683687945051133,
+        "kalman_q": 0.04888512758145403,
+        "kalman_r": 0.02,
+        "sg_window": 10,
+        "macd_fast": 2,
+        "macd_slow_ratio": 1.9763723046553068,
+        "macd_signal": 6,
+        "ema_fast": 7,
+        "ema_slow_ratio": 2.409086022283782,
+        "volume_window": 11,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 1,
+        "strength_threshold": 0.3,
+        "volume_weight": 1.0,
+        "use_price_confirm": False,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.04389336919158503,
+        "price_drop_threshold": 0.010626782866096793,
+        "max_confirm_ticks": 12,
+        "debug": False
+    },
+     '中位中强小低开低吸': {
+        "ema_alpha": 0.27683687945051133,
+        "kalman_q": 0.04888512758145403,
+        "kalman_r": 0.02,
+        "sg_window": 10,
+        "macd_fast": 2,
+        "macd_slow_ratio": 1.9763723046553068,
+        "macd_signal": 6,
+        "ema_fast": 7,
+        "ema_slow_ratio": 2.409086022283782,
+        "volume_window": 11,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 1,
+        "strength_threshold": 0.3,
+        "volume_weight": 1.0,
+        "use_price_confirm": False,
+        "use_strength_confirm": True,
+        "dead_cross_threshold": 0.04389336919158503,
+        "price_drop_threshold": 0.010626782866096793,
+        "max_confirm_ticks": 12,
+        "debug": False
+    },
     '一进二弱转强': {
         "ema_alpha": 0.11731169217801875,
         "kalman_q": 0.05,
@@ -1968,7 +1955,31 @@ strategy_name_to_min_cost_params = {
         "price_drop_threshold": 0.02,
         "max_confirm_ticks": 3,
         "debug": False
+    },
+    '小高开追涨': {
+        "ema_alpha": 0.3,
+        "kalman_q": 0.05,
+        "kalman_r": 0.02,
+        "sg_window": 20,
+        "macd_fast": 2,
+        "macd_slow_ratio": 1.7376787456138127,
+        "macd_signal": 2,
+        "ema_fast": 2,
+        "ema_slow_ratio": 1.8764886078199203,
+        "volume_window": 6,
+        "price_confirm_ticks": 1,
+        "strength_confirm_ticks": 10,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.9735426771191702,
+        "use_price_confirm": False,
+        "use_strength_confirm": False,
+        "dead_cross_threshold": 0,
+        "price_drop_threshold": 0.02,
+        "max_confirm_ticks": 3,
+        "debug": False
     }
+
+
 }
 
 
@@ -1997,6 +2008,12 @@ def get_min_cost_strategy_by_strategy_name(strategy_name):
         return '低位断板低吸'
     elif '高强中高开追涨' in strategy_name:
         return '高强中高开追涨'
+    elif '小高开追涨' in strategy_name:
+        return '小高开追涨'
+    elif '中位小低开低吸' in strategy_name:
+        return '中位小低开低吸'
+    elif '中位中强小低开低吸' in strategy_name:
+        return '中位中强小低开低吸'
     else:
         return None
 

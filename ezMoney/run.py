@@ -1,10 +1,5 @@
 import multiprocessing
 import os
-from turtle import st
-
-from numpy import real
-from sqlalchemy import exists
-from yfinance import download
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 from strategy.strategy import sm
 from logger import catch, logger, order_logger, strategy_logger, order_success_logger

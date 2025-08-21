@@ -1,0 +1,28 @@
+{
+    "strategy": "低位断板低吸",
+    "generation": 0,
+    "best_score": 0.02266309084608481,
+    "best_params": {
+        "ema_alpha": 0.2772746580199424,
+        "kalman_q": 0.045459479447462474,
+        "kalman_r": 0.04302611966042452,
+        "sg_window": 19,
+        "macd_fast": 4,
+        "macd_slow_ratio": 2.7426631514201416,
+        "macd_signal": 12,
+        "ema_fast": 2,
+        "ema_slow_ratio": 2.81318252609635,
+        "volume_window": 8,
+        "price_confirm_ticks": 6,
+        "strength_confirm_ticks": 7,
+        "strength_threshold": 0.6794833190610133,
+        "volume_weight": 0.991251689759366,
+        "use_price_confirm": false,
+        "use_strength_confirm": true,
+        "dead_cross_threshold": 0.033758840447209046,
+        "price_drop_threshold": 0.013724286277634577,
+        "max_confirm_ticks": 9,
+        "debug": false
+    },
+    "timestamp": "20250821_165749"
+}

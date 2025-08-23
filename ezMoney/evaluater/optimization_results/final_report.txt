@@ -1,0 +1,47 @@
+================================================================================
+STOCK MONITORING STRATEGY OPTIMIZATION REPORT
+================================================================================
+
+Optimization Date: 2025-08-24 03:15:04
+Total Generations: 31
+Best Fitness: 2.833083
+Total Return: 115.72%
+Max Drawdown: 4.13%
+Sharpe Ratio: 12.0412
+
+Optimized Parameters:
+--------------------------------------------------------------------------------
+per_step_tick_gap                  : 20.000000 (int)
+cold_start_steps                   : 9.000000 (int)
+max_abserve_tick_steps             : 160.000000 (int)
+max_abserce_avg_price_down_steps   : 12.000000 (int)
+stop_profit_open_hc_pct            : -0.060166 (float)
+dynamic_hc_stop_profit_thres       : 0.409701 (float)
+last_close_price_hc_pct            : -0.021920 (float)
+last_day_sell_thres                : 0.010000 (float)
+last_day_sell_huiche               : 0.004349 (float)
+fd_mount                           : 30000000.000000 (int)
+fd_vol_pct                         : 0.112804 (float)
+fd_ju_ticks                        : 12.000000 (int)
+max_zb_times                       : 3.000000 (int)
+stagnation_kline_ticks             : 50.000000 (int)
+decline_kline_ticks                : 5.000000 (int)
+yang_yin_threshold                 : 0.008255 (float)
+stagnation_n                       : 3.000000 (int)
+stagnation_volume_ratio_threshold  : 3.000000 (int)
+stagnation_ratio_threshold         : 270.000000 (int)
+decline_volume_ratio_threshold     : 8.000000 (int)
+max_rebounds                       : 9.000000 (int)
+decline_ratio_threshold            : 310.000000 (int)
+flxd_ticks                         : 1000.000000 (int)
+kline_sell_only_zy                 : 1.000000 (bool)
+window_size                        : 7.000000 (int)
+stop_profit_pct                    : 0.000000 (float)
+static_hc_stop_profit_pct          : 1.000000 (float)
+
+Optimization Summary:
+--------------------------------------------------------------------------------
+Best generation: 26
+Best fitness in generation 26: 2.833083
+Max fitness improvement: 0.174157
+Average population fitness: 2.684149

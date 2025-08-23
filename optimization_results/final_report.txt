@@ -2,30 +2,46 @@
 STOCK MONITORING STRATEGY OPTIMIZATION REPORT
 ================================================================================
 
-Optimization Date: 2025-08-18 01:47:46
-Total Generations: 11
-Best Fitness: 2.771703
-Total Return: 314.23%
-Max Drawdown: 20.77%
-Sharpe Ratio: 6.6419
+Optimization Date: 2025-08-24 04:45:34
+Total Generations: 31
+Best Fitness: 2.470003
+Total Return: 43.99%
+Max Drawdown: 2.07%
+Sharpe Ratio: 12.7924
 
 Optimized Parameters:
 --------------------------------------------------------------------------------
-per_step_tick_gap                  : 6.000000 (int)
-cold_start_steps                   : 9.000000 (int)
+per_step_tick_gap                  : 9.000000 (int)
+cold_start_steps                   : 8.000000 (int)
 max_abserve_tick_steps             : 160.000000 (int)
-max_abserce_avg_price_down_steps   : 12.000000 (int)
-stop_profit_open_hc_pct            : -0.035577 (float)
-dynamic_hc_stop_profit_thres       : 2.569087 (float)
-last_close_price_hc_pct            : -0.011861 (float)
-last_day_sell_thres                : 0.804817 (float)
-last_day_sell_huiche               : 0.011434 (float)
+max_abserce_avg_price_down_steps   : 8.000000 (int)
+stop_profit_open_hc_pct            : -0.037804 (float)
+dynamic_hc_stop_profit_thres       : 2.075770 (float)
+last_close_price_hc_pct            : -0.003244 (float)
+last_day_sell_thres                : 0.010344 (float)
+last_day_sell_huiche               : 0.001009 (float)
+fd_mount                           : 50000000.000000 (int)
+fd_vol_pct                         : 0.416529 (float)
+fd_ju_ticks                        : 17.000000 (int)
+max_zb_times                       : 11.000000 (int)
+stagnation_kline_ticks             : 13.000000 (int)
+decline_kline_ticks                : 5.000000 (int)
+yang_yin_threshold                 : 0.001971 (float)
+stagnation_n                       : 7.000000 (int)
+stagnation_volume_ratio_threshold  : 17.000000 (int)
+stagnation_ratio_threshold         : 230.000000 (int)
+decline_volume_ratio_threshold     : 1.000000 (int)
+max_rebounds                       : 5.000000 (int)
+decline_ratio_threshold            : 600.000000 (int)
+flxd_ticks                         : 600.000000 (int)
+kline_sell_only_zy                 : 1.000000 (bool)
+window_size                        : 7.000000 (int)
 stop_profit_pct                    : 0.000000 (float)
 static_hc_stop_profit_pct          : 1.000000 (float)
 
 Optimization Summary:
 --------------------------------------------------------------------------------
-Best generation: 2
-Best fitness in generation 2: 2.771703
-Max fitness improvement: 0.034824
-Average population fitness: 2.762524
+Best generation: 30
+Best fitness in generation 30: 2.470003
+Max fitness improvement: 0.271439
+Average population fitness: 2.275897

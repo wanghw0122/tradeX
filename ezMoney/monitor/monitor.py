@@ -529,7 +529,7 @@ class StockMonitor(object):
                                     # 均线下
                                     if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_DOWN:
                                         
-                                        if self.current_price <= self.avg_price:
+                                        if self.smooth_current_price <= self.avg_price:
                                             if self.running_monitor_down_status[row_id]:
                                                 if self.current_tick_steps >= max_abserve_tick_steps:
                                                     self.running_monitor_observe_steps[row_id] = self.running_monitor_observe_steps[row_id] + 1

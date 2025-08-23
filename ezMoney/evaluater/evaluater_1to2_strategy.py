@@ -17,25 +17,43 @@ import datetime
 import logging
 import json
 import time
+import traceback
 # from evaluater.evaluater_generate_datas import build_evaluater_1to2_data_list_from_file
 
 # 设置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
 # 定义参数范围和类型
 PARAM_RANGES = {
-    'per_step_tick_gap': (1, 10, int),
+    'per_step_tick_gap': (1, 30, int),
     'cold_start_steps': (1, 20, int),
     'max_abserve_tick_steps': (5, 30, int),
     'max_abserce_avg_price_down_steps': (1, 15, int),
     'stop_profit_open_hc_pct': (-0.1, 0.0, float),
-    'stop_profit_pct': (0, 0, float),
+    # 'stop_profit_pct': (0, 0, float),
     'dynamic_hc_stop_profit_thres': (0, 5, float),
-    'static_hc_stop_profit_pct': (1, 1, float),
+    # 'static_hc_stop_profit_pct': (1, 1, float),
     'last_close_price_hc_pct': (-0.04, 0.0, float),
     'last_day_sell_thres': (0.01, 1.0, float),
-    'last_day_sell_huiche': (0.001, 0.02, float)
+    'last_day_sell_huiche': (0.001, 0.02, float),
+    'fd_mount': (2, 15, int),
+    'fd_vol_pct': (0, 0.7, float),
+    'fd_ju_ticks': (1, 30, int),
+    'max_zb_times': (1, 15, int),
+    'stagnation_kline_ticks': (5, 50, int),
+    'decline_kline_ticks': (5, 30, int),
+    'yang_yin_threshold': (0.001, 0.01, float),
+    'stagnation_n': (1, 15, int),
+    'stagnation_volume_ratio_threshold': (1, 30, int),
+    'stagnation_ratio_threshold': (3, 50, int),
+    'decline_volume_ratio_threshold': (1, 30, int),
+    'max_rebounds': (1, 10, int),
+    'decline_ratio_threshold': (3, 50, int),
+    'flxd_ticks': (0, 10, int),
+    'kline_sell_only_zy': (0, 1, bool),
+    'window_size': (3, 10, int)
 }
 
 # 需要优化的参数列表
@@ -48,7 +66,23 @@ OPTIMIZABLE_PARAMS = [
     'dynamic_hc_stop_profit_thres',
     'last_close_price_hc_pct',
     'last_day_sell_thres',
-    'last_day_sell_huiche'
+    'last_day_sell_huiche',
+    'fd_mount',
+    'fd_vol_pct',
+    'fd_ju_ticks',
+    'max_zb_times',
+    'stagnation_kline_ticks',
+    'decline_kline_ticks',
+    'yang_yin_threshold',
+    'stagnation_n',
+    'stagnation_volume_ratio_threshold',
+    'stagnation_ratio_threshold',
+    'decline_volume_ratio_threshold',
+    'max_rebounds',
+    'decline_ratio_threshold',
+    'flxd_ticks',
+    'kline_sell_only_zy',
+    'window_size'
 ]
 
 # 无风险年化收益率 (0%)
@@ -58,6 +92,10 @@ DAILY_RISK_FREE_RATE = RISK_FREE_RATE / 252
 # 创建输出目录
 os.makedirs("optimization_results", exist_ok=True)
 os.makedirs("capital_curves", exist_ok=True)
+
+def init_worker(shared_stock_lists):
+    global global_stock_lists
+    global_stock_lists = shared_stock_lists
 
 def create_individual():
     """创建个体（一组参数）"""
@@ -101,6 +139,14 @@ def decode_individual(individual):
         # 特殊处理：max_abserve_tick_steps 需要乘以10
         if param == 'max_abserve_tick_steps':
             value *= 10
+        elif param == 'stagnation_ratio_threshold':
+            value *= 10
+        elif param == 'fd_mount':
+            value *= 10000000
+        elif param == 'decline_ratio_threshold':
+            value *= 10
+        elif param == 'flxd_ticks':
+            value *= 100
         
         params[param] = value
     
@@ -110,11 +156,6 @@ def decode_individual(individual):
     
     return params
     
-    # 添加固定参数
-    params['stop_profit_pct'] = 0.0
-    params['static_hc_stop_profit_pct'] = 1.0
-    
-    return params
 
 def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=200000, 
                                     fitness_weights=(0.4, 0.3, 0.3)):
@@ -163,11 +204,22 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
             # 获取交易价格和收盘价
             trade_price = stock_infos['trade_price']
             close_price = stock_infos['close_price']
+            limit_up = stock_infos['limit_up']
+            limit_down = stock_infos['limit_down']
+            n_next_open = stock_infos['n_next_open']
+            n_next_close = stock_infos['n_next_close']
 
-            
             # 计算实际卖出价格
-            actual_sell_price = sell_price if sold else close_price
+            if sold:
+                actual_sell_price = sell_price
+            else:
+                actual_sell_price = close_price
+                if limit_up == 1 or limit_down == 1:
+                    actual_sell_price = n_next_open
+            
             if actual_sell_price <= 0:
+                raise Exception(f"Invalid actual_sell_price: {actual_sell_price} for {stock_code}")
+
                 actual_sell_price = close_price  # 确保价格有效
             
             # 计算本次交易的收益（使用全部可用资金）
@@ -225,6 +277,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
         
     except Exception as e:
         logger.error(f"Error evaluating strategy on single list: {str(e)}")
+        traceback.print_exc()
         # 返回极低的适应度值
         return 1e-8, -0.9, 0.9, 0, [initial_capital]
 
@@ -289,6 +342,33 @@ def evaluate(individual, stock_lists, fitness_weights):
     """适应度评估函数"""
     fitness, _, _, _ = evaluate_strategy(individual, stock_lists, fitness_weights=fitness_weights)
     return (fitness,)
+
+
+# def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights=(0.4, 0.3, 0.3)):
+#     """使用全局变量 global_stock_lists 进行评估"""
+#     global global_stock_lists
+#     fitness, _, _, _ = evaluate_strategy(individual, global_stock_lists, initial_capital, fitness_weights)
+#     return (fitness,) 
+
+def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights=(0.4, 0.3, 0.3)):
+    """使用全局变量 global_stock_lists 进行评估"""
+    try:
+        # 尝试获取全局变量
+        global global_stock_lists
+        if 'global_stock_lists' in globals():
+            stock_lists = global_stock_lists
+        else:
+            # 如果没有全局变量，则从其他地方获取（例如作为参数传递）
+            # 这里我们假设如果全局变量不存在，则使用默认值
+            # 在实际应用中，你可能需要修改这部分逻辑
+            raise ValueError("global_stock_lists not found in globals")
+
+        
+        fitness, _, _, _ = evaluate_strategy(individual, stock_lists, initial_capital, fitness_weights)
+        return (fitness,)  # 返回单元素元组
+    except Exception as e:
+        logger.error(f"Error in evaluate_strategy_global: {str(e)}")
+        return (0.0,)  # 返回极低的适应度值
 
 def mutGaussianAdaptive(individual, mu, sigma, indpb):
     """
@@ -366,6 +446,35 @@ def cxBlendAdaptive(ind1, ind2, alpha):
     return ind1, ind2
 
 
+# def diversity(population):
+#     """
+#     计算种群多样性（基于参数空间的欧几里得距离）
+#     """
+#     if len(population) <= 1:
+#         return 0
+    
+#     # 归一化参数值
+#     normalized_pop = []
+#     for ind in population:
+#         normalized_ind = []
+#         for i, param in enumerate(OPTIMIZABLE_PARAMS):
+#             min_val, max_val, _ = PARAM_RANGES[param]
+#             # 归一化到[0,1]范围
+#             normalized_val = (ind[i] - min_val) / (max_val - min_val)
+#             normalized_ind.append(normalized_val)
+#         normalized_pop.append(normalized_ind)
+    
+#     # 计算所有个体间的平均距离
+#     total_distance = 0
+#     count = 0
+#     for i in range(len(normalized_pop)):
+#         for j in range(i+1, len(normalized_pop)):
+#             dist = np.linalg.norm(np.array(normalized_pop[i]) - np.array(normalized_pop[j]))
+#             total_distance += dist
+#             count += 1
+    
+#     return total_distance / count if count > 0 else 0
+
 def diversity(population):
     """
     计算种群多样性（基于参数空间的欧几里得距离）
@@ -373,14 +482,29 @@ def diversity(population):
     if len(population) <= 1:
         return 0
     
+    # 只处理列表类型的个体
+    valid_individuals = [ind for ind in population if isinstance(ind, list)]
+    invalid_individuals = [ind for ind in population if not isinstance(ind, list)]
+    
+    # 记录无效个体的数量和类型
+    # if invalid_individuals:
+        # logger.warning(f"Found {len(invalid_individuals)} invalid individuals in population. Types: {[type(ind) for ind in invalid_individuals]}")
+    
+    if len(valid_individuals) <= 1:
+        return 0
+    
     # 归一化参数值
     normalized_pop = []
-    for ind in population:
+    for ind in valid_individuals:
         normalized_ind = []
         for i, param in enumerate(OPTIMIZABLE_PARAMS):
             min_val, max_val, _ = PARAM_RANGES[param]
+            # 确保值在合理范围内
+            value = ind[i]
+            if value < min_val or value > max_val:
+                value = np.clip(value, min_val, max_val)
             # 归一化到[0,1]范围
-            normalized_val = (ind[i] - min_val) / (max_val - min_val)
+            normalized_val = (value - min_val) / (max_val - min_val)
             normalized_ind.append(normalized_val)
         normalized_pop.append(normalized_ind)
     
@@ -394,6 +518,21 @@ def diversity(population):
             count += 1
     
     return total_distance / count if count > 0 else 0
+
+
+def create_adaptive_mutate(diversity_threshold=0.1):
+    """
+    创建自适应变异函数的工厂函数，根据多样性选择变异策略
+    """
+    def adaptive_mutate(individual):
+        # 获取当前多样性（可能需要通过全局变量或其他方式传递）
+        # 这里假设有一个全局变量 current_diversity 存储当前多样性
+        
+        if random.random() < 0.5:
+            return mutGaussianAdaptive(individual, mu=0, sigma=0.05, indpb=0.3)
+        else:
+            return mutUniformInt(individual, indpb=0.3)
+    return adaptive_mutate
 
 def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100, 
                            n_processes=None, fitness_weights=(0.4, 0.3, 0.3), 
@@ -413,6 +552,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         best_individual, best_params, best_fitness, best_return, 
         best_drawdown, sharpe_ratio, logbook, history
     """
+
+    global global_stock_lists
+    global_stock_lists = stock_lists
     # 创建适应度类
     if not hasattr(creator, "FitnessMax"):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
@@ -433,10 +575,15 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     
     # 使用锦标赛选择
     toolbox.register("select", tools.selTournament, tournsize=3)
-    
-    # 使用部分函数固定参数
-    evaluate_with_params = partial(evaluate, stock_lists=stock_lists, fitness_weights=fitness_weights)
+    diversity_threshold = 0.1  # 多样性阈值
+    toolbox.register("mutate", create_adaptive_mutate(diversity_threshold))
+
+    evaluate_with_params = partial(evaluate_strategy_global, initial_capital=200000, fitness_weights=fitness_weights)
     toolbox.register("evaluate", evaluate_with_params)
+
+    # 使用部分函数固定参数
+    # evaluate_with_params = partial(evaluate, stock_lists=stock_lists, fitness_weights=fitness_weights)
+    # toolbox.register("evaluate", evaluate_with_params)
     
     # 创建种群
     population = toolbox.population(n=population_size)
@@ -444,11 +591,12 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     # 设置并行处理 - 添加进程数限制
     if n_processes is None:
         n_processes = min(multiprocessing.cpu_count(), 8)  # 限制最大进程数
-    
+    n_processes = 10
     logger.info(f"Using {n_processes} processes for parallel evaluation")
     logger.info(f"Number of stock sublists: {len(stock_lists)}")
     
-    pool = multiprocessing.Pool(processes=n_processes)
+    # pool = multiprocessing.Pool(processes=n_processes)
+    pool = multiprocessing.Pool(processes=n_processes, initializer=init_worker, initargs=(stock_lists,))
     toolbox.register("map", pool.map)
     
     # 初始化统计和记录
@@ -485,7 +633,12 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     fitnesses = list(toolbox.map(toolbox.evaluate, population))
     for ind, fit in zip(population, fitnesses):
         ind.fitness.values = fit
-    
+    fitness_values = [ind.fitness.values[0] for ind in population]
+    logger.info(f"Initial population - Fitness stats: "
+                f"max={max(fitness_values):.4f}, "
+                f"min={min(fitness_values):.4f}, "
+                f"avg={np.mean(fitness_values):.4f}, "
+                f"std={np.std(fitness_values):.4f}")
     # 记录初始状态
     record = stats.compile(population)
     logbook.record(gen=0, nevals=len(population), **record)
@@ -497,7 +650,13 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         best_individual, stock_lists, fitness_weights=fitness_weights
     )
     best_params = decode_individual(best_individual)
-    
+
+    logger.info(f"Initial population - Best individual: "
+                f"fitness={best_fitness:.4f}, "
+                f"return={best_return:.2%}, "
+                f"drawdown={best_drawdown:.2%}, "
+                f"sharpe={best_sharpe:.4f}")
+
     history['gen'].append(0)
     history['best_fitness'].append(best_fitness)
     history['best_return'].append(best_return)
@@ -519,27 +678,26 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     # 添加早停机制 - 基于多样性和适应度
     no_improvement_count = 0
     last_best_fitness = best_fitness  # 记录上一代的最佳适应度
-    diversity_threshold = 0.1  # 多样性阈值
+    
     
     # 开始进化
     for gen in range(1, num_generations + 1):
         # 动态调整变异策略
         current_diversity = diversity(population)
         
-        # 根据多样性选择变异策略
+        # 根据多样性动态调整交叉和变异概率，确保总和为1
         if current_diversity < diversity_threshold:
-            # 多样性低时使用更强的变异
-            mutate_func = toolbox.mutate_uniform
-            mutation_rate = 0.4  # 提高变异率
-            logger.info(f"Low diversity ({current_diversity:.3f}), using uniform mutation")
+            # 多样性低时提高变异率，降低交叉率
+            crossover_rate = 0.6  # 降低交叉率
+            mutation_rate = 0.4   # 提高变异率
+            logger.info(f"Low diversity ({current_diversity:.3f}), adjusting rates: cx={crossover_rate}, mut={mutation_rate}")
         else:
-            # 多样性高时使用温和的变异
-            mutate_func = toolbox.mutate_gaussian
-            mutation_rate = 0.2  # 正常变异率
-        
-        # 生成下一代 - 动态调整交叉和变异概率
+            # 正常情况下的概率
+            crossover_rate = 0.7  # 正常交叉率
+            mutation_rate = 0.3   # 正常变异率
+
         offspring = algorithms.varOr(population, toolbox, lambda_=population_size, 
-                                    cxpb=0.7, mutpb=mutation_rate)
+                                    cxpb=crossover_rate, mutpb=mutation_rate)
         
         # 评估新个体 - 添加超时处理
         fitnesses = []
@@ -570,6 +728,36 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         population = toolbox.select(population + offspring, population_size)
         hof.update(population)
         
+        fitness_values = [ind.fitness.values[0] for ind in population]
+        logger.info(f"Generation {gen} - Fitness stats: "
+                    f"max={max(fitness_values):.4f}, "
+                    f"min={min(fitness_values):.4f}, "
+                    f"avg={np.mean(fitness_values):.4f}, "
+                    f"std={np.std(fitness_values):.4f}")
+        
+        # 记录最佳个体的详细信息
+        best_individual = hof[0]
+        best_fitness = best_individual.fitness.values[0]
+        _, best_return, best_drawdown, best_sharpe = evaluate_strategy(
+            best_individual, stock_lists, fitness_weights=fitness_weights
+        )
+        best_params = decode_individual(best_individual)
+        
+        logger.info(f"Generation {gen} - Best individual: "
+                    f"fitness={best_fitness:.4f}, "
+                    f"return={best_return:.2%}, "
+                    f"drawdown={best_drawdown:.2%}, "
+                    f"sharpe={best_sharpe:.4f}")
+
+        if gen % 5 == 0:
+            logger.info(f"Generation {gen} - Best parameters:")
+            for param, value in best_params.items():
+                logger.info(f"  {param}: {value}")
+        
+        # 记录多样性信息
+        current_diversity = diversity(population)
+        logger.info(f"Generation {gen} - Population diversity: {current_diversity:.4f}")
+
         # 定期引入新个体（每10代）以增加多样性
         if gen % 10 == 0:
             logger.info(f"Introducing new individuals at generation {gen}")
@@ -606,8 +794,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         
         # 检查是否有改进（与上一代的最佳适应度比较）
         # 添加1e-5容差，避免浮点精度问题
+        current_diversity_after_selection = diversity(population)
+        diversity_ok = current_diversity_after_selection > diversity_threshold / 2
         fitness_improved = best_fitness > last_best_fitness + 1e-5
-        diversity_ok = current_diversity > diversity_threshold / 2
         
         if not fitness_improved:
             no_improvement_count += 1
@@ -997,23 +1186,16 @@ def generate_sample_stock_data(n_days=100, n_stocks_per_day=3):
 if __name__ == "__main__":
     from evaluater_generate_datas import build_evaluater_1to2_data_list_from_file
     
-    # 生成示例股票数据（实际应用中应替换为真实数据）
-    # 创建二维股票列表：多个股票子列表
-    stock_lists = []
-    n_sublists = 5  # 5个子列表
-    stocks_per_sublist = 10  # 每个子列表10只股票
     
-    for i in range(n_sublists):
-        stock_sublist = build_evaluater_1to2_data_list_from_file(stocks_per_sublist)
-        stock_lists.append(stock_sublist)
+    stock_lists = build_evaluater_1to2_data_list_from_file(30)
     
-    logger.info(f"Generated {len(stock_lists)} stock sublists, each with {stocks_per_sublist} stocks")
+    logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks")
     
     # 优化参数
     best_params, history = main(
         stock_lists,
-        population_size=7,
-        num_generations=10,
-        fitness_weights=(0.5, 0.3, 0.2),  # 自定义权重
-        save_interval=1  # 每代保存一次
+        population_size=30,
+        num_generations=30,
+        fitness_weights=(0.4, 0.3, 0.3),  # 自定义权重
+        save_interval=5  # 每代保存一次
     )

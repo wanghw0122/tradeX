@@ -1,3 +1,6 @@
+import sys
+sys.path.append(r"D:\workspace\TradeX\ezMoney")
+from matplotlib import use
 from common import constants
 from sqlite_processor.mysqlite import SQLiteManager
 import os
@@ -7,6 +10,8 @@ import datetime
 from logger import strategy_logger as logger
 
 from collections import deque
+from monitor.kline_strategy import SimplifiedKLineStrategy
+
 
 class SmoothFilter:
     def __init__(self, window_size=10):
@@ -39,9 +44,49 @@ class StockMonitor(object):
         self.row_id = stock_infos.get('row_id', 0)
         self.monitor_type = stock_infos.get('monitor_type', -1)
         self.tick_datas = stock_infos.get('tick_datas', [])
+        self.pre_avg_volumes = stock_infos.get('pre_avg_volumes', [])
+        self.pre_volume = stock_infos.get('n_pre_volume', -1)
 
-        print(f' {self.stock_code} tick_datas {len(self.tick_datas)}')
+        self.stagnation_kline_ticks = params.get('stagnation_kline_ticks', 10)
+        self.decline_kline_ticks = params.get('decline_kline_ticks', 15)
+        self.yang_yin_threshold = params.get('yang_yin_threshold', 0.002)
+        self.stagnation_n = params.get('stagnation_n', 10)
+        self.stagnation_volume_ratio_threshold = params.get('stagnation_volume_ratio_threshold', 2.5)
+        self.stagnation_ratio_threshold = params.get('stagnation_ratio_threshold', 40)
+        self.decline_volume_ratio_threshold = params.get('decline_volume_ratio_threshold', 2.5)
+        self.max_rebounds = params.get('max_rebounds', 2)
+        self.decline_ratio_threshold = params.get('decline_ratio_threshold', 50)
+        self.window_size = params.get('window_size', 3)
 
+        self.use_simiple_kline_strategy = params.get('use_simiple_kline_strategy', True)
+
+        self.use_simiple_kline_strategy_flxd = params.get('use_simiple_kline_strategy_flxd', True)
+        self.use_simiple_kline_strategy_flzz = params.get('use_simiple_kline_strategy_flzz', True)
+
+        self.flxd_ticks = params.get('flxd_ticks', 110)
+
+        self.flzz_ticks = params.get('flzz_ticks', 5000)
+
+        self.kline_sell_only_zy = params.get('kline_sell_only_zy', False)
+
+
+        if self.use_simiple_kline_strategy:
+            self.kline_strategy = SimplifiedKLineStrategy(stagnation_kline_ticks = self.stagnation_kline_ticks, 
+                                                          decline_kline_ticks = self.decline_kline_ticks, 
+                                                          yang_yin_threshold = self.yang_yin_threshold, 
+                                                          stagnation_n = self.stagnation_n, 
+                                                          stagnation_volume_ratio_threshold = self.stagnation_volume_ratio_threshold, 
+                                                          stagnation_ratio_threshold = self.stagnation_ratio_threshold, 
+                                                          decline_volume_ratio_threshold = self.decline_volume_ratio_threshold, 
+                                                          max_rebounds = self.max_rebounds, 
+                                                          decline_ratio_threshold = self.decline_ratio_threshold)
+
+        else:
+            self.kline_strategy = None
+
+        self.stagnation_signal, self.decline_signal = 0, 0
+
+        # print(f' {self.stock_code} tick_datas {len(self.tick_datas)}')
 
         if mkt_datas and 'ma5' in mkt_datas:
             self.ma5 = mkt_datas['ma5']
@@ -66,7 +111,7 @@ class StockMonitor(object):
         
         self.params = params
 
-        self.per_step_tick_gap = params.get('per_step_tick_gap', 2)
+        self.per_step_tick_gap = params.get('per_step_tick_gap', 3)
         self.cold_start_steps = params.get('cold_start_steps', 10)
         self.max_abserve_tick_steps = params.get('max_abserve_tick_steps', 110)
         self.max_abserce_avg_price_down_steps = params.get('max_abserce_avg_price_down_steps', 1)
@@ -79,6 +124,13 @@ class StockMonitor(object):
 
         self.last_day_sell_huiche = params.get('last_day_sell_huiche', 0.009)
 
+        self.fd_mount = params.get('fd_mount', 30000000)
+        self.fd_vol_pct = params.get('fd_vol_pct', 0.5)
+        self.fd_juge_ticks = params.get('fd_ju_ticks', 3)
+
+        self.max_zb_times = params.get('max_zb_times', 2)
+
+
         self.open_status = -1
 
         self.monitor_data = {}
@@ -89,7 +141,7 @@ class StockMonitor(object):
         # 平滑当前价
         self.smooth_current_price = 0
         # 平滑过滤器
-        self.smooth_price_filter = SmoothFilter(window_size=3)
+        self.smooth_price_filter = SmoothFilter(window_size=self.window_size)
 
         # 涨停最大封单量
         self.max_limit_up_vol = -1
@@ -134,6 +186,7 @@ class StockMonitor(object):
 
         self.running_monitor_observe_steps = {}
 
+        self.zb_times = 0
        
         if self.row_id not in self.running_monitor_status:
             self.running_monitor_status[self.row_id] = constants.StockStatus.COLD_START
@@ -146,7 +199,6 @@ class StockMonitor(object):
         
         self.sell_success = False
         self.sell_price = 0
-
 
         for data in self.tick_datas:
             monitor_result = self.monitor(data)
@@ -164,32 +216,45 @@ class StockMonitor(object):
         """返回监控结果元组 (是否卖出, 卖出价格)"""
         return (self.sell_success, self.sell_price)
 
+    # def _create_process_safe_logger(self):
+    #     """创建进程安全的日志记录器"""
+    #     # 获取当前进程ID
+    #     pid = os.getpid()
+        
+    #     # 创建日志目录
+    #     log_dir = "logs/strategy_logger"
+    #     os.makedirs(log_dir, exist_ok=True)
+        
+    #     # 创建进程特定的日志文件
+    #     log_file = os.path.join(log_dir, f"strategy_logger_{pid}.log")
+        
+    #     # 创建日志记录器
+    #     logger = logging.getLogger(f"StockMonitor_{pid}")
+    #     logger.setLevel(logging.INFO)
+        
+    #     # 添加文件处理器
+    #     file_handler = logging.FileHandler(log_file)
+    #     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        
+    #     # 禁用文件轮转
+    #     file_handler.doRollover = lambda: None
+        
+    #     logger.addHandler(file_handler)
+        
+    #     return logger
+    
     def _create_process_safe_logger(self):
-        """创建进程安全的日志记录器"""
+        """创建进程安全的日志记录器（静默模式）"""
         # 获取当前进程ID
         pid = os.getpid()
         
-        # 创建日志目录
-        log_dir = "logs/strategy_logger"
-        os.makedirs(log_dir, exist_ok=True)
-        
-        # 创建进程特定的日志文件
-        log_file = os.path.join(log_dir, f"strategy_logger_{pid}.log")
-        
         # 创建日志记录器
         logger = logging.getLogger(f"StockMonitor_{pid}")
-        logger.setLevel(logging.INFO)
-        
-        # 添加文件处理器
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        
-        # 禁用文件轮转
-        file_handler.doRollover = lambda: None
-        
-        logger.addHandler(file_handler)
+        logger.setLevel(logging.CRITICAL + 1)  # 设置为不记录任何级别的日志
+        logger.propagate = False  # 阻止日志传播
         
         return logger
+
     def monitor(self, data):
 
         lastPrice = data['lastPrice']
@@ -199,15 +264,18 @@ class StockMonitor(object):
         lastClose = data['lastClose']
         volume = data['volume']
         amount = data['amount']
-        pvolume = data['pvolume'] if data['pvolume'] > 0 else 1
+        # pvolume = data['pvolume'] if data['pvolume'] > 0 else 1
         askPrice = data['askPrice']
         bidPrice = data['bidPrice']
         askVol = data['askVol']
         bidVol = data['bidVol']
+        if open and self.kline_strategy and not self.kline_strategy.initialized:
+            self.kline_strategy.initialize(open, open)
+
         if self.open_status == -1:
             self.open_status = constants.OpenStatus.DOWN_OPEN if open <= lastClose else constants.OpenStatus.UP_OPEN
         if amount <= 0 or volume <= 0:
-            return False, lastPrice
+            raise ValueError("amount or volume is 0")
         if lastPrice <= 0:
             return False, lastPrice
         # 均价
@@ -221,6 +289,9 @@ class StockMonitor(object):
         self.last_close_price = lastClose
         # 当前步数
         self.current_tick_steps = self.current_tick_steps + 1
+
+        cur_volume = volume - self.pre_volume
+        self.pre_volume = volume
         # 当前天内涨幅
         self.current_open_increase = (self.current_price - self.open_price) / self.open_price
         # 当天涨幅
@@ -242,16 +313,32 @@ class StockMonitor(object):
         # 当天最低涨幅
         self.current_min_increase = (self.current_min_price - self.last_close_price) / self.last_close_price
 
-        # logger.info(
+        # self.logger.info(
         #     f"股票代码： {self.stock_code}, 股票名称： {self.stock_name}, "
         #     f"均价: {self.avg_price:.2f}, 当前价: {self.current_price:.2f}, 开盘价: {self.open_price:.2f}, "
-        #     f"昨天收盘价: {self.last_close_price:.2f}, 当前步数: {self.current_tick_steps}, "
+        #     f"昨天收盘价: {self.last_close_price:.2f}, 当前步数: {self.current_tick_steps}, 当前volume {cur_volume} "
         #     f"当前天内涨幅: {self.current_open_increase:.2%}, 当天涨幅: {self.current_increase:.2%}, "
         #     f"当天最高价: {self.current_max_price:.2f}, 当天最低价: {self.current_min_price:.2f}, "
         #     f"当天天内最高涨幅: {self.current_max_open_increase:.2%}, 当天天内最低涨幅: {self.current_min_open_increase:.2%}, "
         #     f"当天最高涨幅: {self.current_max_increase:.2%}, 当天最低涨幅: {self.current_min_increase:.2%}"
         # )
 
+        if self.use_simiple_kline_strategy and self.kline_strategy:
+            cur_prevolume = self.pre_avg_volumes[self.current_tick_steps] if self.current_tick_steps < len(self.pre_avg_volumes) else 0
+            self.kline_strategy.update_tick_data(cur_volume, lastPrice, cur_prevolume, self.avg_price)
+            self.stagnation_signal, self.decline_signal = self.kline_strategy.generate_signals()
+
+        if self.use_simiple_kline_strategy_flxd and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flxd_ticks:
+            if not self.kline_sell_only_zy:
+                return True, self.current_price
+            elif self.kline_sell_only_zy and self.monitor_type == 1:
+                return True, self.current_price
+        if self.use_simiple_kline_strategy_flzz and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flzz_ticks:
+            if not self.kline_sell_only_zy:
+                return True, self.current_price
+            elif self.kline_sell_only_zy and self.monitor_type == 1:
+                return True, self.current_price
+        
         if self.limit_up_price < 0 or self.limit_down_price < 0:
             limit_down_price_0, limit_up_price_0 = constants.get_limit_price(self.last_close_price, stock_code=self.stock_code)
             self.limit_up_price = limit_up_price_0
@@ -270,17 +357,10 @@ class StockMonitor(object):
                     return True, buy1_price
                 else:
                     return True, self.current_price
-            # 封单金额过小 卖
-            if buy1_price * buy1_vol * 100 < 35000000 and buy1_vol / self.max_limit_up_vol < 0.5:
-                self.logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
-                if buy1_price > 0:
-                    return True, buy1_price
-                else:
-                    return True, self.current_price
-
+            
             if self.limit_up_status:
                 self.limit_up_tick_times = self.limit_up_tick_times + 1
-                if self.limit_up_tick_times > 3:
+                if self.limit_up_tick_times > self.fd_juge_ticks:
                     if not bidPrice or not bidVol:
                         return True, self.current_price
                     buy1_price = bidPrice[0]
@@ -291,7 +371,7 @@ class StockMonitor(object):
                         else:
                             return True, self.current_price
                     # 封单金额过小 卖
-                    if buy1_price * buy1_vol * 100 < 8000000:
+                    if buy1_price * buy1_vol * 100 < self.fd_mount and buy1_vol / self.max_limit_up_vol < self.fd_vol_pct:
                         self.logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
                         if buy1_price > 0:
                             return True, buy1_price
@@ -303,35 +383,39 @@ class StockMonitor(object):
 
         elif self.limit_up_price > 0 and abs(self.smooth_current_price - self.limit_up_price) >= 0.0033:
             self.max_limit_up_vol = -1
-            self.limit_up_tick_times = -1
+            
             if self.limit_up_status:
-                # 涨停炸板卖
-                self.logger.info(f"炸板了，卖出 {self.stock_code} {self.stock_name}")
+                self.zb_times = self.zb_times + 1
                 self.limit_up_status = False
-                if not bidPrice or not bidVol:
-                    return True, self.current_price
-                else:
-                    buy1_price = bidPrice[0]
-                    buy1_vol = bidVol[0]
-                    if len(bidPrice) > 1 and len(bidVol) > 1:
-                        buy2_price = bidPrice[1]
-                        buy2_vol = bidVol[1]
+                self.limit_up_tick_times = -1
+                if self.zb_times > self.max_zb_times:
+                    self.logger.info(f"炸板了，卖出 {self.stock_code} {self.stock_name}")
+                    if not bidPrice or not bidVol:
+                        raise Exception(f"not bidPrice {self.limit_up_price} is not valid for {self.stock_code}")
+                        return True, self.current_price
                     else:
-                        buy2_price = 0
-                        buy2_vol = 0
-                    if buy1_price * buy1_vol * 100 < 500000:
-                        if buy2_price > 0:
-                            return True, buy2_price
+                        buy1_price = bidPrice[0]
+                        buy1_vol = bidVol[0]
+                        if len(bidPrice) > 1 and len(bidVol) > 1:
+                            buy2_price = bidPrice[1]
+                            buy2_vol = bidVol[1]
+                        else:
+                            buy2_price = 0
+                            buy2_vol = 0
+                        if buy1_price * buy1_vol * 100 < 500000:
+                            if buy2_price > 0:
+                                return True, buy2_price
+                            else:
+                                if buy1_price > 0:
+                                    return True, buy1_price
+                                else:
+                                    return True, self.current_price
                         else:
                             if buy1_price > 0:
                                 return True, buy1_price
                             else:
                                 return True, self.current_price
-                    else:
-                        if buy1_price > 0:
-                            return True, buy1_price
-                        else:
-                            return True, self.current_price
+            self.limit_up_tick_times = -1
             self.limit_up_status = False
         else:
             self.limit_up_status = False
@@ -345,8 +429,7 @@ class StockMonitor(object):
             return False, self.current_price
 
         current_time_str = datetime.datetime.now().strftime("%H:%M:%S")
-        
-        
+    
         if self.monitor_type == constants.STOP_PROFIT_TRADE_TYPE:
             strategy_name = self.strategy_name
             trade_price = self.trade_price
@@ -380,7 +463,7 @@ class StockMonitor(object):
 
             if dynamic_hc_stop_profit_thres > 0:
                 a = ((10 - self.current_max_increase * 100) * dynamic_hc_stop_profit_thres) / 100
-                a = max(a, 0.005)
+                a = max(a, 0.004)
                 a = min(a, 0.05)
                 dynamic_zs_line = (1 - a) * self.current_max_price
                 dynamic_zs_line = max(dynamic_zs_line, limit_down_price)
@@ -440,14 +523,16 @@ class StockMonitor(object):
                 if self.current_tick_steps % per_step_tick_gap == 0:
                     # 低开低走
                     if self.running_monitor_status[row_id] == constants.StockStatus.DOWN_LOW_AVG_DOWN:
-
+                        
                         if self.smooth_current_price < zs_line and self.smooth_current_price <= self.avg_price:
                             if self.limit_down_status:
                                 self.logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 跌停了，等5min后卖，先不出售")
                             else:
                                 if self.current_tick_steps < max_abserve_tick_steps:
+                                    
                                     # 5min内增加一定的容忍性
-                                    if self.smooth_current_price < self.ma5:
+                                    
+                                    if self.smooth_current_price < self.ma5 and self.open_price > self.ma5:
                                         
                                         self.logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                         return True, self.current_price
@@ -457,7 +542,7 @@ class StockMonitor(object):
                         # 均线下
                         if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_DOWN:
                             
-                            if self.current_price <= self.avg_price:
+                            if self.smooth_current_price <= self.avg_price:
                                 if self.running_monitor_down_status[row_id]:
                                     if self.current_tick_steps >= max_abserve_tick_steps:
                                         self.running_monitor_observe_steps[row_id] = self.running_monitor_observe_steps[row_id] + 1
@@ -526,13 +611,14 @@ class StockMonitor(object):
                                 self.running_monitor_observe_steps[row_id] = 0
 
                     elif self.running_monitor_status[row_id] == constants.StockStatus.DOWN_HIGH_AVG_UP:
+                        
                         if self.smooth_current_price < zs_line and self.smooth_current_price <= self.avg_price:
                             if self.limit_down_status:
                                 self.logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 跌停了，等5min后卖，先不出售")
                             else:
                                 if self.current_tick_steps < max_abserve_tick_steps:
                                     # 5min内增加一定的容忍性
-                                    if self.smooth_current_price < self.ma5:
+                                    if self.smooth_current_price < self.ma5 and self.open_price > self.ma5:
                                         
                                         self.logger.info(f"低于止损线 止盈卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                         return True, self.current_price
@@ -596,7 +682,6 @@ class StockMonitor(object):
                                 self.running_monitor_stock_status[row_id] = constants.StockStatus.AVG_DOWN
                     elif self.running_monitor_status[row_id] == constants.StockStatus.UP_LOW_AVG_DOWN:
 
-                        
                         if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_UP:
                             if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
                                 self.logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")

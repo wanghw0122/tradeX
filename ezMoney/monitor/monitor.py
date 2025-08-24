@@ -1,4 +1,5 @@
-from py import log
+import sys
+sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from common import constants
 from sqlite_processor.mysqlite import SQLiteManager
 import threading
@@ -18,6 +19,7 @@ monitor_table = 'monitor_data'
 monitor_config_table = "strategy_monitor_config"
 
 strategy_to_params_configs = {
+
     '接力-一进二弱转强:倒接力4': {
         "per_step_tick_gap": 9,
         "cold_start_steps": 20,
@@ -359,12 +361,12 @@ class StockMonitor(object):
                 logger.error(f"lastPrice <= 0. {lastPrice} {time} {self.stock_code} {self.stock_name}")
                 self.pre_volume = volume
                 continue
-            if self.pre_volume != -1:
+            if self.pre_volume != -1 and volume >= self.pre_volume:
                 self.cur_volume = volume - self.pre_volume
             else:
-                self.cur_volume = 0
+                self.cur_volume = 0  # 或者使用其他默认值
+                logger.warning(f"成交量异常: current={volume}, previous={self.pre_volume}")
             self.pre_volume = volume
-
             # 均价
             self.avg_price = amount / volume / 100
             # 当前价
@@ -430,7 +432,7 @@ class StockMonitor(object):
 
                     cur_prevolume = self.pre_avg_volumes[self.current_tick_steps] if self.current_tick_steps < len(self.pre_avg_volumes) else 0
 
-                    logger.info(f"cur_prevolume: {cur_prevolume}, cur_tick: {self.current_tick_steps}")
+                    logger.info(f"[StockMonitor]cur_prevolume: {cur_prevolume}, cur_tick: {self.current_tick_steps}, cur_code: {self.stock_code}")
 
                     if flzz_use_smooth_price:
                         kline_strategy.update_tick_data(self.cur_volume, self.smooth_current_price, cur_prevolume, self.avg_price)

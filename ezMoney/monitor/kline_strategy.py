@@ -16,7 +16,7 @@ class SimplifiedKLineStrategy:
         # 放量滞涨参数
         self.stagnation_n = stagnation_n             # 用于计算近期平均成交量的K线数量
         self.stagnation_volume_ratio_threshold = stagnation_volume_ratio_threshold  # 量比阈值
-        self.stagnation_price_change_max_threshold = 4  # 价格变化阈值(0.5%)
+        self.stagnation_price_change_max_threshold = 2.5  # 价格变化阈值(0.5%)
         self.stagnation_price_change_min_threshold = -0.5  # 价格变化阈值(0.5%)
         self.stagnation_ratio_threshold = stagnation_ratio_threshold  # 量价背离比率阈值
         self.stagnation_confirmation_count = 1  # 放量滞涨确认信号个数
@@ -208,6 +208,9 @@ class SimplifiedKLineStrategy:
         # 计算最近n个K线的平均成交量（排除当前K线）
         # 获取除了当前K线之外的最后n个K线
         recent_klines = list(self.stagnation_klines)[-self.stagnation_n-1:-1]
+        if not recent_klines:
+            return 1.0
+
         avg_recent_volume = sum(k['volume'] for k in recent_klines) / len(recent_klines)
         
         # 计算量比

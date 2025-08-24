@@ -69,6 +69,9 @@ class StockMonitor(object):
 
         self.kline_sell_only_zy = params.get('kline_sell_only_zy', False)
 
+        self.flzz_use_smooth_price = params.get('flzz_use_smooth_price', False)
+
+        self.flzz_zf_thresh = params.get('flzz_zf_thresh', 0.03)
 
         if self.use_simiple_kline_strategy:
             self.kline_strategy = SimplifiedKLineStrategy(stagnation_kline_ticks = self.stagnation_kline_ticks, 
@@ -324,7 +327,10 @@ class StockMonitor(object):
 
         if self.use_simiple_kline_strategy and self.kline_strategy:
             cur_prevolume = self.pre_avg_volumes[self.current_tick_steps] if self.current_tick_steps < len(self.pre_avg_volumes) else 0
-            self.kline_strategy.update_tick_data(cur_volume, lastPrice, cur_prevolume, self.avg_price)
+            if self.flzz_use_smooth_price:
+                self.kline_strategy.update_tick_data(cur_volume, self.smooth_current_price, cur_prevolume, self.avg_price)
+            else:
+                self.kline_strategy.update_tick_data(cur_volume, lastPrice, cur_prevolume, self.avg_price)
             self.stagnation_signal, self.decline_signal = self.kline_strategy.generate_signals()
 
         if self.use_simiple_kline_strategy_flxd and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flxd_ticks and self.decline_signal:
@@ -332,7 +338,7 @@ class StockMonitor(object):
                 return True, self.current_price
             elif self.kline_sell_only_zy and self.monitor_type == 1:
                 return True, self.current_price
-        if self.use_simiple_kline_strategy_flzz and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flzz_ticks and self.stagnation_signal:
+        if self.use_simiple_kline_strategy_flzz and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flzz_ticks and self.stagnation_signal and self.current_increase >= self.flzz_zf_thresh:
             if not self.kline_sell_only_zy:
                 return True, self.current_price
             elif self.kline_sell_only_zy and self.monitor_type == 1:

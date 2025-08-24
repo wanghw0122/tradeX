@@ -1,3 +1,4 @@
+from py import log
 from common import constants
 from sqlite_processor.mysqlite import SQLiteManager
 import threading
@@ -97,6 +98,9 @@ class StockMonitor(object):
             self.pre_avg_volumes = mkt_datas['pre_avg_volumes']
         else:
             self.pre_avg_volumes = []
+        if not self.pre_avg_volumes:
+            logger.error(f"[StockMonitor] 股票{self.stock_code} {self.stock_name} 没有前一日平均成交量")
+
         if qmt_trader != None:
             self.qmt_trader = qmt_trader
         self.strategy_to_kline_strategy = {}
@@ -200,7 +204,8 @@ class StockMonitor(object):
                 strategy_name = query_data['strategy_name']
                 if strategy_name not in self.strategy_to_row_ids:
                     self.strategy_to_row_ids[strategy_name] = []
-                self.strategy_to_row_ids[strategy_name].append(row_id)
+                if row_id not in self.strategy_to_row_ids[strategy_name]:
+                    self.strategy_to_row_ids[strategy_name].append(row_id)
                 sub_strategy_name = query_data['sub_strategy_name']
                 if row_id not in self.left_row_ids:
                     self.left_row_ids.append(row_id)
@@ -403,6 +408,7 @@ class StockMonitor(object):
             )
 
             if self.strategy_to_kline_strategy:
+
                 for strategy, kline_strategy in self.strategy_to_kline_strategy.items():
                     if strategy not in self.strategy_to_row_ids:
                         continue

@@ -496,8 +496,8 @@ def build_evaluater_1to2_data_list(result_tuples):
         n_next_open = result['n_next_open']
         n_next_close = result['n_next_close']
         n_pre_volume = result['n_pre_volume']
+        datekey = result['datekey']
 
-        
         limit_down_price, limit_up_price = constants.get_limit_price(close)
         stock_infos['limit_up_price'] = limit_up_price
         stock_infos['limit_down_price'] = limit_down_price
@@ -528,6 +528,8 @@ def build_evaluater_1to2_data_list(result_tuples):
         cur_res['stock_name'] = stock_name
         cur_res['stock_infos'] = stock_infos
         cur_res['mkt_datas'] = mkt_datas
+        cur_res['datekey'] = datekey
+
         res.append(cur_res)
         i += 1
     return res
@@ -565,7 +567,7 @@ def serialize(obj):
 
 
 if __name__ == "__main__":
-    res = build_evaluater_1to2_data_list_from_file()
+    res = build_evaluater_1to2_data_list_from_file(5)
     def serialize(obj):
         # 处理列表截断（只保留前100项）
         if isinstance(obj, list):
@@ -578,6 +580,7 @@ if __name__ == "__main__":
     file_path = r'd:\workspace\TradeX\notebook\new_strategy_eval\result_dict.json'
 
     # 保存字典到JSON文件（格式化输出）
-    with open(file_path, 'w', encoding='utf-8') as f:
-        json.dump(res[0][0], f, ensure_ascii=False, indent=2, default=serialize)
+    with open(file_path, 'a', encoding='utf-8') as f:
+        for item in res[0]:
+            json.dump(item, f, ensure_ascii=False, indent=2, default=serialize)
     print(len(res))

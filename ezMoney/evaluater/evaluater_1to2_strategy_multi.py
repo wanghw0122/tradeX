@@ -27,33 +27,40 @@ logger = logging.getLogger(__name__)
 
 # 定义参数范围和类型
 PARAM_RANGES = {
-    'per_step_tick_gap': (1, 30, int),
-    'cold_start_steps': (1, 20, int),
-    'max_abserve_tick_steps': (5, 30, int),
+    'per_step_tick_gap': (1, 15, int),
+    'cold_start_steps': (0, 10, int),
+    # 'max_abserve_tick_steps': (1, 20, int),
+    'max_abserve_tick_steps': (10, 200, int),
     'max_abserce_avg_price_down_steps': (1, 15, int),
-    'stop_profit_open_hc_pct': (-0.1, 0.0, float),
+    'stop_profit_open_hc_pct': (-0.4, 0.0, float),
     # 'stop_profit_pct': (0, 0, float),
-    'dynamic_hc_stop_profit_thres': (0, 5, float),
+    'dynamic_hc_stop_profit_thres': (0.1, 5, float),
     # 'static_hc_stop_profit_pct': (1, 1, float),
     'last_close_price_hc_pct': (-0.04, 0.0, float),
     'last_day_sell_thres': (0.01, 1.0, float),
     'last_day_sell_huiche': (0.001, 0.02, float),
-    'fd_mount': (2, 15, int),
-    'fd_vol_pct': (0, 0.7, float),
-    'fd_ju_ticks': (1, 30, int),
-    'max_zb_times': (1, 15, int),
+    # 'fd_mount': (1, 15, int),
+    'fd_mount': (10000000, 150000000, int),
+    'fd_vol_pct': (0, 0.75, float),
+    'fd_ju_ticks': (1, 50, int),
+    'max_zb_times': (1, 25, int),
     'stagnation_kline_ticks': (5, 50, int),
-    'decline_kline_ticks': (5, 30, int),
+    'decline_kline_ticks': (5, 50, int),
     'yang_yin_threshold': (0.001, 0.01, float),
-    'stagnation_n': (1, 15, int),
-    'stagnation_volume_ratio_threshold': (1, 40, int),
-    'stagnation_ratio_threshold': (3, 100, int),
-    'decline_volume_ratio_threshold': (1, 40, int),
-    'max_rebounds': (1, 10, int),
-    'decline_ratio_threshold': (3, 100, int),
-    'flxd_ticks': (0, 10, int),
+    'stagnation_n': (5, 15, int),
+    'stagnation_volume_ratio_threshold': (1, 50, int),
+    # 'stagnation_ratio_threshold': (3, 100, int),
+    'stagnation_ratio_threshold': (30, 1000, int),
+    'decline_volume_ratio_threshold': (1, 50, int),
+    'max_rebounds': (1, 6, int),
+    # 'decline_ratio_threshold': (3, 100, int),
+    'decline_ratio_threshold': (30, 1000, int),
+    # 'flxd_ticks': (0, 5, int),
+    'flxd_ticks': (0, 500, int),
     'kline_sell_only_zy': (0, 1, bool),
-    'window_size': (3, 10, int)
+    'window_size': (3, 10, int),
+    'use_simiple_kline_strategy_flxd': (0, 1, bool),
+    'use_simiple_kline_strategy_flzz': (0, 1, bool),
 }
 
 # 需要优化的参数列表
@@ -82,7 +89,9 @@ OPTIMIZABLE_PARAMS = [
     'decline_ratio_threshold',
     'flxd_ticks',
     'kline_sell_only_zy',
-    'window_size'
+    'window_size',
+    'use_simiple_kline_strategy_flxd',
+    'use_simiple_kline_strategy_flzz',
 ]
 
 OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())
@@ -127,6 +136,29 @@ def create_individual():
     
     return individual
 
+
+def create_diverse_individual():
+    individual = []
+    for param in OPTIMIZABLE_PARAMS:
+        min_val, max_val, param_type = PARAM_RANGES[param]
+        if param_type == int:
+            individual.append(random.randint(min_val, max_val))
+        elif param_type == bool:
+            individual.append(random.randint(0, 1))
+        else:
+            # 使用多种分布生成初始值，增加多样性
+            if random.random() < 0.5:
+                # 均匀分布
+                value = random.uniform(min_val, max_val)
+            else:
+                # 正态分布（集中在中间区域）
+                mean = (min_val + max_val) / 2
+                std = (max_val - min_val) / 6  # 99.7%的值在范围内
+                value = random.gauss(mean, std)
+                value = max(min_val, min(max_val, value))
+            individual.append(value)
+    return individual
+
 def decode_individual(individual):
     """将遗传算法中的个体解码为参数字典 - 添加验证和类型转换"""
     params = {}
@@ -145,16 +177,16 @@ def decode_individual(individual):
             value = float(value)
         
         # 特殊处理：某些参数需要缩放
-        if param == 'max_abserve_tick_steps':
-            value *= 10
-        elif param == 'stagnation_ratio_threshold':
-            value *= 10
-        elif param == 'fd_mount':
-            value *= 10000000
-        elif param == 'decline_ratio_threshold':
-            value *= 10
-        elif param == 'flxd_ticks':
-            value *= 100
+        # if param == 'max_abserve_tick_steps':
+        #     value *= 10
+        # elif param == 'stagnation_ratio_threshold':
+        #     value *= 10
+        # elif param == 'fd_mount':
+        #     value *= 10000000
+        # elif param == 'decline_ratio_threshold':
+        #     value *= 10
+        # elif param == 'flxd_ticks':
+        #     value *= 100
         
         params[param] = value
     
@@ -163,7 +195,6 @@ def decode_individual(individual):
     params['static_hc_stop_profit_pct'] = 1.0
     
     return params
-    
 
 def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=200000, 
                                     fitness_weights=(0.4, 0.3, 0.3)):
@@ -174,16 +205,34 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
         capital_curve = [capital]
         daily_returns = []
         
+        # print(f"\n{'='*80}")
+        # print(f"开始评估策略在 {len(stock_sublist)} 只股票上的表现")
+        # print(f"初始资金: {initial_capital}")
+        # print(f"参数: {params}")
+        # print(f"{'='*80}")
+        
+        stock_count = 0
+        profitable_trades = 0
+        total_profit = 0
+        
+        # evaluate_list = []
         for stock_data in stock_sublist:
+            stock_count += 1
             stock_code = stock_data['stock_code']
             stock_name = stock_data['stock_name']
             stock_infos = stock_data['stock_infos']
             mkt_datas = stock_data['mkt_datas']
+            # date_key = stock_data['datekey']
             
             if 'params' in stock_infos:
                 stock_infos['params'].update(params)
             else:
                 stock_infos['params'] = params
+            # evaluate_list.append((stock_code, date_key))
+
+            # print(f"\n--- 处理第 {stock_count} 只股票: {stock_code} {stock_name} ---")
+            # print(f"买入价格: {stock_infos['trade_price']}")
+            # print(f"收盘价格: {stock_infos['close_price']}")
             
             monitor = StockMonitor(
                 stock_code=stock_code,
@@ -204,25 +253,52 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
 
             if sold:
                 actual_sell_price = sell_price
+                # print(f"策略决定卖出，卖出价格: {sell_price}")
             else:
                 actual_sell_price = close_price
                 if limit_up == 1 or limit_down == 1:
                     actual_sell_price = n_next_open
+                    # print(f"未卖出，但股票涨跌停，使用次日开盘价: {n_next_open}")
+                else:
+                    # print(f"未卖出，使用收盘价: {close_price}")
+                    pass
             
             if actual_sell_price <= 0:
                 actual_sell_price = close_price
+                # print(f"警告: 卖出价格异常，使用收盘价: {close_price}")
             
+            # 计算交易结果
             if trade_price > 0:
                 shares = (capital / trade_price // 100) * 100
-                profit = shares * (actual_sell_price - trade_price)
+                cost = shares * trade_price
+                revenue = shares * actual_sell_price
+                profit = revenue - cost
+                profit_pct = (actual_sell_price - trade_price) / trade_price
+                
+                # print(f"购买股数: {shares}, 成本: {cost:.2f}, 收入: {revenue:.2f}")
+                # print(f"单笔利润: {profit:.2f}, 收益率: {profit_pct:.2%}")
+                
+                if profit > 0:
+                    profitable_trades += 1
+                total_profit += profit
+                
                 capital += profit
+                # print(f"更新后资金: {capital:.2f}")
+            else:
+                # print(f"警告: 交易价格异常 ({trade_price})，跳过此股票")
+                pass
             
             capital_curve.append(capital)
             
             if len(capital_curve) >= 2 and capital_curve[-2] > 0:
                 daily_return = (capital_curve[-1] - capital_curve[-2]) / capital_curve[-2]
                 daily_returns.append(daily_return)
+                # print(f"日收益率: {daily_return:.4%}")
         
+        
+        # print(evaluate_list)
+
+        # 计算总体表现指标
         if initial_capital > 0:
             total_return = (capital - initial_capital) / initial_capital
         else:
@@ -245,17 +321,111 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
 
         w_return, w_drawdown, w_sharpe = fitness_weights
         
-        return_component = max(1e-8, 1 + total_return)
+        return_component = max(1e-8, total_return)
         drawdown_component = max(1e-8, 1 - max_drawdown)
         sharpe_component = max(1e-8, sharpe_ratio)
         
-        fitness = (return_component ** w_return) * (drawdown_component ** w_drawdown) * (sharpe_component ** w_sharpe)
+        fitness = ((return_component) ** w_return) * (drawdown_component ** w_drawdown) * (sharpe_component ** w_sharpe)
         
         return fitness, total_return, max_drawdown, sharpe_ratio, capital_curve
         
     except Exception as e:
         logger.error(f"Error evaluating strategy on single list: {str(e)}")
+        logger.error(traceback.format_exc())
         return 1e-8, -0.9, 0.9, 0, [initial_capital]
+
+
+# def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=200000, 
+#                                     fitness_weights=(0.4, 0.3, 0.3)):
+#     """评估策略在单个股票子列表上的表现"""
+#     try:
+#         params = decode_individual(individual)
+#         capital = initial_capital
+#         capital_curve = [capital]
+#         daily_returns = []
+        
+#         for stock_data in stock_sublist:
+#             stock_code = stock_data['stock_code']
+#             stock_name = stock_data['stock_name']
+#             stock_infos = stock_data['stock_infos']
+#             mkt_datas = stock_data['mkt_datas']
+            
+#             if 'params' in stock_infos:
+#                 stock_infos['params'].update(params)
+#             else:
+#                 stock_infos['params'] = params
+            
+#             monitor = StockMonitor(
+#                 stock_code=stock_code,
+#                 stock_name=stock_name,
+#                 stock_infos=stock_infos,
+#                 mkt_datas=mkt_datas,
+#                 params=stock_infos['params']
+#             )
+            
+#             sold, sell_price = monitor.get_result()
+            
+#             trade_price = stock_infos['trade_price']
+#             close_price = stock_infos['close_price']
+#             limit_up = stock_infos['limit_up']
+#             limit_down = stock_infos['limit_down']
+#             n_next_open = stock_infos['n_next_open']
+#             n_next_close = stock_infos['n_next_close']
+
+#             if sold:
+#                 actual_sell_price = sell_price
+#             else:
+#                 actual_sell_price = close_price
+#                 if limit_up == 1 or limit_down == 1:
+#                     actual_sell_price = n_next_open
+            
+#             if actual_sell_price <= 0:
+#                 actual_sell_price = close_price
+            
+#             if trade_price > 0:
+#                 shares = (capital / trade_price // 100) * 100
+#                 profit = shares * (actual_sell_price - trade_price)
+#                 capital += profit
+            
+#             capital_curve.append(capital)
+            
+#             if len(capital_curve) >= 2 and capital_curve[-2] > 0:
+#                 daily_return = (capital_curve[-1] - capital_curve[-2]) / capital_curve[-2]
+#                 daily_returns.append(daily_return)
+        
+#         if initial_capital > 0:
+#             total_return = (capital - initial_capital) / initial_capital
+#         else:
+#             total_return = 0
+        
+#         if len(capital_curve) > 1:
+#             capital_array = np.array(capital_curve)
+#             peak = np.maximum.accumulate(capital_array)
+#             drawdowns = (peak - capital_array) / peak
+#             max_drawdown = np.max(drawdowns)
+#         else:
+#             max_drawdown = 0
+        
+#         returns_array = np.array(daily_returns)
+#         if len(returns_array) > 1:
+#             excess_returns = returns_array - DAILY_RISK_FREE_RATE
+#             sharpe_ratio = np.mean(excess_returns) / (np.std(excess_returns) + 1e-8) * np.sqrt(252)
+#         else:
+#             sharpe_ratio = 0
+
+#         w_return, w_drawdown, w_sharpe = fitness_weights
+        
+#         return_component = max(1e-8, 1 + total_return)
+#         drawdown_component = max(1e-8, 1 - max_drawdown)
+#         sharpe_component = max(1e-8, sharpe_ratio)
+        
+#         fitness = (return_component ** w_return) * (drawdown_component ** w_drawdown) * (sharpe_component ** w_sharpe)
+        
+#         return fitness, total_return, max_drawdown, sharpe_ratio, capital_curve
+        
+#     except Exception as e:
+#         logger.error(f"Error evaluating strategy on single list: {str(e)}")
+#         return 1e-8, -0.9, 0.9, 0, [initial_capital]
 
 def evaluate_strategy(individual, stock_lists, initial_capital=200000, 
                       fitness_weights=(0.4, 0.3, 0.3), return_capital_curve=False):
@@ -520,6 +690,72 @@ def create_adaptive_mutate(diversity_threshold=0.1):
             return mutUniformInt(individual, indpb=0.3)
     return adaptive_mutate
 
+def check_bounds(individual):
+    """检查并修正个体参数边界"""
+    for i, param in enumerate(OPTIMIZABLE_PARAMS):
+        min_val, max_val, _ = PARAM_RANGES[param]
+        if individual[i] < min_val or individual[i] > max_val:
+            individual[i] = np.clip(individual[i], min_val, max_val)
+    return individual
+
+
+def check_bounds_decorator(func):
+    """装饰器函数，确保遗传操作后的个体参数在合理范围内"""
+    def wrapper(*args, **kwargs):
+        # 调用原始函数
+        result = func(*args, **kwargs)
+        
+        # 处理返回结果（可能是一个或多个个体）
+        if isinstance(result, tuple):
+            # 对于返回多个个体的操作（如交叉）
+            for ind in result:
+                for i, param in enumerate(OPTIMIZABLE_PARAMS):
+                    min_val, max_val, _ = PARAM_RANGES[param]
+                    if ind[i] < min_val or ind[i] > max_val:
+                        ind[i] = np.clip(ind[i], min_val, max_val)
+            return result
+        else:
+            # 对于返回单个个体的操作（如变异）
+            for i, param in enumerate(OPTIMIZABLE_PARAMS):
+                min_val, max_val, _ = PARAM_RANGES[param]
+                if result[i] < min_val or result[i] > max_val:
+                    result[i] = np.clip(result[i], min_val, max_val)
+            return result
+    
+    return wrapper
+
+
+
+def adaptive_cx_mutate(population, toolbox, cxpb, mutpb, diversity_score):
+    """根据种群多样性自适应调整交叉和变异概率"""
+    # 多样性低时增加变异概率
+    if diversity_score < 0.1:
+        mutpb = min(0.8, mutpb * 1.5)
+        cxpb = max(0.2, cxpb * 0.8)
+    # 多样性高时增加交叉概率
+    elif diversity_score > 0.5:
+        cxpb = min(0.9, cxpb * 1.2)
+        mutpb = max(0.1, mutpb * 0.8)
+    
+    # 应用交叉和变异
+    offspring = []
+    for i in range(0, len(population), 2):
+        if i+1 < len(population):
+            child1, child2 = toolbox.clone(population[i]), toolbox.clone(population[i+1])
+            if random.random() < cxpb:
+                toolbox.mate(child1, child2)
+                del child1.fitness.values
+                del child2.fitness.values
+            offspring.append(child1)
+            offspring.append(child2)
+    
+    # 应用变异
+    for mutant in offspring:
+        if random.random() < mutpb:
+            toolbox.mutate(mutant)
+            del mutant.fitness.values
+    
+    return offspring
 
 def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100, 
                            n_processes=None, fitness_weights=(0.4, 0.3, 0.3), 
@@ -536,16 +772,19 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     
     # 初始化工具箱
     toolbox = base.Toolbox()
-    toolbox.register("individual", tools.initIterate, creator.Individual, create_individual)
+    toolbox.register("individual", tools.initIterate, creator.Individual, create_diverse_individual)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     
-    # 注册遗传操作
-    toolbox.register("mate", tools.cxBlend, alpha=0.5)
-    # toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=0.1, indpb=0.2)
+    # 注册遗传操作 - 使用自适应混合交叉
+    toolbox.register("mate", cxBlendAdaptive, alpha=0.5)
     toolbox.register("select", tools.selTournament, tournsize=3)
 
     adaptive_mutate_func = create_adaptive_mutate(diversity_threshold=0.1)
     toolbox.register("mutate", adaptive_mutate_func)
+    
+    # 添加边界检查装饰器
+    toolbox.decorate("mate", check_bounds_decorator)
+    toolbox.decorate("mutate", check_bounds_decorator)
     
     # 使用部分函数固定参数
     evaluate_with_params = partial(evaluate_strategy_global, initial_capital=200000, fitness_weights=fitness_weights)
@@ -557,7 +796,6 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     # 设置并行处理
     if n_processes is None:
         n_processes = min(multiprocessing.cpu_count(), 20)
-    # n_processes = 10
     logger.info(f"Using {n_processes} processes for parallel evaluation")
     
     # 初始化历史记录
@@ -570,8 +808,14 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         'avg_fitness': [],
         'min_fitness': [],
         'max_fitness': [],
-        'diversity': []
+        'diversity': [],
+        'cx_prob': [],
+        'mut_prob': []
     }
+    
+    # 初始化交叉和变异概率
+    cx_prob = 0.7
+    mut_prob = 0.3
     
     # 创建进程池并初始化
     with multiprocessing.Pool(processes=n_processes, initializer=init_worker, initargs=(shared_data,)) as pool:
@@ -623,6 +867,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         avg_drawdown = np.mean(all_drawdowns)
         avg_sharpe = np.mean(all_sharpes)
         
+        # 计算初始多样性
+        diversity_score = diversity(population)
+        
         # 记录初始历史
         history['gen'].append(0)
         history['best_fitness'].append(best_fitness)
@@ -632,7 +879,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         history['avg_fitness'].append(record['avg'])
         history['min_fitness'].append(record['min'])
         history['max_fitness'].append(record['max'])
-        history['diversity'].append(diversity(population))
+        history['diversity'].append(diversity_score)
+        history['cx_prob'].append(cx_prob)
+        history['mut_prob'].append(mut_prob)
         
         # 打印初始代信息
         logger.info(f"\n{'='*80}")
@@ -645,7 +894,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         logger.info(f"Population Average Fitness: {record['avg']:.6f}")
         logger.info(f"Population Min Fitness: {record['min']:.6f}")
         logger.info(f"Population Max Fitness: {record['max']:.6f}")
-        logger.info(f"Population Diversity: {history['diversity'][-1]:.6f}")
+        logger.info(f"Population Diversity: {diversity_score:.6f}")
+        logger.info(f"Crossover Probability: {cx_prob:.2f}")
+        logger.info(f"Mutation Probability: {mut_prob:.2f}")
         logger.info(f"{'='*80}\n")
 
         # 开始进化
@@ -656,17 +907,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             # 克隆选中的个体
             offspring = list(map(toolbox.clone, offspring))
             
-            # 应用交叉和变异
-            for child1, child2 in zip(offspring[::2], offspring[1::2]):
-                if random.random() < 0.7:
-                    toolbox.mate(child1, child2)
-                    del child1.fitness.values
-                    del child2.fitness.values
-            
-            for mutant in offspring:
-                if random.random() < 0.3:
-                    toolbox.mutate(mutant)
-                    del mutant.fitness.values
+            # 应用自适应交叉和变异
+            diversity_score = diversity(population)
+            offspring = adaptive_cx_mutate(offspring, toolbox, cx_prob, mut_prob, diversity_score)
             
             # 评估新个体
             invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
@@ -674,8 +917,18 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             for ind, fit in zip(invalid_ind, fitnesses):
                 ind.fitness.values = fit
             
+            # 精英保留策略
+            elite_size = max(1, int(0.1 * population_size))
+            elites = tools.selBest(population, elite_size)
+            
             # 更新种群
             population[:] = offspring
+            
+            # 用精英替换最差的个体
+            worst_individuals = tools.selWorst(population, elite_size)
+            for i, elite in enumerate(elites):
+                idx = population.index(worst_individuals[i])
+                population[idx] = toolbox.clone(elite)
             
             # 更新名人堂
             hof.update(population)
@@ -707,6 +960,15 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             avg_drawdown = np.mean(all_drawdowns)
             avg_sharpe = np.mean(all_sharpes)
             
+            # 更新交叉和变异概率
+            diversity_score = diversity(population)
+            if diversity_score < 0.1:
+                mut_prob = min(0.8, mut_prob * 1.5)
+                cx_prob = max(0.2, cx_prob * 0.8)
+            elif diversity_score > 0.5:
+                cx_prob = min(0.9, cx_prob * 1.2)
+                mut_prob = max(0.1, mut_prob * 0.8)
+            
             # 记录历史
             history['gen'].append(gen)
             history['best_fitness'].append(best_fitness)
@@ -716,7 +978,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             history['avg_fitness'].append(record['avg'])
             history['min_fitness'].append(record['min'])
             history['max_fitness'].append(record['max'])
-            history['diversity'].append(diversity(population))
+            history['diversity'].append(diversity_score)
+            history['cx_prob'].append(cx_prob)
+            history['mut_prob'].append(mut_prob)
             
             # 打印当前代信息
             logger.info(f"\n{'='*80}")
@@ -729,7 +993,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             logger.info(f"Population Average Fitness: {record['avg']:.6f}")
             logger.info(f"Population Min Fitness: {record['min']:.6f}")
             logger.info(f"Population Max Fitness: {record['max']:.6f}")
-            logger.info(f"Population Diversity: {history['diversity'][-1]:.6f}")
+            logger.info(f"Population Diversity: {diversity_score:.6f}")
+            logger.info(f"Crossover Probability: {cx_prob:.2f}")
+            logger.info(f"Mutation Probability: {mut_prob:.2f}")
             logger.info(f"Number of Evaluated Individuals: {len(invalid_ind)}")
 
             if gen % 5 == 0:
@@ -748,7 +1014,8 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             if gen % save_interval == 0 or gen == num_generations:
                 best_params = decode_individual(best_individual)
                 save_optimization_state(gen, best_individual, best_params, best_fitness, 
-                                      avg_return, avg_drawdown, avg_sharpe, stock_lists)
+                                      avg_return, avg_drawdown, avg_sharpe, stock_lists, fitness_weights)
+
         
         # 获取最终最佳个体
         best_individual = hof[0]
@@ -776,9 +1043,9 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         
         return best_individual, best_params, best_fitness, avg_return, avg_drawdown, avg_sharpe, logbook, history
 
-
 def save_optimization_state(gen, individual, params, fitness, total_return, 
-                           max_drawdown, sharpe_ratio, stock_lists):
+                           max_drawdown, sharpe_ratio, stock_lists, fitness_weights):
+
     """保存优化状态 - 添加更多信息"""
     # 保存参数
     state = {
@@ -803,7 +1070,8 @@ def save_optimization_state(gen, individual, params, fitness, total_return,
     # 保存收益曲线图
     if multiprocessing.current_process().name == 'MainProcess':
         _, _, _, _, capital_curves = evaluate_strategy(
-            individual, stock_lists, return_capital_curve=True
+            individual, stock_lists, fitness_weights=fitness_weights, return_capital_curve=True
+
         )
         # 绘制平均资金曲线
         avg_capital_curve = np.mean([curve for curve in capital_curves if len(curve) > 0], axis=0)
@@ -1192,7 +1460,7 @@ if __name__ == "__main__":
     from evaluater_generate_datas import build_evaluater_1to2_data_list_from_file
     
     
-    stock_lists = build_evaluater_1to2_data_list_from_file(250)
+    stock_lists = build_evaluater_1to2_data_list_from_file(200)
 
     
     logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks")
@@ -1201,7 +1469,7 @@ if __name__ == "__main__":
     best_params, history = main(
         stock_lists,
         population_size=200,
-        num_generations=400,
-        fitness_weights=(0.4, 0.3, 0.3),  # 自定义权重
+        num_generations=200,
+        fitness_weights=(0.3, 0.4, 0.3),  # 自定义权重
         save_interval=10  # 每代保存一次
     )

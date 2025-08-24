@@ -130,7 +130,6 @@ class StockMonitor(object):
 
         self.max_zb_times = params.get('max_zb_times', 2)
 
-
         self.open_status = -1
 
         self.monitor_data = {}
@@ -328,12 +327,12 @@ class StockMonitor(object):
             self.kline_strategy.update_tick_data(cur_volume, lastPrice, cur_prevolume, self.avg_price)
             self.stagnation_signal, self.decline_signal = self.kline_strategy.generate_signals()
 
-        if self.use_simiple_kline_strategy_flxd and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flxd_ticks:
+        if self.use_simiple_kline_strategy_flxd and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flxd_ticks and self.decline_signal:
             if not self.kline_sell_only_zy:
                 return True, self.current_price
             elif self.kline_sell_only_zy and self.monitor_type == 1:
                 return True, self.current_price
-        if self.use_simiple_kline_strategy_flzz and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flzz_ticks:
+        if self.use_simiple_kline_strategy_flzz and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flzz_ticks and self.stagnation_signal:
             if not self.kline_sell_only_zy:
                 return True, self.current_price
             elif self.kline_sell_only_zy and self.monitor_type == 1:

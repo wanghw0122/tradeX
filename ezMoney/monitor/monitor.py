@@ -1,5 +1,3 @@
-import sys
-sys.path.append(r"D:\workspace\TradeX\ezMoney")
 from common import constants
 from sqlite_processor.mysqlite import SQLiteManager
 import threading
@@ -13,7 +11,6 @@ def calculate_seconds_difference(specified_time):
     current_time = datetime.datetime.now().timestamp()
     time_difference =  current_time - (specified_time / 1000)
     return time_difference
-
 
 monitor_table = 'monitor_data'
 monitor_config_table = "strategy_monitor_config"
@@ -49,6 +46,7 @@ strategy_to_params_configs = {
         "window_size": 3,
         "use_simiple_kline_strategy_flxd": False,
         "use_simiple_kline_strategy_flzz": True,
+        "use_simiple_kline_strategy": True,
         "flzz_use_smooth_price": False,
         "flzz_zf_thresh": -0.007271521834103036,
         "stop_profit_pct": 0.0,
@@ -281,7 +279,7 @@ class StockMonitor(object):
                 decline_volume_ratio_threshold = params.get('decline_volume_ratio_threshold', 2.5)
                 max_rebounds = params.get('max_rebounds', 2)
                 decline_ratio_threshold = params.get('decline_ratio_threshold', 50)
-                use_simiple_kline_strategy = params.get('use_simiple_kline_strategy', False)
+                use_simiple_kline_strategy = params.get('use_simiple_kline_strategy', True)
                 use_simiple_kline_strategy_flxd = params.get('use_simiple_kline_strategy_flxd', False)
                 use_simiple_kline_strategy_flzz = params.get('use_simiple_kline_strategy_flzz', False)
                 flxd_ticks = params.get('flxd_ticks', 110)

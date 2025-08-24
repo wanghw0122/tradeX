@@ -1,3 +1,4 @@
+from functools import lru_cache
 import logging
 import sys
 import datetime
@@ -147,6 +148,7 @@ def get_marketting_datas(stock_code, cur_date):
     return res
 
 
+@lru_cache
 def build_stock_datas(stock_code, datekey):
     # from xtquant import xtdata
     # xtdata.connect(port=58611)
@@ -540,10 +542,10 @@ def build_evaluater_1to2_data_list_from_file(nums = 3):
     res_list = []
     # 读取CSV文件
     save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv'
-    save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_random.csv'
-    # save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
+    # save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
+    # save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_z1.csv'
     # for save_path in [save_path1, save_path2, save_path3]:
-    for save_path in [save_path1, save_path2]:
+    for save_path in [save_path1]:
         loaded_df = pd.read_csv(save_path)
         result_tuples = list(zip(loaded_df['date_key'], loaded_df['stock_code']))
         result_tuples.sort(key=lambda x: pd.to_datetime(x[0], format='%Y-%m-%d'))

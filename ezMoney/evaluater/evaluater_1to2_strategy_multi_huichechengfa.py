@@ -29,17 +29,13 @@ logger = logging.getLogger(__name__)
 PARAM_RANGES = {
     'per_step_tick_gap': (1, 25, int),
     'cold_start_steps': (0, 30, int),
-    # 'max_abserve_tick_steps': (1, 20, int),
     'max_abserve_tick_steps': (5, 500, int),
     'max_abserce_avg_price_down_steps': (1, 15, int),
     'stop_profit_open_hc_pct': (-0.15, 0.0, float),
-    # 'stop_profit_pct': (0, 0, float),
     'dynamic_hc_stop_profit_thres': (0.01, 8, float),
-    # 'static_hc_stop_profit_pct': (1, 1, float),
     'last_close_price_hc_pct': (-0.04, 0.01, float),
     'last_day_sell_thres': (0.01, 1.0, float),
     'last_day_sell_huiche': (0.001, 0.02, float),
-    # 'fd_mount': (1, 15, int),
     'fd_mount': (10000000, 150000000, int),
     'fd_vol_pct': (0, 0.75, float),
     'fd_ju_ticks': (1, 50, int),
@@ -49,13 +45,10 @@ PARAM_RANGES = {
     'yang_yin_threshold': (0.002, 0.03, float),
     'stagnation_n': (1, 30, int),
     'stagnation_volume_ratio_threshold': (1.1, 100, float),
-    # 'stagnation_ratio_threshold': (3, 100, int),
     'stagnation_ratio_threshold': (15, 1500, int),
     'decline_volume_ratio_threshold': (1.1, 100, float),
     'max_rebounds': (1, 15, int),
-    # 'decline_ratio_threshold': (3, 100, int),
     'decline_ratio_threshold': (15, 1500, int),
-    # 'flxd_ticks': (0, 5, int),
     'flxd_ticks': (0, 500, int),
     'flzz_ticks': (100, 2000, int),
     'kline_sell_only_zy': (0, 1, bool),
@@ -1487,7 +1480,7 @@ if __name__ == "__main__":
         stock_lists,
         population_size=200,
         num_generations=200,
-        fitness_weights=(0.3, 0.42, 0.28),  # 更注重回撤
+        fitness_weights=(0.2, 0.6, 0.2),  # 更注重回撤
         save_interval=10,
         early_stopping_patience=20,  # 20代没有改进就停止
         diversity_threshold=0.05  # 多样性低于0.05视为过低

@@ -1035,7 +1035,7 @@ def out_of_sample_test(optimized_params, test_stock_lists):
     
     for stock_sublist in test_stock_lists:
         fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-            test_individual, stock_sublist, 200000
+            test_individual, stock_sublist, 200000, fitness_weights=(0.3, 0.42, 0.28)
         )
         all_fitnesses.append(fitness)
         all_returns.append(total_return)
@@ -1076,9 +1076,9 @@ if __name__ == "__main__":
     logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks")
     
     # 时间序列分割用于样本外测试
-    splits = time_series_cv_split(stock_lists[0], n_splits=5)
-    train_data = splits[0][0]  # 第一个分割的训练数据
-    test_data = splits[0][1]   # 第一个分割的测试数据
+    # splits = time_series_cv_split(stock_lists[0], n_splits=5)
+    train_data = stock_lists[0]  # 第一个分割的训练数据
+    test_data = stock_lists[1]   # 第一个分割的测试数据
     
     # 运行分阶段优化
     optimized_params, final_fitness, final_return, final_drawdown, final_sharpe = optimize_in_phases(

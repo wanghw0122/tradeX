@@ -4955,6 +4955,91 @@ def start_min_cost_order_monitor(min_cost_queue):
         strategy_logger.error(f"发生异常: {str(e)}\n堆栈信息:\n{stack_trace}")
         pass
 
+def get_previous_days_avg_volumes(stock_code):
+    import numpy as np
+    datekey = date.get_current_date()
+
+    trade_dates = date.get_trade_dates_by_end(datekey, 6)
+    if len(trade_dates) < 6:
+        logger.error(f"无法获取足够的交易日数据 [{stock_code} {datekey}]")
+        return {}
+
+    trade_dates = trade_dates[:5]
+
+    for trade_date in trade_dates:
+        if '-' in trade_date:
+            trade_date_key = trade_date.replace('-', '')
+        else:
+            trade_date_key = trade_date
+        xtdata.download_history_data(stock_code, 'tick', trade_date_key, trade_date_key)
+
+    all_volumes = []  # 存储每个交易日每个tick的成交量列表
+    for trade_date in trade_dates:
+        if '-' in trade_date:
+            trade_date_key = trade_date.replace('-', '')
+        else:
+            trade_date_key = trade_date
+
+        tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=trade_date_key, end_time=trade_date_key)
+
+        if isinstance(tick_data[stock_code], np.ndarray) and tick_data[stock_code].dtype.type is np.void:
+            df = pd.DataFrame(tick_data[stock_code].tolist(), columns=tick_data[stock_code].dtype.names)
+        else:
+            continue
+            
+        df['datetime'] = pd.to_datetime(df['time'], unit='ms').dt.tz_localize('UTC')
+        df['datetime'] = df['datetime'].dt.tz_convert('Asia/Shanghai')
+        
+        # 筛选出 9:30 之后的行
+        time_930 = pd.to_datetime('09:30:00').time()
+        time_1230 = pd.to_datetime('12:30:00').time()
+        filtered_df = df[df['datetime'].dt.time >= time_930]
+        filtered_df = filtered_df[filtered_df['datetime'].dt.time < time_1230]
+        
+        # 获取前收盘成交量
+        pre_930_df = df[df['datetime'].dt.time < time_930]
+        if not pre_930_df.empty:
+            pre_volume = pre_930_df.iloc[-1]['volume']
+        else:
+            pre_volume = 0
+            
+        # 计算每个tick的增量成交量
+        volumes = []
+        have_fei_0 = False
+
+        last_volume = pre_volume
+        for index, row in filtered_df.iterrows():
+            volume = row['volume']
+            delta_volume = volume - last_volume
+            if delta_volume < 0:
+                delta_volume = 0
+            if delta_volume > 0:
+                have_fei_0 = True
+            volumes.append(delta_volume)
+            last_volume = volume
+        if not have_fei_0:
+            print(f"没有非0 {stock_code} {datekey}")
+            continue
+        if not volumes:
+            print(f"没有数据 {stock_code} {datekey}")
+            continue
+        all_volumes.append(volumes)
+    
+    min_length = min(len(volumes) for volumes in all_volumes)
+    avg_volumes = []
+    for i in range(min_length):
+        tick_volumes = [volumes[i] for volumes in all_volumes if i < len(volumes)]
+        avg_volume = sum(tick_volumes) / len(tick_volumes)
+        avg_volumes.append(avg_volume)
+    return avg_volumes
+
+
+def get_stock_data(stock_code):
+    """获取单只股票的市场数据和平均成交量"""
+    mkt_datas = get_marketting_datas(stock_code)
+    pre_days_avg_volumes = get_previous_days_avg_volumes(stock_code)
+    return mkt_datas, pre_days_avg_volumes
+
 def start_monitor_monning():
     if not sell_at_monning:
         return
@@ -4976,23 +5061,37 @@ def start_monitor_monning():
                     return
             for data_result in query_data_results:
                 stock_code = data_result['stock_code']
-                # stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
-                # if not stock_name:
-                #     stock_name = ''
                 if stock_code and stock_code not in monitor_stock_codes:
                     monitor_stock_codes.append(stock_code)
         
         if monitor_stock_codes:
-            for stock_code in monitor_stock_codes:
-                stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0])
-                if not stock_name:
-                    stock_name = ''
-                mkt_datas = get_marketting_datas(stock_code)
-                stock_monitor = StockMonitor(stock_code=stock_code, stock_name=stock_name, qmt_trader=qmt_trader, mkt_datas = mkt_datas)
-                code_to_monitor_dict[stock_code] = stock_monitor
-                strategy_logger.info(f"[start_monitor_monning] 监听股票: {stock_code}")
+            # 使用线程池并行获取数据
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # 为每个股票提交任务
+                future_to_stock = {
+                    executor.submit(get_stock_data, stock_code): stock_code 
+                    for stock_code in monitor_stock_codes
+                }
+                
+                for future in concurrent.futures.as_completed(future_to_stock):
+                    stock_code = future_to_stock[future]
+                    try:
+                        mkt_datas, pre_days_avg_volumes = future.result()
+                        mkt_datas['pre_avg_volumes'] = pre_days_avg_volumes
+                        stock_name = offlineStockQuery.get_stock_name(stock_code.split('.')[0]) or ''
+                        
+                        stock_monitor = StockMonitor(
+                            stock_code=stock_code, 
+                            stock_name=stock_name, 
+                            qmt_trader=qmt_trader, 
+                            mkt_datas=mkt_datas
+                        )
+                        code_to_monitor_dict[stock_code] = stock_monitor
+                        strategy_logger.info(f"[start_monitor_monning] 监听股票: {stock_code}")
+                    except Exception as e:
+                        strategy_logger.error(f"处理股票 {stock_code} 时发生错误: {e}")
             
-            def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_monitor_dict):
+            def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict=code_to_monitor_dict):
                 for stock in stocks:
                     if stock not in res:
                         continue
@@ -5006,9 +5105,8 @@ def start_monitor_monning():
             else:
                 logger.info(f"[start_monitor_monning] 订阅成功: {monitor_stock_codes}")
                 
-
     except Exception as e:
-        pass
+        strategy_logger.error(f"[start_monitor_monning] 发生错误: {e}")
 
 
 def get_marketting_datas(stock_code):
@@ -5055,7 +5153,6 @@ def get_marketting_datas(stock_code):
         pass
     
     return res
-
 
 def start_monitor_monning_test():
     if not sell_at_monning:
@@ -5231,7 +5328,7 @@ if __name__ == "__main__":
 
         # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 
-        scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=29, second=0, id="start_monitor_monning")
+        scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=27, second=0, id="start_monitor_monning")
         # scheduler.add_job(start_limit_up_monitor, 'cron', hour=9, minute=29, second=0, id="start_limit_up_monitor")
 
         scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")

@@ -1,0 +1,52 @@
+================================================================================
+STOCK MONITORING STRATEGY OPTIMIZATION REPORT
+================================================================================
+
+Optimization Date: 2025-08-24 22:27:53
+Total Generations: 122
+Best Fitness: 1.062024
+Total Return: 2415.69%
+Max Drawdown: 36.03%
+Sharpe Ratio: 4.3565
+
+Optimized Parameters:
+--------------------------------------------------------------------------------
+per_step_tick_gap                  : 9.000000 (int)
+cold_start_steps                   : 20.000000 (int)
+max_abserve_tick_steps             : 442.000000 (int)
+max_abserce_avg_price_down_steps   : 9.000000 (int)
+stop_profit_open_hc_pct            : -0.147304 (float)
+dynamic_hc_stop_profit_thres       : 0.041465 (float)
+last_close_price_hc_pct            : -0.004986 (float)
+last_day_sell_thres                : 0.010086 (float)
+last_day_sell_huiche               : 0.001006 (float)
+fd_mount                           : 132790195.000000 (int)
+fd_vol_pct                         : 0.186852 (float)
+fd_ju_ticks                        : 1.000000 (int)
+max_zb_times                       : 14.000000 (int)
+stagnation_kline_ticks             : 3.000000 (int)
+decline_kline_ticks                : 21.000000 (int)
+yang_yin_threshold                 : 0.005293 (float)
+stagnation_n                       : 23.000000 (int)
+stagnation_volume_ratio_threshold  : 3.221168 (float)
+stagnation_ratio_threshold         : 638.000000 (int)
+decline_volume_ratio_threshold     : 39.318228 (float)
+max_rebounds                       : 11.000000 (int)
+decline_ratio_threshold            : 1020.000000 (int)
+flxd_ticks                         : 274.000000 (int)
+flzz_ticks                         : 1955.000000 (int)
+kline_sell_only_zy                 : 0.000000 (bool)
+window_size                        : 3.000000 (int)
+use_simiple_kline_strategy_flxd    : 0.000000 (bool)
+use_simiple_kline_strategy_flzz    : 1.000000 (bool)
+flzz_use_smooth_price              : 0.000000 (bool)
+flzz_zf_thresh                     : -0.007272 (float)
+stop_profit_pct                    : 0.000000 (float)
+static_hc_stop_profit_pct          : 1.000000 (float)
+
+Optimization Summary:
+--------------------------------------------------------------------------------
+Best generation: 101
+Best fitness in generation 101: 1.062024
+Max fitness improvement: 0.720245
+Average population fitness: 0.930056

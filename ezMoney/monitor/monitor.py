@@ -5,6 +5,7 @@ import queue
 from date_utils import date
 import datetime
 from logger import strategy_logger as logger
+from monitor.kline_strategy import SimplifiedKLineStrategy
 
 def calculate_seconds_difference(specified_time):
     current_time = datetime.datetime.now().timestamp()
@@ -15,6 +16,42 @@ def calculate_seconds_difference(specified_time):
 monitor_table = 'monitor_data'
 monitor_config_table = "strategy_monitor_config"
 
+strategy_to_params_configs = {
+    '接力-一进二弱转强:倒接力4': {
+        "per_step_tick_gap": 9,
+        "cold_start_steps": 20,
+        "max_abserve_tick_steps": 442,
+        "max_abserce_avg_price_down_steps": 9,
+        "stop_profit_open_hc_pct": -0.14730391531412104,
+        "dynamic_hc_stop_profit_thres": 0.04146478008732626,
+        "last_close_price_hc_pct": -0.004985781398733237,
+        "last_day_sell_thres": 0.010086173123118276,
+        "last_day_sell_huiche": 0.001005814131097469,
+        "fd_mount": 132790195,
+        "fd_vol_pct": 0.18685245473809947,
+        "fd_ju_ticks": 1,
+        "max_zb_times": 14,
+        "stagnation_kline_ticks": 3,
+        "decline_kline_ticks": 21,
+        "yang_yin_threshold": 0.005292930000694659,
+        "stagnation_n": 23,
+        "stagnation_volume_ratio_threshold": 3.2211684489287036,
+        "stagnation_ratio_threshold": 638,
+        "decline_volume_ratio_threshold": 39.31822837736894,
+        "max_rebounds": 11,
+        "decline_ratio_threshold": 1020,
+        "flxd_ticks": 274,
+        "flzz_ticks": 1955,
+        "kline_sell_only_zy": False,
+        "window_size": 3,
+        "use_simiple_kline_strategy_flxd": False,
+        "use_simiple_kline_strategy_flzz": True,
+        "flzz_use_smooth_price": False,
+        "flzz_zf_thresh": -0.007271521834103036,
+        "stop_profit_pct": 0.0,
+        "static_hc_stop_profit_pct": 1.0
+  }
+}
 
 from collections import deque
 
@@ -56,10 +93,17 @@ class StockMonitor(object):
             self.ma60 = mkt_datas['ma60']
         else:
             self.ma60 = 0
+        if mkt_datas and 'pre_avg_volumes' in mkt_datas:
+            self.pre_avg_volumes = mkt_datas['pre_avg_volumes']
+        else:
+            self.pre_avg_volumes = []
         if qmt_trader != None:
             self.qmt_trader = qmt_trader
+        self.strategy_to_kline_strategy = {}
         self.open_status = -1
         self.end = False
+        self.pre_volume = -1
+        self.cur_volume = -1
         # 均价
         self.avg_price = 0
         # 当前价
@@ -128,6 +172,9 @@ class StockMonitor(object):
         self.running_monitor_down_status = {}
 
         self.running_monitor_observe_steps = {}
+        self.strategy_to_row_ids = {}
+
+        self.init_kline_strategies()
 
         with SQLiteManager(constants.db_path) as db:
             self.query_data_lists = db.query_data_dict(monitor_table, condition_dict= {'date_key': date.get_current_date(), 'stock_code': stock_code, 'monitor_status': 1})
@@ -151,6 +198,9 @@ class StockMonitor(object):
                 else:
                     query_data['origin_trade_price'] = origin_trade_price
                 strategy_name = query_data['strategy_name']
+                if strategy_name not in self.strategy_to_row_ids:
+                    self.strategy_to_row_ids[strategy_name] = []
+                self.strategy_to_row_ids[strategy_name].append(row_id)
                 sub_strategy_name = query_data['sub_strategy_name']
                 if row_id not in self.left_row_ids:
                     self.left_row_ids.append(row_id)
@@ -164,15 +214,16 @@ class StockMonitor(object):
                     self.running_monitor_down_status[row_id] = False
                 self.row_id_to_monitor_data[row_id] = query_data
                 monitor_type = query_data['monitor_type']
-                monitor_config = db.query_data_dict(monitor_config_table, condition_dict= {'strategy_name': strategy_name})
-                default_monitor_config = db.query_data_dict(monitor_config_table, condition_dict= {'strategy_name': 'default'})
-                if not monitor_config and not default_monitor_config:
-                    logger.error(f"monitor_config null. {strategy_name}")
-                    continue
-                if not monitor_config:
-                    monitor_config = default_monitor_config
-                monitor_config = monitor_config[0]
-                self.monitor_configs[strategy_name] = monitor_config
+                if strategy_name not in self.monitor_configs:
+                    monitor_config = db.query_data_dict(monitor_config_table, condition_dict= {'strategy_name': strategy_name})
+                    default_monitor_config = db.query_data_dict(monitor_config_table, condition_dict= {'strategy_name': 'default'})
+                    if not monitor_config and not default_monitor_config:
+                        logger.error(f"monitor_config null. {strategy_name}")
+                        continue
+                    if not monitor_config:
+                        monitor_config = default_monitor_config
+                    monitor_config = monitor_config[0]
+                    self.monitor_configs[strategy_name] = monitor_config
                 # if monitor_type == constants.STOP_PROFIT_TRADE_TYPE:
                 #     pass
                 if monitor_type not in self.monitor_type_to_row_ids:
@@ -209,6 +260,59 @@ class StockMonitor(object):
         logger.info(f"stop monitor {self.stock_code} {self.stock_name}")
         self.thread.join()
     
+
+    def init_kline_strategies(self):
+        for strategy_name, params in strategy_to_params_configs.items():
+            if params:
+                self.monitor_configs[strategy_name] = params
+                stagnation_kline_ticks = params.get('stagnation_kline_ticks', 10)
+                decline_kline_ticks = params.get('decline_kline_ticks', 15)
+                yang_yin_threshold = params.get('yang_yin_threshold', 0.002)
+                stagnation_n = params.get('stagnation_n', 10)
+                stagnation_volume_ratio_threshold = params.get('stagnation_volume_ratio_threshold', 2.5)
+                stagnation_ratio_threshold = params.get('stagnation_ratio_threshold', 40)
+                decline_volume_ratio_threshold = params.get('decline_volume_ratio_threshold', 2.5)
+                max_rebounds = params.get('max_rebounds', 2)
+                decline_ratio_threshold = params.get('decline_ratio_threshold', 50)
+                use_simiple_kline_strategy = params.get('use_simiple_kline_strategy', False)
+                use_simiple_kline_strategy_flxd = params.get('use_simiple_kline_strategy_flxd', False)
+                use_simiple_kline_strategy_flzz = params.get('use_simiple_kline_strategy_flzz', False)
+                flxd_ticks = params.get('flxd_ticks', 110)
+                flzz_ticks = params.get('flzz_ticks', 5000)
+                kline_sell_only_zy = params.get('kline_sell_only_zy', False)
+                flzz_use_smooth_price = params.get('flzz_use_smooth_price', False)
+                flzz_zf_thresh = params.get('flzz_zf_thresh', 0.03)
+            else:
+                stagnation_kline_ticks = 10
+                decline_kline_ticks = 15
+                yang_yin_threshold = 0.002
+                stagnation_n = 10
+                stagnation_volume_ratio_threshold = 2.5
+                stagnation_ratio_threshold = 40
+                decline_volume_ratio_threshold = 2.5
+                max_rebounds = 2
+                decline_ratio_threshold = 50
+                use_simiple_kline_strategy = False
+                use_simiple_kline_strategy_flxd = False
+                use_simiple_kline_strategy_flzz = False
+                flxd_ticks = 110
+                flzz_ticks = 5000
+                kline_sell_only_zy = False
+                flzz_use_smooth_price = False
+                flzz_zf_thresh = 0.03
+            if use_simiple_kline_strategy and (use_simiple_kline_strategy_flxd or use_simiple_kline_strategy_flzz):
+                kline_strategy = SimplifiedKLineStrategy(stagnation_kline_ticks = stagnation_kline_ticks, 
+                                                          decline_kline_ticks = decline_kline_ticks, 
+                                                          yang_yin_threshold = yang_yin_threshold, 
+                                                          stagnation_n = stagnation_n, 
+                                                          stagnation_volume_ratio_threshold = stagnation_volume_ratio_threshold, 
+                                                          stagnation_ratio_threshold = stagnation_ratio_threshold, 
+                                                          decline_volume_ratio_threshold = decline_volume_ratio_threshold, 
+                                                          max_rebounds = max_rebounds, 
+                                                          decline_ratio_threshold = decline_ratio_threshold)
+                self.strategy_to_kline_strategy[strategy_name] = kline_strategy
+
+
     def monitor(self):
         while True:
             if not self.left_row_ids:
@@ -220,23 +324,27 @@ class StockMonitor(object):
                 continue
             # m = {}
             time = data['time']
-            diff = calculate_seconds_difference(time)
-            if diff > 10:
-                logger.error(f"time diff > 10s. {diff} {time} {self.stock_code} {self.stock_name}")
-                continue
-
             lastPrice = data['lastPrice']
             open = data['open']
             high = data['high']
             low = data['low']
             lastClose = data['lastClose']
             volume = data['volume']
+            if self.pre_volume == -1:
+                self.pre_volume = volume
+            
             amount = data['amount']
             pvolume = data['pvolume'] if data['pvolume'] > 0 else 1
             askPrice = data['askPrice']
             bidPrice = data['bidPrice']
             askVol = data['askVol']
             bidVol = data['bidVol']
+            
+            diff = calculate_seconds_difference(time)
+            if diff > 10:
+                logger.error(f"time diff > 10s. {diff} {time} {self.stock_code} {self.stock_name}")
+                self.pre_volume = volume
+                continue
             if self.open_status == -1:
                 self.open_status = constants.OpenStatus.DOWN_OPEN if open <= lastClose else constants.OpenStatus.UP_OPEN
             if amount <= 0 or volume <= 0:
@@ -244,8 +352,14 @@ class StockMonitor(object):
                 continue
             if lastPrice <= 0:
                 logger.error(f"lastPrice <= 0. {lastPrice} {time} {self.stock_code} {self.stock_name}")
+                self.pre_volume = volume
                 continue
-            
+            if self.pre_volume != -1:
+                self.cur_volume = volume - self.pre_volume
+            else:
+                self.cur_volume = 0
+            self.pre_volume = volume
+
             # 均价
             self.avg_price = amount / volume / 100
             # 当前价
@@ -288,6 +402,60 @@ class StockMonitor(object):
                 f"当天最高涨幅: {self.current_max_increase:.2%}, 当天最低涨幅: {self.current_min_increase:.2%}"
             )
 
+            if self.strategy_to_kline_strategy:
+                for strategy, kline_strategy in self.strategy_to_kline_strategy.items():
+                    if strategy not in self.strategy_to_row_ids:
+                        continue
+
+                    all_row_ids = self.strategy_to_row_ids[strategy]
+                    if not all_row_ids:
+                        continue
+
+                    c_params = self.monitor_configs[strategy]
+                    flzz_use_smooth_price = c_params.get("flzz_use_smooth_price", False)
+                    use_simiple_kline_strategy_flxd = c_params.get("use_simiple_kline_strategy_flxd", False)
+                    use_simiple_kline_strategy_flzz = c_params.get("use_simiple_kline_strategy_flzz", False)
+
+                    use_simiple_kline_strategy = c_params.get("use_simiple_kline_strategy", False)
+                    flxd_ticks = c_params.get("flxd_ticks", 110)
+                    kline_sell_only_zy = c_params.get("kline_sell_only_zy", False)
+                    flzz_ticks = c_params.get("flzz_ticks", 5000)
+                    flzz_zf_thresh = c_params.get("flzz_zf_thresh", 0.03)
+
+                    cur_prevolume = self.pre_avg_volumes[self.current_tick_steps] if self.current_tick_steps < len(self.pre_avg_volumes) else 0
+
+                    logger.info(f"cur_prevolume: {cur_prevolume}, cur_tick: {self.current_tick_steps}")
+
+                    if flzz_use_smooth_price:
+                        kline_strategy.update_tick_data(self.cur_volume, self.smooth_current_price, cur_prevolume, self.avg_price)
+                    else:
+                        kline_strategy.update_tick_data(self.cur_volume, self.current_price, cur_prevolume, self.avg_price)
+                    stagnation_signal, decline_signal = kline_strategy.generate_signals()
+
+                    if use_simiple_kline_strategy_flxd and use_simiple_kline_strategy and self.current_tick_steps <= flxd_ticks and decline_signal:
+                        if kline_sell_only_zy:
+                            for row_id in all_row_ids:
+                                monitor_data = self.row_id_to_monitor_data[row_id]
+                                monitor_type = monitor_data['monitor_type']
+                                if monitor_type == 1:
+                                    self.add_to_sell(row_id)
+
+                        else:
+                            for row_id in all_row_ids:
+                                self.add_to_sell(row_id)
+
+                    if use_simiple_kline_strategy_flzz and use_simiple_kline_strategy and self.current_tick_steps <= flzz_ticks and stagnation_signal and self.current_increase >= flzz_zf_thresh:
+                        if kline_sell_only_zy:
+                            for row_id in all_row_ids:
+                                monitor_data = self.row_id_to_monitor_data[row_id]
+                                monitor_type = monitor_data['monitor_type']
+                                if monitor_type == 1:
+                                    self.add_to_sell(row_id)
+                        else:
+                            for row_id in all_row_ids:
+                                self.add_to_sell(row_id)
+
+
             if self.limit_up_price < 0 or self.limit_down_price < 0:
                 limit_down_price_0, limit_up_price_0 = constants.get_limit_price(self.last_close_price, stock_code=self.stock_code)
                 self.limit_up_price = limit_up_price_0
@@ -323,7 +491,7 @@ class StockMonitor(object):
                                 self.sell_all(price = self.current_price)
                             continue
                         # 封单金额过小 卖
-                        if buy1_price * buy1_vol * 100 < 35000000 and buy1_vol / self.max_limit_up_vol < 0.5:
+                        if buy1_price * buy1_vol * 100 < 40000000 and buy1_vol / self.max_limit_up_vol < 0.22:
                             logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
                             if buy1_price > 0:
                                 self.sell_all(price = buy1_price)
@@ -391,6 +559,9 @@ class StockMonitor(object):
                     for row_id in row_ids:
                         if row_id in self.selled_row_ids:
                             continue
+                        if row_id in self.to_sell_row_ids:
+                            continue
+
                         monitor_data = self.row_id_to_monitor_data[row_id]
                         strategy_name = monitor_data['strategy_name']
                         trade_price = monitor_data['trade_price']
@@ -839,6 +1010,8 @@ class StockMonitor(object):
                     for row_id in row_ids:
                         if row_id in self.selled_row_ids:
                             continue
+                        if row_id in self.to_sell_row_ids:
+                            continue
                         monitor_data = self.row_id_to_monitor_data[row_id]
                         strategy_name = monitor_data['strategy_name']
                         trade_price = monitor_data['trade_price']
@@ -1192,6 +1365,8 @@ class StockMonitor(object):
                     for row_id in row_ids:
                         if row_id in self.selled_row_ids:
                             continue
+                        if row_id in self.to_sell_row_ids:
+                            continue
                         monitor_data = self.row_id_to_monitor_data[row_id]
                         strategy_name = monitor_data['strategy_name']
                         trade_price = monitor_data['trade_price']
@@ -1210,7 +1385,9 @@ class StockMonitor(object):
                         max_abserve_tick_steps = monitor_config['max_abserve_tick_steps']
                         max_abserce_avg_price_down_steps = monitor_config['max_abserce_avg_price_down_steps']
                         last_day_sell_thres = monitor_config['last_day_sell_thres']
-                        max_thres_line = self.smooth_current_max_price * (1 - 0.009)
+                        last_day_sell_huiche = monitor_config['last_day_sell_huiche']
+
+                        max_thres_line = self.smooth_current_max_price * (1 - last_day_sell_huiche)
                         if self.current_increase > last_day_sell_thres and self.current_price < max_thres_line:
                             logger.info(f"股票 {self.stock_code} {self.stock_name} 策略 {strategy_name} 回撤卖出")
                             self.add_to_sell(row_id=row_id)

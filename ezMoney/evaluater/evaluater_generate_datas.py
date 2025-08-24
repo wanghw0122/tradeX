@@ -191,7 +191,7 @@ def build_stock_datas(stock_code, datekey):
         l_next_date_key = next_next_trade_day
 
 
-    trade_dates = dt.get_trade_dates_by_end(datekey, 5)  # 假设这个函数返回包含datekey在内的最近5个交易日
+    trade_dates = dt.get_trade_dates_by_end(datekey, 5)
     if len(trade_dates) < 5:
         logger.error(f"无法获取足够的交易日数据 [{stock_code} {datekey}]")
         return {}
@@ -525,6 +525,7 @@ def build_evaluater_1to2_data_list(result_tuples):
             monitor_type = 3
         stock_infos['monitor_type'] = monitor_type
         stock_infos['tick_datas'] = tick_datas
+        stock_infos['n_open'] = n_open
 
         cur_res['stock_code'] = stock_code
         cur_res['stock_name'] = stock_name

@@ -49,7 +49,7 @@ strategy_to_params_configs = {
         "stop_profit_pct": 0.0,
         "static_hc_stop_profit_pct": 1.0
     },
-    '接力-一进二弱转强:倒接力3': {
+    '接力-一进二弱转强:倒接力5': {
         "per_step_tick_gap": 25,
         "cold_start_steps": 22,
         "max_abserve_tick_steps": 489,

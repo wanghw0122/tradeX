@@ -52,7 +52,7 @@ PARAM_RANGES = {
     'flxd_ticks': (0, 500, int),
     'flzz_ticks': (100, 2000, int),
     'kline_sell_only_zy': (0, 1, bool),
-    'window_size': (3, 15, int),
+    # 'window_size': (3, 15, int),
     'use_simiple_kline_strategy_flxd': (0, 1, bool),
     'use_simiple_kline_strategy_flzz': (0, 1, bool),
     'flzz_use_smooth_price': (0, 1, bool),
@@ -84,16 +84,16 @@ OPTIMIZABLE_PARAMS = [
     'max_rebounds',
     'decline_ratio_threshold',
     'flxd_ticks',
-    'flzz_ticks'
+    'flzz_ticks',
     'kline_sell_only_zy',
-    'window_size',
+    # 'window_size',
     'use_simiple_kline_strategy_flxd',
     'use_simiple_kline_strategy_flzz',
     'flzz_use_smooth_price',
     'flzz_zf_thresh'
 ]
 
-OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())
+# OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())
 
 # 无风险年化收益率 (0%)
 RISK_FREE_RATE = 0
@@ -294,7 +294,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
         if max_drawdown > 0.3:
             # 指数惩罚，回撤越大惩罚越重
             drawdown_penalty = np.exp(-10 * (max_drawdown - 0.3))
-        
+
         return_component = max(1e-8, total_return)
         drawdown_component = max(1e-8, 1 - max_drawdown)
         sharpe_component = max(1e-8, sharpe_ratio)
@@ -1480,7 +1480,7 @@ if __name__ == "__main__":
         stock_lists,
         population_size=200,
         num_generations=200,
-        fitness_weights=(0.2, 0.6, 0.2),  # 更注重回撤
+        fitness_weights=(0.3, 0.4, 0.3),  # 更注重回撤
         save_interval=10,
         early_stopping_patience=20,  # 20代没有改进就停止
         diversity_threshold=0.05  # 多样性低于0.05视为过低

@@ -128,7 +128,7 @@ class StockMonitor(object):
         self.last_day_sell_huiche = params.get('last_day_sell_huiche', 0.009)
 
         self.fd_mount = params.get('fd_mount', 30000000)
-        self.fd_vol_pct = params.get('fd_vol_pct', 0.5)
+        self.fd_vol_pct = params.get('fd_vol_pct', 0.24)
         self.fd_juge_ticks = params.get('fd_ju_ticks', 3)
 
         self.max_zb_times = params.get('max_zb_times', 2)
@@ -213,6 +213,7 @@ class StockMonitor(object):
                 if selled:
                     self.sell_success = True
                     self.sell_price = sell_price
+                    break
 
     def get_result(self):
         """返回监控结果元组 (是否卖出, 卖出价格)"""
@@ -357,11 +358,11 @@ class StockMonitor(object):
 
             buy1_price = bidPrice[0]
             buy1_vol = bidVol[0]
-            if abs(buy1_price - self.limit_up_price) >= 0.01:
-                if buy1_price > 0:
-                    return True, buy1_price
-                else:
-                    return True, self.current_price
+            # if abs(buy1_price - self.limit_up_price) >= 0.01:
+            #     if buy1_price > 0:
+            #         return True, buy1_price
+            #     else:
+            #         return True, self.current_price
             
             if self.limit_up_status:
                 self.limit_up_tick_times = self.limit_up_tick_times + 1

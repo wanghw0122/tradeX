@@ -266,7 +266,6 @@ def build_stock_datas(stock_code, datekey):
     xtdata.download_history_data(stock_code, 'tick', n_data_key, l_date_key)
 
     c_open, c_close, n_open, n_close = get_stock_open_close_price(stock_code, n_data_key, l_date_key)
-
     _,_, n_next_open, n_next_close = get_stock_open_close_price(stock_code, l_date_key, l_next_date_key)
 
 
@@ -518,11 +517,12 @@ def build_evaluater_1to2_data_list(result_tuples):
         stock_infos['n_next_open'] = n_next_open
         stock_infos['n_next_close'] = n_next_close
         stock_infos['n_pre_volume'] = n_pre_volume
+        stock_infos['datekey'] = datekey
         n_open = result['n_open']
         if n_open / order_price > 1:
             monitor_type = 1
         else:
-            monitor_type = 2
+            monitor_type = 3
         stock_infos['monitor_type'] = monitor_type
         stock_infos['tick_datas'] = tick_datas
         stock_infos['n_open'] = n_open
@@ -543,10 +543,10 @@ def build_evaluater_1to2_data_list_from_file(nums = 3):
     res_list = []
     # 读取CSV文件
     save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv'
-    # save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
+    save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
     # save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_z1.csv'
     # for save_path in [save_path1, save_path2, save_path3]:
-    for save_path in [save_path1]:
+    for save_path in [save_path1, save_path2]:
         loaded_df = pd.read_csv(save_path)
         result_tuples = list(zip(loaded_df['date_key'], loaded_df['stock_code']))
         result_tuples.sort(key=lambda x: pd.to_datetime(x[0], format='%Y-%m-%d'))

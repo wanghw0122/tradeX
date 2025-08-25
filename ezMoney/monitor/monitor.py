@@ -15,44 +15,46 @@ def calculate_seconds_difference(specified_time):
 monitor_table = 'monitor_data'
 monitor_config_table = "strategy_monitor_config"
 
-strategy_to_params_configs = {
+# strategy_to_params_configs = {
 
-    '接力-一进二弱转强:倒接力4': {
-        "per_step_tick_gap": 9,
-        "cold_start_steps": 20,
-        "max_abserve_tick_steps": 442,
-        "max_abserce_avg_price_down_steps": 9,
-        "stop_profit_open_hc_pct": -0.14730391531412104,
-        "dynamic_hc_stop_profit_thres": 0.04146478008732626,
-        "last_close_price_hc_pct": -0.004985781398733237,
-        "last_day_sell_thres": 0.010086173123118276,
-        "last_day_sell_huiche": 0.001005814131097469,
-        "fd_mount": 132790195,
-        "fd_vol_pct": 0.18685245473809947,
-        "fd_ju_ticks": 1,
-        "max_zb_times": 14,
-        "stagnation_kline_ticks": 3,
-        "decline_kline_ticks": 21,
-        "yang_yin_threshold": 0.005292930000694659,
-        "stagnation_n": 23,
-        "stagnation_volume_ratio_threshold": 3.2211684489287036,
-        "stagnation_ratio_threshold": 638,
-        "decline_volume_ratio_threshold": 39.31822837736894,
-        "max_rebounds": 11,
-        "decline_ratio_threshold": 1020,
-        "flxd_ticks": 274,
-        "flzz_ticks": 1955,
-        "kline_sell_only_zy": False,
-        "window_size": 3,
-        "use_simiple_kline_strategy_flxd": False,
-        "use_simiple_kline_strategy_flzz": True,
-        "use_simiple_kline_strategy": True,
-        "flzz_use_smooth_price": False,
-        "flzz_zf_thresh": -0.007271521834103036,
-        "stop_profit_pct": 0.0,
-        "static_hc_stop_profit_pct": 1.0
-  }
-}
+#     '接力-一进二弱转强:倒接力4': {
+#         "per_step_tick_gap": 9,
+#         "cold_start_steps": 20,
+#         "max_abserve_tick_steps": 442,
+#         "max_abserce_avg_price_down_steps": 9,
+#         "stop_profit_open_hc_pct": -0.14730391531412104,
+#         "dynamic_hc_stop_profit_thres": 0.04146478008732626,
+#         "last_close_price_hc_pct": -0.004985781398733237,
+#         "last_day_sell_thres": 0.010086173123118276,
+#         "last_day_sell_huiche": 0.001005814131097469,
+#         "fd_mount": 132790195,
+#         "fd_vol_pct": 0.18685245473809947,
+#         "fd_ju_ticks": 1,
+#         "max_zb_times": 14,
+#         "stagnation_kline_ticks": 3,
+#         "decline_kline_ticks": 21,
+#         "yang_yin_threshold": 0.005292930000694659,
+#         "stagnation_n": 23,
+#         "stagnation_volume_ratio_threshold": 3.2211684489287036,
+#         "stagnation_ratio_threshold": 638,
+#         "decline_volume_ratio_threshold": 39.31822837736894,
+#         "max_rebounds": 11,
+#         "decline_ratio_threshold": 1020,
+#         "flxd_ticks": 274,
+#         "flzz_ticks": 1955,
+#         "kline_sell_only_zy": False,
+#         "window_size": 3,
+#         "use_simiple_kline_strategy_flxd": False,
+#         "use_simiple_kline_strategy_flzz": True,
+#         "use_simiple_kline_strategy": True,
+#         "flzz_use_smooth_price": False,
+#         "flzz_zf_thresh": -0.007271521834103036,
+#         "stop_profit_pct": 0.0,
+#         "static_hc_stop_profit_pct": 1.0
+#   }
+# }
+
+strategy_to_params_configs = {}
 
 from collections import deque
 

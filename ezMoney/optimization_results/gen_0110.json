@@ -1,4 +1,9 @@
 {
+  "generation": 110,
+  "fitness": 1.8573381571354164,
+  "total_return": 16.867460000000005,
+  "max_drawdown": 0.3463090289790809,
+  "sharpe_ratio": 3.853145930139045,
   "params": {
     "per_step_tick_gap": 25,
     "cold_start_steps": 22,
@@ -32,10 +37,7 @@
     "stop_profit_pct": 0.0,
     "static_hc_stop_profit_pct": 1.0
   },
-  "fitness": 1.8573381571354164,
-  "return": 16.867460000000005,
-  "drawdown": 0.3463090289790809,
-  "sharpe": 3.853145930139045,
+  "timestamp": "2025-08-26T02:08:58.261367",
   "individual": [
     24.972746645914157,
     21.713694584476414,

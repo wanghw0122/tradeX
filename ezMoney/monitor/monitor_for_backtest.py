@@ -14,7 +14,7 @@ from monitor.kline_strategy import SimplifiedKLineStrategy
 
 
 class SmoothFilter:
-    def __init__(self, window_size=10):
+    def __init__(self, window_size=3):
         self.window = deque(maxlen=window_size)  # 滑动窗口
         self.smoothed_value = 0
         
@@ -143,7 +143,7 @@ class StockMonitor(object):
         # 平滑当前价
         self.smooth_current_price = 0
         # 平滑过滤器
-        self.smooth_price_filter = SmoothFilter(window_size=self.window_size)
+        self.smooth_price_filter = SmoothFilter(window_size=3)
 
         # 涨停最大封单量
         self.max_limit_up_vol = -1

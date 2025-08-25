@@ -522,7 +522,7 @@ def build_evaluater_1to2_data_list(result_tuples):
         if n_open / order_price > 1:
             monitor_type = 1
         else:
-            monitor_type = 3
+            monitor_type = 2
         stock_infos['monitor_type'] = monitor_type
         stock_infos['tick_datas'] = tick_datas
         stock_infos['n_open'] = n_open

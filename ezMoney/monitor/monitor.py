@@ -1526,6 +1526,9 @@ class StockMonitor(object):
 
 
     def sell_all_row_ids(self, price):
+        if not self.to_sell_row_ids:
+            return
+
         position_stocks = self.qmt_trader.get_tradable_stocks()
         
         if not position_stocks:

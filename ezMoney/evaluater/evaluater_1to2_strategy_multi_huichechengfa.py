@@ -51,8 +51,6 @@ PARAM_RANGES = {
     'decline_ratio_threshold': (15, 1500, int),
     'flxd_ticks': (0, 500, int),
     'flzz_ticks': (100, 2000, int),
-    'kline_sell_only_zy': (0, 1, bool),
-    # 'window_size': (3, 15, int),
     'use_simiple_kline_strategy_flxd': (0, 1, bool),
     'use_simiple_kline_strategy_flzz': (0, 1, bool),
     'flzz_use_smooth_price': (0, 1, bool),
@@ -61,6 +59,17 @@ PARAM_RANGES = {
     'kline_sell_flxd_zs': (0, 1, bool),
     'kline_sell_flzz_zs': (0, 1, bool),
     'kline_sell_flzz_zy': (0, 1, bool),
+    'last_open_price_hc_pct': (-0.05, 0.01, float),
+    'open_price_max_hc': (-0.1, 0, float),
+
+    'loss_per_step_tick_gap': (1, 25, int),
+    'loss_cold_start_steps': (0, 30, int),
+    'loss_max_abserve_tick_steps': (5, 500, int),
+    'loss_max_abserce_avg_price_down_steps': (1, 15, int),
+    'loss_dynamic_hc_stop_profit_thres': (0.01, 8, float),
+    'loss_last_close_price_hc_pct': (-0.04, 0.01, float),
+    'loss_last_open_price_hc_pct': (-0.05, 0.01, float),
+    'loss_open_price_max_hc': (-0.1, 0, float),
 }
 # 需要优化的参数列表
 OPTIMIZABLE_PARAMS = [
@@ -88,8 +97,6 @@ OPTIMIZABLE_PARAMS = [
     'decline_ratio_threshold',
     'flxd_ticks',
     'flzz_ticks',
-    # 'kline_sell_only_zy',
-    # 'window_size',
     'use_simiple_kline_strategy_flxd',
     'use_simiple_kline_strategy_flzz',
     'flzz_use_smooth_price',
@@ -98,6 +105,16 @@ OPTIMIZABLE_PARAMS = [
     'kline_sell_flxd_zs',
     'kline_sell_flzz_zs',
     'kline_sell_flzz_zy',
+    'last_open_price_hc_pct',
+    'open_price_max_hc',
+    'loss_per_step_tick_gap',
+    'loss_cold_start_steps',
+    'loss_max_abserve_tick_steps',
+    'loss_max_abserce_avg_price_down_steps',
+    'loss_dynamic_hc_stop_profit_thres',
+    'loss_last_close_price_hc_pct',
+    'loss_last_open_price_hc_pct',
+    'loss_open_price_max_hc'
 ]
 
 # OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())
@@ -199,6 +216,7 @@ def decode_individual(individual):
     # 添加固定参数
     params['stop_profit_pct'] = 0.0
     params['static_hc_stop_profit_pct'] = 1.0
+    params['loss_static_hc_stop_profit_pct'] = 1.0
     
     return params
 

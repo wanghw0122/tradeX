@@ -127,10 +127,24 @@ class StockMonitor(object):
         self.dynamic_hc_stop_profit_thres = params.get('dynamic_hc_stop_profit_thres', 1.5)
         self.static_hc_stop_profit_pct = params.get('static_hc_stop_profit_pct', 1)
         self.last_close_price_hc_pct = params.get('last_close_price_hc_pct', -0.005)
+        self.last_open_price_hc_pct = params.get('last_open_price_hc_pct', -0.005)
+
         self.last_day_sell_thres = params.get('last_day_sell_thres',0.086)
 
         self.last_day_sell_huiche = params.get('last_day_sell_huiche', 0.009)
+        self.open_price_max_hc = params.get('open_price_max_hc', -0.05)
 
+        self.loss_per_step_tick_gap = params.get('loss_per_step_tick_gap', 3)
+        self.loss_cold_start_steps = params.get('loss_cold_start_steps', 10)
+        self.loss_max_abserve_tick_steps = params.get('loss_max_abserve_tick_steps', 110)
+        self.loss_max_abserce_avg_price_down_steps = params.get('loss_max_abserce_avg_price_down_steps', 1)
+
+        self.loss_dynamic_hc_stop_profit_thres = params.get('loss_dynamic_hc_stop_profit_thres', 1.5)
+        self.loss_static_hc_stop_profit_pct = params.get('loss_static_hc_stop_profit_pct', 1)
+        self.loss_last_close_price_hc_pct = params.get('loss_last_close_price_hc_pct', -0.005)
+        self.loss_last_open_price_hc_pct = params.get('loss_last_open_price_hc_pct', -0.005)
+        self.loss_open_price_max_hc = params.get('loss_open_price_max_hc', -0.05)
+        
         self.fd_mount = params.get('fd_mount', 30000000)
         self.fd_vol_pct = params.get('fd_vol_pct', 0.24)
         self.fd_juge_ticks = params.get('fd_ju_ticks', 3)
@@ -465,6 +479,9 @@ class StockMonitor(object):
             static_hc_stop_profit_pct = self.static_hc_stop_profit_pct
             # 前一天收盘价的水下容忍比例
             last_close_price_hc_pct = self.last_close_price_hc_pct
+            last_open_price_hc_pct = self.last_open_price_hc_pct
+
+            open_price_max_hc = self.open_price_max_hc
             # 动态止盈线
             dynamic_zs_line = -1
             # 静态止盈线
@@ -693,7 +710,7 @@ class StockMonitor(object):
                     elif self.running_monitor_status[row_id] == constants.StockStatus.UP_LOW_AVG_DOWN:
 
                         if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_UP:
-                            if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -721,7 +738,7 @@ class StockMonitor(object):
                                 self.running_monitor_down_status[row_id] = True
                                 self.running_monitor_observe_steps[row_id] = 0
                         elif self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_DOWN:
-                            if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
 
@@ -740,7 +757,7 @@ class StockMonitor(object):
                                             return True, self.current_price
 
                                 else:
-                                    if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
+                                    if self.current_price <= self.open_price * (1 + last_open_price_hc_pct) and self.current_tick_steps >= max_abserve_tick_steps:
                                         self.logger.info(f"跌破开盘价卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                         return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -760,7 +777,7 @@ class StockMonitor(object):
                     elif self.running_monitor_status[row_id] == constants.StockStatus.UP_HIGH_AVG_UP:
                         
                         if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_UP:
-                            if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -788,7 +805,7 @@ class StockMonitor(object):
                                 self.running_monitor_down_status[row_id] = True
                                 self.running_monitor_observe_steps[row_id] = 0
                         elif self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_DOWN:
-                            if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"跌破收盘价卖. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
 
@@ -807,7 +824,7 @@ class StockMonitor(object):
                                             return True, self.current_price
 
                                 else:
-                                    if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
+                                    if self.current_price <= self.open_price * (1 + last_open_price_hc_pct) and self.current_tick_steps >= max_abserve_tick_steps:
                                         self.logger.info(f"跌破均价线，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                         return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -837,14 +854,18 @@ class StockMonitor(object):
             limit_down_price = self.limit_down_price
             limit_up_price = self.limit_up_price
 
-            per_step_tick_gap = self.per_step_tick_gap
-            cold_start_steps = self.cold_start_steps
-            max_abserve_tick_steps = self.max_abserve_tick_steps
-            max_abserce_avg_price_down_steps = self.max_abserce_avg_price_down_steps
+            per_step_tick_gap = self.loss_per_step_tick_gap
+            cold_start_steps = self.loss_cold_start_steps
+            max_abserve_tick_steps = self.loss_max_abserve_tick_steps
+
+            max_abserce_avg_price_down_steps = self.loss_max_abserce_avg_price_down_steps
             
-            dynamic_hc_stop_profit_thres = self.dynamic_hc_stop_profit_thres
-            static_hc_stop_profit_pct = self.static_hc_stop_profit_pct
-            last_close_price_hc_pct = self.last_close_price_hc_pct
+            dynamic_hc_stop_profit_thres = self.loss_dynamic_hc_stop_profit_thres
+            static_hc_stop_profit_pct = self.loss_static_hc_stop_profit_pct
+            last_close_price_hc_pct = self.loss_last_close_price_hc_pct
+            last_open_price_hc_pct = self.loss_last_open_price_hc_pct
+            open_price_max_hc = self.loss_open_price_max_hc
+
             row_id = self.row_id
             dynamic_zs_line = -1
             static_zs_line = -1
@@ -911,7 +932,7 @@ class StockMonitor(object):
             elif self.current_tick_steps > cold_start_steps:
                 if self.current_tick_steps % per_step_tick_gap == 0:
                     if self.running_monitor_status[row_id] == constants.StockStatus.DOWN_LOW_AVG_DOWN:
-                        if self.smooth_current_price <= self.open_price:
+                        if self.smooth_current_price <= self.open_price and self.smooth_current_price <= self.avg_price:
                             if not self.limit_down_status:
                                 # 直接割
                                 self.logger.info(f"止损低走直接割，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
@@ -965,7 +986,8 @@ class StockMonitor(object):
                                 self.running_monitor_observe_steps[row_id] = 0
 
                     elif self.running_monitor_status[row_id] == constants.StockStatus.DOWN_HIGH_AVG_UP:
-                        if self.smooth_current_price <= self.open_price:
+                        if self.smooth_current_price <= self.open_price and self.smooth_current_price <= self.avg_price:
+
                             if not self.limit_down_status:
                                 # 直接割
                                 self.logger.info(f"止损低走直接割，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
@@ -1014,7 +1036,7 @@ class StockMonitor(object):
                     elif self.running_monitor_status[row_id] == constants.StockStatus.UP_LOW_AVG_DOWN:
                         
                         if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_UP:
-                            if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"破昨天收盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -1042,7 +1064,7 @@ class StockMonitor(object):
                                 self.running_monitor_down_status[row_id] = True
                                 self.running_monitor_observe_steps[row_id] = 0
                         elif self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_DOWN:
-                            if self.current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"破昨天收盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
 
@@ -1050,17 +1072,17 @@ class StockMonitor(object):
                                 if self.open_price > self.avg_price:
                                     
                                     if self.running_monitor_down_status[row_id]:
-                                        if self.current_tick_steps >= max_abserve_tick_steps * 2:
+                                        if self.current_tick_steps >= max_abserve_tick_steps:
                                             self.running_monitor_observe_steps[row_id] = self.running_monitor_observe_steps[row_id] + 1
                                             if self.running_monitor_observe_steps[row_id] >= max_abserce_avg_price_down_steps:
                                                 self.logger.info(f"跌入均线下超时未反弹，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                 return True, self.current_price
                                     else:
-                                        if self.current_tick_steps >= max_abserve_tick_steps * 2:
+                                        if self.current_tick_steps >= max_abserve_tick_steps:
                                             self.logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             return True, self.current_price
                                 else:
-                                    if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
+                                    if self.smooth_current_price <= self.open_price * (1 + last_open_price_hc_pct) and self.current_tick_steps >= max_abserve_tick_steps:
                                         self.logger.info(f"跌破开盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                         return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -1080,7 +1102,7 @@ class StockMonitor(object):
                     elif self.running_monitor_status[row_id] == constants.StockStatus.UP_HIGH_AVG_UP:
                         
                         if self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_UP:
-                            if self.smooth_current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"破昨天收盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:
@@ -1108,7 +1130,7 @@ class StockMonitor(object):
                                 self.running_monitor_down_status[row_id] = True
                                 self.running_monitor_observe_steps[row_id] = 0
                         elif self.running_monitor_stock_status[row_id] == constants.StockStatus.AVG_DOWN:
-                            if self.current_price <=  self.last_close_price * (1 + last_close_price_hc_pct):
+                            if self.smooth_current_price <=  max(self.last_close_price * (1 + last_close_price_hc_pct), self.open_price * (1 + open_price_max_hc)):
                                 self.logger.info(f"破昨天收盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                 return True, self.current_price
 
@@ -1126,7 +1148,7 @@ class StockMonitor(object):
                                             self.logger.info(f"最大观察时间到，还在均线下，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                             return True, self.current_price
                                 else:
-                                    if self.current_price <= self.open_price * (1 + last_close_price_hc_pct):
+                                    if self.smooth_current_price <= self.open_price * (1 + last_open_price_hc_pct) and self.current_tick_steps >= max_abserve_tick_steps:
                                         self.logger.info(f"跌破开盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                         return True, self.current_price
                             if self.current_price <= self.avg_price and self.current_price <= self.open_price:

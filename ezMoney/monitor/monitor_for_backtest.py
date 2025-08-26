@@ -69,6 +69,10 @@ class StockMonitor(object):
 
         self.kline_sell_only_zy = params.get('kline_sell_only_zy', False)
 
+        self.kline_sell_flxd_zy = params.get('kline_sell_flxd_zy', False)
+        self.kline_sell_flxd_zs = params.get('kline_sell_flxd_zs', False)
+        self.kline_sell_flzz_zs = params.get('kline_sell_flzz_zs', False)
+        self.kline_sell_flzz_zy = params.get('kline_sell_flzz_zy', False)
         self.flzz_use_smooth_price = params.get('flzz_use_smooth_price', False)
 
         self.flzz_zf_thresh = params.get('flzz_zf_thresh', 0.03)
@@ -335,14 +339,14 @@ class StockMonitor(object):
             self.stagnation_signal, self.decline_signal = self.kline_strategy.generate_signals()
 
         if self.use_simiple_kline_strategy_flxd and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flxd_ticks and self.decline_signal:
-            if not self.kline_sell_only_zy:
+            if self.kline_sell_flxd_zy and self.monitor_type == 1:
                 return True, self.current_price
-            elif self.kline_sell_only_zy and self.monitor_type == 1:
+            if self.kline_sell_flxd_zs and self.monitor_type == 2:
                 return True, self.current_price
         if self.use_simiple_kline_strategy_flzz and self.use_simiple_kline_strategy and self.current_tick_steps <= self.flzz_ticks and self.stagnation_signal and self.current_increase >= self.flzz_zf_thresh:
-            if not self.kline_sell_only_zy:
+            if self.kline_sell_flzz_zy and self.monitor_type == 1:
                 return True, self.current_price
-            elif self.kline_sell_only_zy and self.monitor_type == 1:
+            if self.kline_sell_flzz_zs and self.monitor_type == 2:
                 return True, self.current_price
         
         if self.limit_up_price < 0 or self.limit_down_price < 0:

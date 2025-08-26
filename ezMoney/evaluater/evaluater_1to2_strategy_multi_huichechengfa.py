@@ -57,8 +57,11 @@ PARAM_RANGES = {
     'use_simiple_kline_strategy_flzz': (0, 1, bool),
     'flzz_use_smooth_price': (0, 1, bool),
     'flzz_zf_thresh': (-0.07, 0.1, float),
+    'kline_sell_flxd_zy': (0, 1, bool),
+    'kline_sell_flxd_zs': (0, 1, bool),
+    'kline_sell_flzz_zs': (0, 1, bool),
+    'kline_sell_flzz_zy': (0, 1, bool),
 }
-
 # 需要优化的参数列表
 OPTIMIZABLE_PARAMS = [
     'per_step_tick_gap',
@@ -85,12 +88,16 @@ OPTIMIZABLE_PARAMS = [
     'decline_ratio_threshold',
     'flxd_ticks',
     'flzz_ticks',
-    'kline_sell_only_zy',
+    # 'kline_sell_only_zy',
     # 'window_size',
     'use_simiple_kline_strategy_flxd',
     'use_simiple_kline_strategy_flzz',
     'flzz_use_smooth_price',
-    'flzz_zf_thresh'
+    'flzz_zf_thresh',
+    'kline_sell_flxd_zy',
+    'kline_sell_flxd_zs',
+    'kline_sell_flzz_zs',
+    'kline_sell_flzz_zy',
 ]
 
 # OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())

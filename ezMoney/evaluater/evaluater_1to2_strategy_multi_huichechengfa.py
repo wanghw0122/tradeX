@@ -203,7 +203,7 @@ def decode_individual(individual):
     return params
 
 def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=200000, 
-                                    fitness_weights=(0.2, 0.5, 0.3)):  # 调整权重，更注重回撤
+                                    fitness_weights=(0.33, 0.34, 0.33)):  # 调整权重，更注重回撤
     """评估策略在单个股票子列表上的表现 - 增加对回撤的惩罚"""
     try:
         params = decode_individual(individual)
@@ -300,7 +300,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
         drawdown_penalty = 1.0
         if max_drawdown > 0.3:
             # 指数惩罚，回撤越大惩罚越重
-            drawdown_penalty = np.exp(-10 * (max_drawdown - 0.3))
+            drawdown_penalty = np.exp(-8 * (max_drawdown - 0.3))
 
         return_component = max(1e-8, total_return)
         drawdown_component = max(1e-8, 1 - max_drawdown)
@@ -1485,9 +1485,9 @@ if __name__ == "__main__":
     
     best_params, history = main(
         stock_lists,
-        population_size=200,
-        num_generations=200,
-        fitness_weights=(0.3, 0.4, 0.3),  # 更注重回撤
+        population_size=300,
+        num_generations=300,
+        fitness_weights=(0.33, 0.34, 0.33),  # 更注重回撤
         save_interval=10,
         early_stopping_patience=20,  # 20代没有改进就停止
         diversity_threshold=0.05  # 多样性低于0.05视为过低

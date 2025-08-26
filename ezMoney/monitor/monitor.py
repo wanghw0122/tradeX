@@ -366,7 +366,7 @@ class StockMonitor(object):
                 decline_volume_ratio_threshold = 2.5
                 max_rebounds = 2
                 decline_ratio_threshold = 50
-                use_simiple_kline_strategy = False
+                use_simiple_kline_strategy = True
                 use_simiple_kline_strategy_flxd = False
                 use_simiple_kline_strategy_flzz = False
                 flxd_ticks = 110

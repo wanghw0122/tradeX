@@ -35,7 +35,7 @@ PARAM_RANGES = {
     'stop_profit_open_hc_pct': (-0.15, 0.0, float),
     'dynamic_hc_stop_profit_thres': (0.01, 8, float),
     'last_close_price_hc_pct': (-0.04, 0.01, float),
-    'last_day_sell_thres': (0.001, 1.0, float),
+    'last_day_sell_thres': (0.01, 1.0, float),
     'last_day_sell_huiche': (0.001, 0.02, float),
     'fd_mount': (10000000, 150000000, int),
     'fd_vol_pct': (0, 0.75, float),
@@ -52,168 +52,80 @@ PARAM_RANGES = {
     'decline_ratio_threshold': (15, 1500, int),
     'flxd_ticks': (0, 500, int),
     'flzz_ticks': (100, 2000, int),
-    'kline_sell_only_zy': (0, 1, bool),
-    'window_size': (3, 15, int),
     'use_simiple_kline_strategy_flxd': (0, 1, bool),
     'use_simiple_kline_strategy_flzz': (0, 1, bool),
     'flzz_use_smooth_price': (0, 1, bool),
     'flzz_zf_thresh': (-0.07, 0.1, float),
+    'kline_sell_flxd_zy': (0, 1, bool),
+    'kline_sell_flxd_zs': (0, 1, bool),
+    'kline_sell_flzz_zs': (0, 1, bool),
+    'kline_sell_flzz_zy': (0, 1, bool),
+    'last_open_price_hc_pct': (-0.05, 0.01, float),
+    'open_price_max_hc': (-0.1, 0, float),
+
+    'loss_per_step_tick_gap': (1, 25, int),
+    'loss_cold_start_steps': (0, 30, int),
+    'loss_max_abserve_tick_steps': (5, 500, int),
+    'loss_max_abserce_avg_price_down_steps': (1, 15, int),
+    'loss_dynamic_hc_stop_profit_thres': (0.01, 8, float),
+    'loss_last_close_price_hc_pct': (-0.04, 0.01, float),
+    'loss_last_open_price_hc_pct': (-0.05, 0.01, float),
+    'loss_open_price_max_hc': (-0.1, 0, float),
+    'loss_down_open_sell_wait_time': (0, 1, bool),
+    'down_open_sell_wait_time': (0, 1, bool),
+
 }
 
-
-# 参数分组 - 核心参数优先优化
-PARAM_GROUPS = {
-    'phase1_tick_monitoring': [
-        'per_step_tick_gap',
-        'cold_start_steps',
-        'max_abserve_tick_steps',
-        'max_abserce_avg_price_down_steps',
-        'stop_profit_open_hc_pct',
-        'dynamic_hc_stop_profit_thres',
-        'last_close_price_hc_pct',
-        'last_day_sell_thres',
-        'last_day_sell_huiche',
-        'window_size',
-    ],
-    'phase2_stop_loss_profit': [
-        'stagnation_kline_ticks',
-        'decline_kline_ticks',
-        'stagnation_ratio_threshold',
-        'decline_ratio_threshold',
-        'stagnation_volume_ratio_threshold',
-        'decline_volume_ratio_threshold',
-        'stagnation_n',
-        'max_rebounds',
-        'flxd_ticks',
-        'flzz_ticks',
-        'flzz_zf_thresh',
-        'yang_yin_threshold',
-        'kline_sell_only_zy',
-        'use_simiple_kline_strategy_flxd',
-        'use_simiple_kline_strategy_flzz',
-        'flzz_use_smooth_price',
-    ],
-    'phase3_volume_analysis': [
-        'fd_mount',
-        'fd_vol_pct',
-        'fd_ju_ticks',
-        'max_zb_times',
-    ],
-    # 'phase4_trend_following': [
-        
-        
-    # ],
-    # 'phase5_miscellaneous': [
-        
-    # ]
-}
-
-# 默认参数值（用于未优化的参数）
-DEFAULT_PARAMS = {
-    "per_step_tick_gap": 13,
-    "cold_start_steps": 3,
-    "max_abserve_tick_steps": 194,
-    "max_abserce_avg_price_down_steps": 6,
-    "stop_profit_open_hc_pct": -0.051398809835553116,
-    "dynamic_hc_stop_profit_thres": 0.10003196463273602,
-    "last_close_price_hc_pct": -0.02296567115927568,
-    "last_day_sell_thres": 0.011504005089447681,
-    "last_day_sell_huiche": 0.001,
-    "fd_mount": 90481903,
-    "fd_vol_pct": 0.5014903668296646,
-    "fd_ju_ticks": 3,
-    "max_zb_times": 14,
-    "stagnation_kline_ticks": 33,
-    "decline_kline_ticks": 11,
-    "yang_yin_threshold": 0.009002281217788533,
-    "stagnation_n": 7,
-    "stagnation_volume_ratio_threshold": 47,
-    "stagnation_ratio_threshold": 398,
-    "decline_volume_ratio_threshold": 13,
-    "max_rebounds": 1,
-    "decline_ratio_threshold": 33,
-    "flxd_ticks": 265,
-    "kline_sell_only_zy": False,
-    "window_size": 5,
-    "use_simiple_kline_strategy_flxd": True,
-    "use_simiple_kline_strategy_flzz": False,
-    "stop_profit_pct": 0.0,
-    "static_hc_stop_profit_pct": 1.0,
-    'flzz_use_smooth_price': False,
-    'flzz_zf_thresh': -0.05,
-    'flzz_ticks': 2000,
-}
-
-
-# params = {
-#     "per_step_tick_gap": 9,
-#     "cold_start_steps": 20,
-#     "max_abserve_tick_steps": 442,
-#     "max_abserce_avg_price_down_steps": 9,
-#     "stop_profit_open_hc_pct": -0.14730391531412104,
-#     "dynamic_hc_stop_profit_thres": 0.04146478008732626,
-#     "last_close_price_hc_pct": -0.004985781398733237,
-#     "last_day_sell_thres": 0.010086173123118276,
-#     "last_day_sell_huiche": 0.001005814131097469,
-#     "fd_mount": 132790195,
-#     "fd_vol_pct": 0.18685245473809947,
-#     "fd_ju_ticks": 1,
-#     "max_zb_times": 14,
-#     "stagnation_kline_ticks": 3,
-#     "decline_kline_ticks": 21,
-#     "yang_yin_threshold": 0.005292930000694659,
-#     "stagnation_n": 23,
-#     "stagnation_volume_ratio_threshold": 3.2211684489287036,
-#     "stagnation_ratio_threshold": 638,
-#     "decline_volume_ratio_threshold": 39.31822837736894,
-#     "max_rebounds": 11,
-#     "decline_ratio_threshold": 1020,
-#     "flxd_ticks": 274,
-#     "flzz_ticks": 1955,
-#     "kline_sell_only_zy": False,
-#     "window_size": 3,
-#     "use_simiple_kline_strategy_flxd": False,
-#     "use_simiple_kline_strategy_flzz": True,
-#     "flzz_use_smooth_price": False,
-#     "flzz_zf_thresh": -0.007271521834103036,
-#     "stop_profit_pct": 0.0,
-#     "static_hc_stop_profit_pct": 1.0
-#   }
 
 default_params = {
-    "per_step_tick_gap": 9,
-    "cold_start_steps": 20,
-    "max_abserve_tick_steps": 442,
-    "max_abserce_avg_price_down_steps": 9,
-    "stop_profit_open_hc_pct": -0.14730391531412104,
-    "dynamic_hc_stop_profit_thres": 0.04146478008732626,
-    "last_close_price_hc_pct": -0.004985781398733237,
-    "last_day_sell_thres": 0.010086173123118276,
-    "last_day_sell_huiche": 0.001005814131097469,
-    "fd_mount": 40000000,
-    "fd_vol_pct": 0.22,
-    "fd_ju_ticks": 5,
-    "max_zb_times": 1,
-    "stagnation_kline_ticks": 3,
-    "decline_kline_ticks": 21,
-    "yang_yin_threshold": 0.005292930000694659,
-    "stagnation_n": 23,
-    "stagnation_volume_ratio_threshold": 3.2211684489287036,
-    "stagnation_ratio_threshold": 638,
-    "decline_volume_ratio_threshold": 39.31822837736894,
-    "max_rebounds": 11,
-    "decline_ratio_threshold": 1020,
-    "flxd_ticks": 274,
-    "flzz_ticks": 1955,
-    "kline_sell_only_zy": False,
-    "window_size": 3,
-    "use_simiple_kline_strategy_flxd": False,
-    "use_simiple_kline_strategy_flzz": True,
-    "flzz_use_smooth_price": False,
-    "flzz_zf_thresh": -0.007271521834103036,
-    "stop_profit_pct": 0.0,
-    "static_hc_stop_profit_pct": 1.0
-  }
+        "per_step_tick_gap": 1,
+        "cold_start_steps": 2,
+        "max_abserve_tick_steps": 417,
+        "max_abserce_avg_price_down_steps": 3,
+        "stop_profit_open_hc_pct": 0.0,
+        "dynamic_hc_stop_profit_thres": 0.18742668006554297,
+        "last_close_price_hc_pct": -0.01595159388179725,
+        "last_day_sell_thres": 0.08737555129520326,
+        "last_day_sell_huiche": 0.008865881684817264,
+        "fd_mount": 112251946,
+        "fd_vol_pct": 0.6366339763086958,
+        "fd_ju_ticks": 1,
+        "max_zb_times": 2,
+        "stagnation_kline_ticks": 20,
+        "decline_kline_ticks": 29,
+        "yang_yin_threshold": 0.019528131096558078,
+        "stagnation_n": 27,
+        "stagnation_volume_ratio_threshold": 41.43140178951424,
+        "stagnation_ratio_threshold": 99,
+        "decline_volume_ratio_threshold": 37.19889459927932,
+        "max_rebounds": 6,
+        "decline_ratio_threshold": 1408,
+        "flxd_ticks": 399,
+        "flzz_ticks": 523,
+        "use_simiple_kline_strategy_flxd": True,
+        "use_simiple_kline_strategy_flzz": True,
+        "flzz_use_smooth_price": True,
+        "flzz_zf_thresh": -0.003898345590414332,
+        "kline_sell_flxd_zy": True,
+        "kline_sell_flxd_zs": False,
+        "kline_sell_flzz_zs": False,
+        "kline_sell_flzz_zy": True,
+        "last_open_price_hc_pct": -0.032921619955249594,
+        "open_price_max_hc": -0.03341774939995318,
+        "loss_per_step_tick_gap": 19,
+        "loss_cold_start_steps": 6,
+        "loss_max_abserve_tick_steps": 175,
+        "loss_max_abserce_avg_price_down_steps": 9,
+        "loss_dynamic_hc_stop_profit_thres": 3.4877955276891317,
+        "loss_last_close_price_hc_pct": -0.032079280672698995,
+        "loss_last_open_price_hc_pct": -0.049687828257469216,
+        "loss_open_price_max_hc": -0.09251307687540104,
+        "loss_down_open_sell_wait_time": True,
+        "down_open_sell_wait_time": False,
+        "stop_profit_pct": 0.0,
+        "static_hc_stop_profit_pct": 1.0,
+        "loss_static_hc_stop_profit_pct": 1.0
+    }
 
 # 无风险年化收益率 (0%)
 RISK_FREE_RATE = 0
@@ -1167,187 +1079,6 @@ def save_optimization_state_phase(gen, individual, params, fitness, total_return
     
     logger.info(f"Saved state for generation {gen}: Fitness={fitness:.4f}, Return={total_return:.2%}")
 
-def optimize_in_phases(stock_lists, test_stock_lists, population_size=30, num_generations=50, 
-                      fitness_weights=(0.2, 0.5, 0.3), save_interval=5,
-                      early_stopping_patience=15, diversity_threshold=0.05):
-    """分阶段优化参数"""
-    logger.info("Starting phased genetic algorithm optimization...")
-    
-    # 初始化基础参数
-    base_params = DEFAULT_PARAMS.copy()
-    all_optimized_params = {}
-    
-    # 按阶段优化
-    for phase_name, optimizable_params in PARAM_GROUPS.items():
-        logger.info(f"\n{'='*80}")
-        logger.info(f"Starting {phase_name} phase")
-        logger.info(f"Optimizing parameters: {optimizable_params}")
-        logger.info(f"{'='*80}")
-        
-        # 运行当前阶段的优化
-        (best_individual, best_params, best_fitness, 
-         best_return, best_drawdown, sharpe_ratio, 
-         test_fitness, test_return, test_drawdown, test_sharpe,
-         logbook, history) = setup_genetic_algorithm_phase(
-            stock_lists,
-            test_stock_lists,
-            optimizable_params=optimizable_params,
-            base_params=base_params,
-            population_size=population_size,
-            num_generations=num_generations,
-            fitness_weights=fitness_weights,
-            save_interval=save_interval,
-            early_stopping_patience=early_stopping_patience,
-            diversity_threshold=diversity_threshold,
-            phase_name=phase_name
-        )
-        
-        # 更新基础参数（将当前阶段优化的参数加入）
-        base_params.update(best_params)
-        all_optimized_params.update(best_params)
-        
-        # 记录当前阶段结果
-        logger.info(f"\n{phase_name} completed!")
-        logger.info(f"Best fitness: {best_fitness:.4f}")
-        logger.info(f"Total return: {best_return:.2%}")
-        logger.info(f"Max drawdown: {best_drawdown:.2%}")
-        logger.info(f"Sharpe ratio: {sharpe_ratio:.4f}")
-        logger.info(f"Test fitness: {test_fitness:.4f}")
-        logger.info(f"Test return: {test_return:.2%}")
-        logger.info(f"Test drawdown: {test_drawdown:.2%}")
-        logger.info(f"Test Sharpe: {test_sharpe:.4f}")
-        
-        # 保存当前阶段的最佳参数
-        phase_dir = f"optimization_results/{phase_name}"
-        os.makedirs(phase_dir, exist_ok=True)
-        
-        with open(f"{phase_dir}/best_params.pkl", "wb") as f:
-            pickle.dump({
-                'params': best_params,
-                'fitness': best_fitness,
-                'return': best_return,
-                'drawdown': best_drawdown,
-                'sharpe': sharpe_ratio,
-                'test_fitness': test_fitness,
-                'test_return': test_return,
-                'test_drawdown': test_drawdown,
-                'test_sharpe': test_sharpe,
-                'individual': best_individual
-            }, f)
-        
-        with open(f"{phase_dir}/best_params.json", "w") as f:
-            json.dump({
-                'params': best_params,
-                'fitness': best_fitness,
-                'return': best_return,
-                'drawdown': best_drawdown,
-                'sharpe': sharpe_ratio,
-                'test_fitness': test_fitness,
-                'test_return': test_return,
-                'test_drawdown': test_drawdown,
-                'test_sharpe': test_sharpe,
-                'individual': best_individual.tolist() if hasattr(best_individual, 'tolist') else list(best_individual)
-            }, f, indent=2)
-    
-    # 最终评估所有优化参数
-    logger.info(f"\n{'='*80}")
-    logger.info("Final evaluation with all optimized parameters")
-    logger.info(f"{'='*80}")
-    
-    # 创建最终个体进行评估
-    final_individual = []
-    for param in list(PARAM_RANGES.keys()):
-        if param in all_optimized_params:
-            final_individual.append(all_optimized_params[param])
-        else:
-            # 使用默认值
-            min_val, max_val, param_type = PARAM_RANGES[param]
-            if param_type == int:
-                final_individual.append(random.randint(min_val, max_val))
-            elif param_type == bool:
-                final_individual.append(random.randint(0, 1))
-            else:
-                final_individual.append(random.uniform(min_val, max_val))
-    
-    # 评估最终参数组合（训练集）
-    all_fitnesses = []
-    all_returns = []
-    all_drawdowns = []
-    all_sharpes = []
-    
-    for stock_sublist in stock_lists:
-        fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-            final_individual, stock_sublist, 200000, fitness_weights
-        )
-        all_fitnesses.append(fitness)
-        all_returns.append(total_return)
-        all_drawdowns.append(max_drawdown)
-        all_sharpes.append(sharpe_ratio)
-    
-    final_fitness = np.mean(all_fitnesses)
-    final_return = np.mean(all_returns)
-    final_drawdown = np.mean(all_drawdowns)
-    final_sharpe = np.mean(all_sharpes)
-    
-    # 评估最终参数组合（测试集）
-    test_fitnesses = []
-    test_returns = []
-    test_drawdowns = []
-    test_sharpes = []
-    
-    for test_sublist in test_stock_lists:
-        fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-            final_individual, test_sublist, 200000, fitness_weights
-        )
-        test_fitnesses.append(fitness)
-        test_returns.append(total_return)
-        test_drawdowns.append(max_drawdown)
-        test_sharpes.append(sharpe_ratio)
-    
-    test_fitness = np.mean(test_fitnesses)
-    test_return = np.mean(test_returns)
-    test_drawdown = np.mean(test_drawdowns)
-    test_sharpe = np.mean(test_sharpes)
-    
-    logger.info(f"Final results with all optimized parameters:")
-    logger.info(f"Fitness: {final_fitness:.4f}")
-    logger.info(f"Total return: {final_return:.2%}")
-    logger.info(f"Max drawdown: {final_drawdown:.2%}")
-    logger.info(f"Sharpe ratio: {final_sharpe:.4f}")
-    logger.info(f"Test fitness: {test_fitness:.4f}")
-    logger.info(f"Test return: {test_return:.2%}")
-    logger.info(f"Test drawdown: {test_drawdown:.2%}")
-    logger.info(f"Test Sharpe: {test_sharpe:.4f}")
-    
-    # 保存最终参数
-    with open("optimization_results/final_params.pkl", "wb") as f:
-        pickle.dump({
-            'params': all_optimized_params,
-            'fitness': final_fitness,
-            'return': final_return,
-            'drawdown': final_drawdown,
-            'sharpe': final_sharpe,
-            'test_fitness': test_fitness,
-            'test_return': test_return,
-            'test_drawdown': test_drawdown,
-            'test_sharpe': test_sharpe,
-        }, f)
-    
-    with open("optimization_results/final_params.json", "w") as f:
-        json.dump({
-            'params': all_optimized_params,
-            'fitness': final_fitness,
-            'return': final_return,
-            'drawdown': final_drawdown,
-            'sharpe': final_sharpe,
-            'test_fitness': test_fitness,
-            'test_return': test_return,
-            'test_drawdown': test_drawdown,
-            'test_sharpe': test_sharpe,
-        }, f, indent=2)
-    
-    return all_optimized_params, final_fitness, final_return, final_drawdown, final_sharpe, test_fitness, test_return, test_drawdown, test_sharpe
-
 def time_series_cv_split(data, n_splits=5):
     """时间序列交叉验证分割"""
     splits = []
@@ -1371,18 +1102,12 @@ def out_of_sample_test(optimized_params, test_stock_lists):
     
     # 创建个体
     test_individual = []
-    for param in list(PARAM_RANGES.keys()):
+    for param in list(default_params.keys()):
         if param in optimized_params:
             test_individual.append(optimized_params[param])
         else:
             print(f'{param} miss.')
-            min_val, max_val, param_type = PARAM_RANGES[param]
-            if param_type == int:
-                test_individual.append(random.randint(min_val, max_val))
-            elif param_type == bool:
-                test_individual.append(random.randint(0, 1))
-            else:
-                test_individual.append(random.uniform(min_val, max_val))
+            raise
     
     all_fitnesses = []
     all_returns = []

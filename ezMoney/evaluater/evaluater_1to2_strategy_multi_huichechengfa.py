@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 # 定义参数范围和类型
 PARAM_RANGES = {
     'per_step_tick_gap': (1, 25, int),
-    'cold_start_steps': (0, 30, int),
-    'max_abserve_tick_steps': (5, 500, int),
+    'cold_start_steps': (0, 50, int),
+    'max_abserve_tick_steps': (1, 1000, int),
     'max_abserce_avg_price_down_steps': (1, 15, int),
     'stop_profit_open_hc_pct': (-0.15, 0.0, float),
     'dynamic_hc_stop_profit_thres': (0.01, 8, float),
@@ -47,7 +47,7 @@ PARAM_RANGES = {
     'stagnation_volume_ratio_threshold': (1.1, 100, float),
     'stagnation_ratio_threshold': (15, 1500, int),
     'decline_volume_ratio_threshold': (1.1, 100, float),
-    'max_rebounds': (1, 15, int),
+    'max_rebounds': (0, 15, int),
     'decline_ratio_threshold': (15, 1500, int),
     'flxd_ticks': (0, 500, int),
     'flzz_ticks': (100, 2000, int),
@@ -59,7 +59,7 @@ PARAM_RANGES = {
     'kline_sell_flxd_zs': (0, 1, bool),
     'kline_sell_flzz_zs': (0, 1, bool),
     'kline_sell_flzz_zy': (0, 1, bool),
-    'last_open_price_hc_pct': (-0.05, 0.01, float),
+    'last_open_price_hc_pct': (-0.08, 0.01, float),
     'open_price_max_hc': (-0.1, 0, float),
 
     'loss_per_step_tick_gap': (1, 25, int),
@@ -67,9 +67,12 @@ PARAM_RANGES = {
     'loss_max_abserve_tick_steps': (5, 500, int),
     'loss_max_abserce_avg_price_down_steps': (1, 15, int),
     'loss_dynamic_hc_stop_profit_thres': (0.01, 8, float),
-    'loss_last_close_price_hc_pct': (-0.04, 0.01, float),
-    'loss_last_open_price_hc_pct': (-0.05, 0.01, float),
+    'loss_last_close_price_hc_pct': (-0.08, 0.01, float),
+    'loss_last_open_price_hc_pct': (-0.08, 0.01, float),
     'loss_open_price_max_hc': (-0.1, 0, float),
+    'loss_down_open_sell_wait_time': (0, 1, bool),
+    'down_open_sell_wait_time': (0, 1, bool),
+
 }
 # 需要优化的参数列表
 OPTIMIZABLE_PARAMS = [
@@ -114,7 +117,10 @@ OPTIMIZABLE_PARAMS = [
     'loss_dynamic_hc_stop_profit_thres',
     'loss_last_close_price_hc_pct',
     'loss_last_open_price_hc_pct',
-    'loss_open_price_max_hc'
+    'loss_open_price_max_hc',
+    'loss_down_open_sell_wait_time',
+    'down_open_sell_wait_time',
+
 ]
 
 # OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())

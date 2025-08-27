@@ -16,112 +16,110 @@ monitor_table = 'monitor_data'
 monitor_config_table = "strategy_monitor_config"
 
 
-
 ### 与回测不一致在于：
 ### 1. 高开情况下，均线下，均线在开盘上方，容忍在开盘价卖出，是否容忍最大观察步长
 
 strategy_to_params_configs = {
-    '接力-一进二弱转强:倒接力4': {
-        "per_step_tick_gap": 25,
-        "cold_start_steps": 22,
-        "max_abserve_tick_steps": 489,
-        "max_abserce_avg_price_down_steps": 4,
-        "stop_profit_open_hc_pct": -0.11342009016268315,
-        "dynamic_hc_stop_profit_thres": 1.0824040408507967,
-        "last_close_price_hc_pct": 0.00814967525786139,
-        "last_day_sell_thres": 0.09813068101477505,
-        "last_day_sell_huiche": 0.0012182192947564846,
-        "fd_mount": 57624456,
-        "fd_vol_pct": 0.6155794549869049,
+        '接力-一进二弱转强:倒接力4': {
+        "per_step_tick_gap": 1,
+        "cold_start_steps": 2,
+        "max_abserve_tick_steps": 417,
+        "max_abserce_avg_price_down_steps": 3,
+        "stop_profit_open_hc_pct": 0.0,
+        "dynamic_hc_stop_profit_thres": 0.18742668006554297,
+        "last_close_price_hc_pct": -0.01595159388179725,
+        "last_day_sell_thres": 0.08737555129520326,
+        "last_day_sell_huiche": 0.008865881684817264,
+        "fd_mount": 112251946,
+        "fd_vol_pct": 0.6366339763086958,
         "fd_ju_ticks": 1,
-        "max_zb_times": 1,
-        "stagnation_kline_ticks": 42,
-        "decline_kline_ticks": 47,
-        "yang_yin_threshold": 0.02653440441302349,
-        "stagnation_n": 13,
-        "stagnation_volume_ratio_threshold": 27.29563817098009,
-        "stagnation_ratio_threshold": 136,
-        "decline_volume_ratio_threshold": 78.75398236007149,
-        "max_rebounds": 1,
-        "decline_ratio_threshold": 664,
-        "flxd_ticks": 439,
-        "flzz_ticks": 1994,
-        "kline_sell_only_zy": True,
+        "max_zb_times": 2,
+        "stagnation_kline_ticks": 20,
+        "decline_kline_ticks": 29,
+        "yang_yin_threshold": 0.019528131096558078,
+        "stagnation_n": 27,
+        "stagnation_volume_ratio_threshold": 41.43140178951424,
+        "stagnation_ratio_threshold": 99,
+        "decline_volume_ratio_threshold": 37.19889459927932,
+        "max_rebounds": 6,
+        "decline_ratio_threshold": 1408,
+        "flxd_ticks": 399,
+        "flzz_ticks": 523,
+        "use_simiple_kline_strategy_flxd": True,
+        "use_simiple_kline_strategy_flzz": True,
+        "flzz_use_smooth_price": True,
+        "flzz_zf_thresh": -0.003898345590414332,
         "kline_sell_flxd_zy": True,
         "kline_sell_flxd_zs": False,
         "kline_sell_flzz_zs": False,
         "kline_sell_flzz_zy": True,
-        "use_simiple_kline_strategy_flxd": True,
-        "use_simiple_kline_strategy_flzz": True,
-        "flzz_use_smooth_price": True,
-        "flzz_zf_thresh": -0.018216853991620808,
+        "last_open_price_hc_pct": -0.032921619955249594,
+        "open_price_max_hc": -0.03341774939995318,
+        "loss_per_step_tick_gap": 19,
+        "loss_cold_start_steps": 6,
+        "loss_max_abserve_tick_steps": 175,
+        "loss_max_abserce_avg_price_down_steps": 9,
+        "loss_dynamic_hc_stop_profit_thres": 3.4877955276891317,
+        "loss_last_close_price_hc_pct": -0.032079280672698995,
+        "loss_last_open_price_hc_pct": -0.049687828257469216,
+        "loss_open_price_max_hc": -0.09251307687540104,
+        "loss_down_open_sell_wait_time": True,
+        "down_open_sell_wait_time": False,
         "stop_profit_pct": 0.0,
         "static_hc_stop_profit_pct": 1.0,
-        "last_open_price_hc_pct": 0.00814967525786139,
-        "open_price_max_hc": -0.1,
-        "loss_per_step_tick_gap": 25,
-        "loss_cold_start_steps": 22,
-        "loss_max_abserve_tick_steps": 489,
-        "loss_max_abserce_avg_price_down_steps": 4,
-        "loss_dynamic_hc_stop_profit_thres": 1.0824040408507967,
-        "loss_static_hc_stop_profit_pct": 1.0,
-        "loss_last_close_price_hc_pct": 0.00814967525786139,
-        "loss_last_open_price_hc_pct": 0.00814967525786139,
-        "loss_open_price_max_hc": -0.1,
-
+        "loss_static_hc_stop_profit_pct": 1.0
     },
 
     '接力-一进二弱转强:倒接力5': {
-        "per_step_tick_gap": 25,
-        "cold_start_steps": 22,
-        "max_abserve_tick_steps": 489,
-        "max_abserce_avg_price_down_steps": 4,
-        "stop_profit_open_hc_pct": -0.11342009016268315,
-        "dynamic_hc_stop_profit_thres": 1.0824040408507967,
-        "last_close_price_hc_pct": 0.00814967525786139,
-        "last_day_sell_thres": 0.09813068101477505,
-        "last_day_sell_huiche": 0.0012182192947564846,
-        "fd_mount": 57624456,
-        "fd_vol_pct": 0.6155794549869049,
+        "per_step_tick_gap": 1,
+        "cold_start_steps": 2,
+        "max_abserve_tick_steps": 417,
+        "max_abserce_avg_price_down_steps": 3,
+        "stop_profit_open_hc_pct": 0.0,
+        "dynamic_hc_stop_profit_thres": 0.18742668006554297,
+        "last_close_price_hc_pct": -0.01595159388179725,
+        "last_day_sell_thres": 0.08737555129520326,
+        "last_day_sell_huiche": 0.008865881684817264,
+        "fd_mount": 112251946,
+        "fd_vol_pct": 0.6366339763086958,
         "fd_ju_ticks": 1,
-        "max_zb_times": 1,
-        "stagnation_kline_ticks": 42,
-        "decline_kline_ticks": 47,
-        "yang_yin_threshold": 0.02653440441302349,
-        "stagnation_n": 13,
-        "stagnation_volume_ratio_threshold": 27.29563817098009,
-        "stagnation_ratio_threshold": 136,
-        "decline_volume_ratio_threshold": 78.75398236007149,
-        "max_rebounds": 1,
-        "decline_ratio_threshold": 664,
-        "flxd_ticks": 439,
-        "flzz_ticks": 1994,
-        "kline_sell_only_zy": True,
+        "max_zb_times": 2,
+        "stagnation_kline_ticks": 20,
+        "decline_kline_ticks": 29,
+        "yang_yin_threshold": 0.019528131096558078,
+        "stagnation_n": 27,
+        "stagnation_volume_ratio_threshold": 41.43140178951424,
+        "stagnation_ratio_threshold": 99,
+        "decline_volume_ratio_threshold": 37.19889459927932,
+        "max_rebounds": 6,
+        "decline_ratio_threshold": 1408,
+        "flxd_ticks": 399,
+        "flzz_ticks": 523,
+        "use_simiple_kline_strategy_flxd": True,
+        "use_simiple_kline_strategy_flzz": True,
+        "flzz_use_smooth_price": True,
+        "flzz_zf_thresh": -0.003898345590414332,
         "kline_sell_flxd_zy": True,
         "kline_sell_flxd_zs": False,
         "kline_sell_flzz_zs": False,
         "kline_sell_flzz_zy": True,
-        "use_simiple_kline_strategy_flxd": True,
-        "use_simiple_kline_strategy_flzz": True,
-        "flzz_use_smooth_price": True,
-        "flzz_zf_thresh": -0.018216853991620808,
+        "last_open_price_hc_pct": -0.032921619955249594,
+        "open_price_max_hc": -0.03341774939995318,
+        "loss_per_step_tick_gap": 19,
+        "loss_cold_start_steps": 6,
+        "loss_max_abserve_tick_steps": 175,
+        "loss_max_abserce_avg_price_down_steps": 9,
+        "loss_dynamic_hc_stop_profit_thres": 3.4877955276891317,
+        "loss_last_close_price_hc_pct": -0.032079280672698995,
+        "loss_last_open_price_hc_pct": -0.049687828257469216,
+        "loss_open_price_max_hc": -0.09251307687540104,
+        "loss_down_open_sell_wait_time": True,
+        "down_open_sell_wait_time": False,
         "stop_profit_pct": 0.0,
         "static_hc_stop_profit_pct": 1.0,
-        "last_open_price_hc_pct": 0.00814967525786139,
-        "open_price_max_hc": -0.1,
-        "loss_per_step_tick_gap": 25,
-        "loss_cold_start_steps": 22,
-        "loss_max_abserve_tick_steps": 489,
-        "loss_max_abserce_avg_price_down_steps": 4,
-        "loss_dynamic_hc_stop_profit_thres": 1.0824040408507967,
-        "loss_static_hc_stop_profit_pct": 1.0,
-        "loss_last_close_price_hc_pct": 0.00814967525786139,
-        "loss_last_open_price_hc_pct": 0.00814967525786139,
-        "loss_open_price_max_hc": -0.1,
+        "loss_static_hc_stop_profit_pct": 1.0
     }
 }
-
-strategy_to_params_configs = {}
 
 from collections import deque
 
@@ -567,7 +565,7 @@ class StockMonitor(object):
                                 self.sell_all(price = self.current_price)
                             continue
                         # 封单金额过小 卖
-                        if buy1_price * buy1_vol * 100 < 50000000 and buy1_vol / self.max_limit_up_vol < 0.5:
+                        if buy1_price * buy1_vol * 100 < 60000000 and buy1_vol / self.max_limit_up_vol < 0.5:
                             logger.info(f"封单金额过小，卖出 {self.stock_code} {self.stock_name}")
                             if buy1_price > 0:
                                 self.sell_all(price = buy1_price)
@@ -584,7 +582,7 @@ class StockMonitor(object):
                 if self.limit_up_status:
                     # 涨停炸板卖
                     self.zb_times = self.zb_times + 1
-                    if self.zb_times > 1:
+                    if self.zb_times > 2:
                         logger.info(f"炸板了，卖出 {self.stock_code} {self.stock_name}")
                         if not bidPrice or not bidVol:
                             self.sell_all(price = self.current_price)
@@ -674,6 +672,11 @@ class StockMonitor(object):
                         last_open_price_hc_pct = monitor_config['last_open_price_hc_pct']
 
                         open_price_max_hc = monitor_config['open_price_max_hc']
+
+                        if 'down_open_sell_wait_time' in monitor_config:
+                            down_open_sell_wait_time = monitor_config['down_open_sell_wait_time']
+                        else:
+                            down_open_sell_wait_time = False
 
                         # 动态止盈线
                         dynamic_zs_line = -1
@@ -988,7 +991,7 @@ class StockMonitor(object):
                                                         continue
 
                                             else:
-                                                if self.current_price <= self.open_price * (1 + last_open_price_hc_pct):
+                                                if self.current_price <= self.open_price * (1 + last_open_price_hc_pct) and (self.current_tick_steps >= max_abserve_tick_steps or not down_open_sell_wait_time):
 
                                                     logger.info(f"跌破开盘价卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
@@ -1061,7 +1064,7 @@ class StockMonitor(object):
                                                         continue
 
                                             else:
-                                                if self.current_price <= self.open_price * (1 + last_open_price_hc_pct):
+                                                if self.current_price <= self.open_price * (1 + last_open_price_hc_pct) and (self.current_tick_steps >= max_abserve_tick_steps or not down_open_sell_wait_time):
                                                     logger.info(f"跌破开盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
@@ -1117,6 +1120,12 @@ class StockMonitor(object):
                         last_close_price_hc_pct = monitor_config['loss_last_close_price_hc_pct']
                         last_open_price_hc_pct = monitor_config['loss_last_open_price_hc_pct']
                         open_price_max_hc = monitor_config['loss_open_price_max_hc']
+
+                        if 'loss_down_open_sell_wait_time' in monitor_config:
+                            down_open_sell_wait_time = monitor_config['loss_down_open_sell_wait_time']
+                        else:
+                            down_open_sell_wait_time = False
+
 
                         dynamic_zs_line = -1
                         static_zs_line = -1
@@ -1350,7 +1359,8 @@ class StockMonitor(object):
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
                                             else:
-                                                if self.smooth_current_price <= self.open_price * (1 + last_open_price_hc_pct) and self.current_tick_steps >= max_abserve_tick_steps:
+                                                if self.smooth_current_price <= self.open_price * (1 + last_open_price_hc_pct) and (self.current_tick_steps >= max_abserve_tick_steps or not down_open_sell_wait_time):
+
                                                     logger.info(f"跌破开盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue
@@ -1421,7 +1431,7 @@ class StockMonitor(object):
                                                         self.add_to_sell(row_id=row_id)
                                                         continue
                                             else:
-                                                if self.smooth_current_price <= self.open_price * (1 + last_open_price_hc_pct) and self.current_tick_steps >= max_abserve_tick_steps:
+                                                if self.smooth_current_price <= self.open_price * (1 + last_open_price_hc_pct) and (self.current_tick_steps >= max_abserve_tick_steps or not down_open_sell_wait_time):
                                                     logger.info(f"跌破开盘价，卖出. {self.stock_code} {self.stock_name} {strategy_name} {self.current_price} {current_time_str}")
                                                     self.add_to_sell(row_id=row_id)
                                                     continue

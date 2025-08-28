@@ -6,6 +6,7 @@ from date_utils import date
 import datetime
 from logger import strategy_logger as logger
 from monitor.kline_strategy import SimplifiedKLineStrategy
+import time as tm
 
 def calculate_seconds_difference(specified_time):
     current_time = datetime.datetime.now().timestamp()
@@ -21,104 +22,202 @@ monitor_config_table = "strategy_monitor_config"
 
 strategy_to_params_configs = {
         '接力-一进二弱转强:倒接力4': {
-        "per_step_tick_gap": 1,
-        "cold_start_steps": 2,
-        "max_abserve_tick_steps": 417,
-        "max_abserce_avg_price_down_steps": 3,
-        "stop_profit_open_hc_pct": 0.0,
-        "dynamic_hc_stop_profit_thres": 0.18742668006554297,
-        "last_close_price_hc_pct": -0.01595159388179725,
-        "last_day_sell_thres": 0.08737555129520326,
-        "last_day_sell_huiche": 0.008865881684817264,
-        "fd_mount": 112251946,
-        "fd_vol_pct": 0.6366339763086958,
-        "fd_ju_ticks": 1,
-        "max_zb_times": 2,
-        "stagnation_kline_ticks": 20,
-        "decline_kline_ticks": 29,
-        "yang_yin_threshold": 0.019528131096558078,
-        "stagnation_n": 27,
-        "stagnation_volume_ratio_threshold": 41.43140178951424,
-        "stagnation_ratio_threshold": 99,
-        "decline_volume_ratio_threshold": 37.19889459927932,
-        "max_rebounds": 6,
-        "decline_ratio_threshold": 1408,
-        "flxd_ticks": 399,
-        "flzz_ticks": 523,
-        "use_simiple_kline_strategy_flxd": True,
-        "use_simiple_kline_strategy_flzz": True,
-        "flzz_use_smooth_price": True,
-        "flzz_zf_thresh": -0.003898345590414332,
-        "kline_sell_flxd_zy": True,
-        "kline_sell_flxd_zs": False,
-        "kline_sell_flzz_zs": False,
-        "kline_sell_flzz_zy": True,
-        "last_open_price_hc_pct": -0.032921619955249594,
-        "open_price_max_hc": -0.03341774939995318,
-        "loss_per_step_tick_gap": 19,
-        "loss_cold_start_steps": 6,
-        "loss_max_abserve_tick_steps": 175,
-        "loss_max_abserce_avg_price_down_steps": 9,
-        "loss_dynamic_hc_stop_profit_thres": 3.4877955276891317,
-        "loss_last_close_price_hc_pct": -0.032079280672698995,
-        "loss_last_open_price_hc_pct": -0.049687828257469216,
-        "loss_open_price_max_hc": -0.09251307687540104,
-        "loss_down_open_sell_wait_time": True,
-        "down_open_sell_wait_time": False,
-        "stop_profit_pct": 0.0,
-        "static_hc_stop_profit_pct": 1.0,
-        "loss_static_hc_stop_profit_pct": 1.0
-    },
+            "per_step_tick_gap": 2,
+            "cold_start_steps": 5,
+            "max_abserve_tick_steps": 416,
+            "max_abserce_avg_price_down_steps": 1,
+            "stop_profit_open_hc_pct": -0.027729521454822825,
+            "dynamic_hc_stop_profit_thres": 1.983506782164489,
+            "last_close_price_hc_pct": 0.008423217945937695,
+            "last_day_sell_thres": 0.7416863572411743,
+            "last_day_sell_huiche": 0.011575080456643795,
+            "fd_mount": 63196814,
+            "fd_vol_pct": 0.75,
+            "fd_ju_ticks": 1,
+            "max_zb_times": 1,
+            "stagnation_kline_ticks": 42,
+            "decline_kline_ticks": 12,
+            "yang_yin_threshold": 0.02752908016856626,
+            "stagnation_n": 20,
+            "stagnation_volume_ratio_threshold": 98.28527852659023,
+            "stagnation_ratio_threshold": 1068,
+            "decline_volume_ratio_threshold": 65.87678592515394,
+            "max_rebounds": 8,
+            "decline_ratio_threshold": 1144,
+            "flxd_ticks": 59,
+            "flzz_ticks": 1526,
+            "use_simiple_kline_strategy_flxd": True,
+            "use_simiple_kline_strategy_flzz": True,
+            "flzz_use_smooth_price": True,
+            "flzz_zf_thresh": 0.03492036027201358,
+            "kline_sell_flxd_zy": True,
+            "kline_sell_flxd_zs": False,
+            "kline_sell_flzz_zs": True,
+            "kline_sell_flzz_zy": True,
+            "last_open_price_hc_pct": 0.00960935810627956,
+            "open_price_max_hc": -0.0069206317364454446,
+            "loss_per_step_tick_gap": 12,
+            "loss_cold_start_steps": 4,
+            "loss_max_abserve_tick_steps": 8,
+            "loss_max_abserce_avg_price_down_steps": 14,
+            "loss_dynamic_hc_stop_profit_thres": 5.425841324415545,
+            "loss_last_close_price_hc_pct": -0.009787134486941122,
+            "loss_last_open_price_hc_pct": -0.03203986572304231,
+            "loss_open_price_max_hc": -0.06892172364339663,
+            "loss_down_open_sell_wait_time": True,
+            "down_open_sell_wait_time": True,
+            "stop_profit_pct": 0.0,
+            "static_hc_stop_profit_pct": 1.0,
+            "loss_static_hc_stop_profit_pct": 1.0
+        },
 
-    '接力-一进二弱转强:倒接力5': {
-        "per_step_tick_gap": 1,
-        "cold_start_steps": 2,
-        "max_abserve_tick_steps": 417,
-        "max_abserce_avg_price_down_steps": 3,
-        "stop_profit_open_hc_pct": 0.0,
-        "dynamic_hc_stop_profit_thres": 0.18742668006554297,
-        "last_close_price_hc_pct": -0.01595159388179725,
-        "last_day_sell_thres": 0.08737555129520326,
-        "last_day_sell_huiche": 0.008865881684817264,
-        "fd_mount": 112251946,
-        "fd_vol_pct": 0.6366339763086958,
-        "fd_ju_ticks": 1,
-        "max_zb_times": 2,
-        "stagnation_kline_ticks": 20,
-        "decline_kline_ticks": 29,
-        "yang_yin_threshold": 0.019528131096558078,
-        "stagnation_n": 27,
-        "stagnation_volume_ratio_threshold": 41.43140178951424,
-        "stagnation_ratio_threshold": 99,
-        "decline_volume_ratio_threshold": 37.19889459927932,
-        "max_rebounds": 6,
-        "decline_ratio_threshold": 1408,
-        "flxd_ticks": 399,
-        "flzz_ticks": 523,
-        "use_simiple_kline_strategy_flxd": True,
-        "use_simiple_kline_strategy_flzz": True,
-        "flzz_use_smooth_price": True,
-        "flzz_zf_thresh": -0.003898345590414332,
-        "kline_sell_flxd_zy": True,
-        "kline_sell_flxd_zs": False,
-        "kline_sell_flzz_zs": False,
-        "kline_sell_flzz_zy": True,
-        "last_open_price_hc_pct": -0.032921619955249594,
-        "open_price_max_hc": -0.03341774939995318,
-        "loss_per_step_tick_gap": 19,
-        "loss_cold_start_steps": 6,
-        "loss_max_abserve_tick_steps": 175,
-        "loss_max_abserce_avg_price_down_steps": 9,
-        "loss_dynamic_hc_stop_profit_thres": 3.4877955276891317,
-        "loss_last_close_price_hc_pct": -0.032079280672698995,
-        "loss_last_open_price_hc_pct": -0.049687828257469216,
-        "loss_open_price_max_hc": -0.09251307687540104,
-        "loss_down_open_sell_wait_time": True,
-        "down_open_sell_wait_time": False,
-        "stop_profit_pct": 0.0,
-        "static_hc_stop_profit_pct": 1.0,
-        "loss_static_hc_stop_profit_pct": 1.0
-    }
+        '接力-一进二弱转强:倒接力5': {
+                "per_step_tick_gap": 2,
+                "cold_start_steps": 5,
+                "max_abserve_tick_steps": 416,
+                "max_abserce_avg_price_down_steps": 1,
+                "stop_profit_open_hc_pct": -0.027729521454822825,
+                "dynamic_hc_stop_profit_thres": 1.983506782164489,
+                "last_close_price_hc_pct": 0.008423217945937695,
+                "last_day_sell_thres": 0.7416863572411743,
+                "last_day_sell_huiche": 0.011575080456643795,
+                "fd_mount": 63196814,
+                "fd_vol_pct": 0.75,
+                "fd_ju_ticks": 1,
+                "max_zb_times": 1,
+                "stagnation_kline_ticks": 42,
+                "decline_kline_ticks": 12,
+                "yang_yin_threshold": 0.02752908016856626,
+                "stagnation_n": 20,
+                "stagnation_volume_ratio_threshold": 98.28527852659023,
+                "stagnation_ratio_threshold": 1068,
+                "decline_volume_ratio_threshold": 65.87678592515394,
+                "max_rebounds": 8,
+                "decline_ratio_threshold": 1144,
+                "flxd_ticks": 59,
+                "flzz_ticks": 1526,
+                "use_simiple_kline_strategy_flxd": True,
+                "use_simiple_kline_strategy_flzz": True,
+                "flzz_use_smooth_price": True,
+                "flzz_zf_thresh": 0.03492036027201358,
+                "kline_sell_flxd_zy": True,
+                "kline_sell_flxd_zs": False,
+                "kline_sell_flzz_zs": True,
+                "kline_sell_flzz_zy": True,
+                "last_open_price_hc_pct": 0.00960935810627956,
+                "open_price_max_hc": -0.0069206317364454446,
+                "loss_per_step_tick_gap": 12,
+                "loss_cold_start_steps": 4,
+                "loss_max_abserve_tick_steps": 8,
+                "loss_max_abserce_avg_price_down_steps": 14,
+                "loss_dynamic_hc_stop_profit_thres": 5.425841324415545,
+                "loss_last_close_price_hc_pct": -0.009787134486941122,
+                "loss_last_open_price_hc_pct": -0.03203986572304231,
+                "loss_open_price_max_hc": -0.06892172364339663,
+                "loss_down_open_sell_wait_time": True,
+                "down_open_sell_wait_time": True,
+                "stop_profit_pct": 0.0,
+                "static_hc_stop_profit_pct": 1.0,
+                "loss_static_hc_stop_profit_pct": 1.0
+            },
+        '接力-一进二弱转强:倒接力31':{
+                "per_step_tick_gap": 1,
+                "cold_start_steps": 1,
+                "max_abserve_tick_steps": 599,
+                "max_abserce_avg_price_down_steps": 1,
+                "stop_profit_open_hc_pct": -0.0030764758154217995,
+                "dynamic_hc_stop_profit_thres": 4.531708361225206,
+                "last_close_price_hc_pct": -0.02905437054272283,
+                "last_day_sell_thres": 0.8384153851640129,
+                "last_day_sell_huiche": 0.006196799090737125,
+                "fd_mount": 121969316,
+                "fd_vol_pct": 0.4356617833412199,
+                "fd_ju_ticks": 1,
+                "max_zb_times": 1,
+                "stagnation_kline_ticks": 7,
+                "decline_kline_ticks": 9,
+                "yang_yin_threshold": 0.026263831712890456,
+                "stagnation_n": 28,
+                "stagnation_volume_ratio_threshold": 47.1294568144386,
+                "stagnation_ratio_threshold": 1453,
+                "decline_volume_ratio_threshold": 13.76197808126921,
+                "max_rebounds": 9,
+                "decline_ratio_threshold": 22,
+                "flxd_ticks": 177,
+                "flzz_ticks": 590,
+                "use_simiple_kline_strategy_flxd": True,
+                "use_simiple_kline_strategy_flzz": True,
+                "flzz_use_smooth_price": False,
+                "flzz_zf_thresh": 0.06590638344001651,
+                "kline_sell_flxd_zy": True,
+                "kline_sell_flxd_zs": True,
+                "kline_sell_flzz_zs": False,
+                "kline_sell_flzz_zy": True,
+                "last_open_price_hc_pct": 8.465920462168506e-05,
+                "open_price_max_hc": -0.015757737008011766,
+                "loss_per_step_tick_gap": 1,
+                "loss_cold_start_steps": 3,
+                "loss_max_abserve_tick_steps": 406,
+                "loss_max_abserce_avg_price_down_steps": 2,
+                "loss_dynamic_hc_stop_profit_thres": 0.811197238564801,
+                "loss_last_close_price_hc_pct": -0.060982523622196125,
+                "loss_last_open_price_hc_pct": -0.0076529620681949585,
+                "loss_open_price_max_hc": -0.06764655435544471,
+                "loss_down_open_sell_wait_time": False,
+                "down_open_sell_wait_time": True,
+                "stop_profit_pct": 0.0,
+                "static_hc_stop_profit_pct": 1.0,
+                "loss_static_hc_stop_profit_pct": 1.0
+            },
+        '接力-一进二弱转强:接力倒接力4':{
+                "per_step_tick_gap": 1,
+                "cold_start_steps": 2,
+                "max_abserve_tick_steps": 409,
+                "max_abserce_avg_price_down_steps": 5,
+                "stop_profit_open_hc_pct": -0.06334333454533284,
+                "dynamic_hc_stop_profit_thres": 3.0737568461397426,
+                "last_close_price_hc_pct": 0.009634637838249596,
+                "last_day_sell_thres": 0.01055374258064739,
+                "last_day_sell_huiche": 0.019477317469036165,
+                "fd_mount": 100349876,
+                "fd_vol_pct": 0.75,
+                "fd_ju_ticks": 1,
+                "max_zb_times": 1,
+                "stagnation_kline_ticks": 38,
+                "decline_kline_ticks": 35,
+                "yang_yin_threshold": 0.017662275737037863,
+                "stagnation_n": 19,
+                "stagnation_volume_ratio_threshold": 95.2889946363725,
+                "stagnation_ratio_threshold": 341,
+                "decline_volume_ratio_threshold": 44.57293192251069,
+                "max_rebounds": 4,
+                "decline_ratio_threshold": 1480,
+                "flxd_ticks": 198,
+                "flzz_ticks": 1922,
+                "use_simiple_kline_strategy_flxd": True,
+                "use_simiple_kline_strategy_flzz": True,
+                "flzz_use_smooth_price": True,
+                "flzz_zf_thresh": 0.0250009978817523,
+                "kline_sell_flxd_zy": False,
+                "kline_sell_flxd_zs": False,
+                "kline_sell_flzz_zs": True,
+                "kline_sell_flzz_zy": True,
+                "last_open_price_hc_pct": -0.001114939270117436,
+                "open_price_max_hc": -0.014437214372902445,
+                "loss_per_step_tick_gap": 1,
+                "loss_cold_start_steps": 2,
+                "loss_max_abserve_tick_steps": 484,
+                "loss_max_abserce_avg_price_down_steps": 6,
+                "loss_dynamic_hc_stop_profit_thres": 0.8229638201715082,
+                "loss_last_close_price_hc_pct": -0.006673932456578062,
+                "loss_last_open_price_hc_pct": -0.05886899556423714,
+                "loss_open_price_max_hc": -0.059276664545944865,
+                "loss_down_open_sell_wait_time": False,
+                "down_open_sell_wait_time": False,
+                "stop_profit_pct": 0.0,
+                "static_hc_stop_profit_pct": 1.0,
+                "loss_static_hc_stop_profit_pct": 1.0
+            }
 }
 
 from collections import deque
@@ -387,12 +486,17 @@ class StockMonitor(object):
 
     def monitor(self):
         while True:
+            start_time = tm.time() * 1000
+
             if not self.left_row_ids:
                 logger.error(f"{self.stock_code}-{self.stock_name} 没有需要监控的卖出任务")
                 self.end = True
                 break
             data = self.bq.get()
             if data is None:
+                end_time = tm.time() * 1000
+                elapsed_time = end_time - start_time
+                logger.info(f"[StockMonitor] {self.stock_code} - {self.stock_name} monitor循环耗时: {elapsed_time:.2f}ms (无数据)")
                 continue
             # m = {}
             time = data['time']
@@ -502,7 +606,7 @@ class StockMonitor(object):
 
                     cur_prevolume = self.pre_avg_volumes[self.current_tick_steps] if self.current_tick_steps < len(self.pre_avg_volumes) else 0
 
-                    logger.info(f"[StockMonitor]cur_prevolume: {cur_prevolume}, cur_tick: {self.current_tick_steps}, cur_code: {self.stock_code}")
+                    logger.info(f"[StockMonitor]cur_prevolume: {cur_prevolume}, cur_volume: {self.cur_volume}, cur_tick: {self.current_tick_steps}, cur_code: {self.stock_code}")
 
                     if flzz_use_smooth_price:
                         kline_strategy.update_tick_data(self.cur_volume, self.smooth_current_price, cur_prevolume, self.avg_price)
@@ -582,7 +686,7 @@ class StockMonitor(object):
                 if self.limit_up_status:
                     # 涨停炸板卖
                     self.zb_times = self.zb_times + 1
-                    if self.zb_times > 2:
+                    if self.zb_times > 1:
                         logger.info(f"炸板了，卖出 {self.stock_code} {self.stock_name}")
                         if not bidPrice or not bidVol:
                             self.sell_all(price = self.current_price)
@@ -1519,6 +1623,9 @@ class StockMonitor(object):
                         self.sell_all_row_ids(price = buy1_price)
                     else:
                         self.sell_all_row_ids(price = self.current_price)
+            end_time = tm.time() * 1000
+            elapsed_time = end_time - start_time
+            logger.info(f"[StockMonitor] {self.stock_code} - {self.stock_name} monitor循环耗时: {elapsed_time:.2f}ms")
 
 
     def consume(self, data):

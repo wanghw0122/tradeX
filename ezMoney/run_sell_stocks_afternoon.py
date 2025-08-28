@@ -229,7 +229,7 @@ def schedule_sell_stocks_everyday_at_1457():
                             
                             current_price = full_tick[stock_code]['lastPrice']
                             cur_profit = current_price / trade_price - 1
-                            if cur_profit > take_profit_pct:
+                            if cur_profit >= take_profit_pct:
                                 sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, real_trade_price))
 
                             elif cur_profit < stop_loss_pct:

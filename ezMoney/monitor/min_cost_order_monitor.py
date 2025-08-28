@@ -60,7 +60,7 @@ strategy_name_to_sub_strategy_name = {
     '低位中强中低开低吸': '第一高频',
     '中强中低开低吸': '第二高频',
     '首红断低吸': '',
-    '一进二弱转强': '倒接力4',
+    '一进二弱转强': '倒接力31',
     '高位高强追涨': '',
     '启动低吸': '第一高频2',
     '低位断板低吸': '第一高频',
@@ -765,7 +765,7 @@ class MinCostOrderMonitor(object):
                 if self.current_tick_steps == 0 or self.base_price < 0:
                     self.base_price = lastPrice
                     self.reference_price = self.base_price
-                if self.current_tick_steps > 410:
+                if self.current_tick_steps > 210:
                     logger.error(f"current_tick_steps > 410 break. {self.current_tick_steps} {time} {self.stock_code} {self.stock_name}")
                     break
                 self.smooth_price = self.filter.update(lastPrice)

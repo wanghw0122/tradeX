@@ -70,7 +70,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-08-19"
+test_date = "2025-08-26"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1450,7 +1450,7 @@ strategies = {
         "sub_strategies": {
             "一进二弱转强": {
                 "code": "9G0003",
-                "returnNum": 5,
+                "returnNum": 10,
                 "budget": "ddx",
                 'returnFullInfo': True,
                 'filter_params': [
@@ -1506,6 +1506,57 @@ strategies = {
                     'except_is_track': False
                     },
                     {
+                    'mark': '倒接力31',
+                    'limit': 3,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '倒接力51',
+                    'limit': 5,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '倒接力41',
+                    'limit': 4,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
                     'mark': '正接力',
                     'limit': 3,
                     'filtered': False,
@@ -1521,11 +1572,27 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': False,
                     'except_is_track': False
+                    },
+                    {
+                    'mark': '接力倒接力4',
+                    'limit': 4,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'rank_mod': 'jsjl',
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
                     }
-
                 ]
             }
-          
         }
     }
 }
@@ -2973,8 +3040,22 @@ def get_target_codes_by_all_strategies(retry_times=3):
                         for param in params:
                             limit = param['limit']
                             mark = param['mark']
+                            if 'rank_mod' in param:
+                                rank_mod = param['rank_mod']
+                            else:
+                                rank_mod = None
+                            cur_real_item_list = real_item_list
+                            if rank_mod and rank_mod == 'jsjl':
+                                cur_real_item_list = sorted(real_item_list, key=lambda x: x.jsjl, reverse=True)
+                            elif rank_mod and rank_mod == 'xcjw':
+                                cur_real_item_list = sorted(real_item_list, key=lambda x: x.xcjw, reverse=True)
+                            elif rank_mod and rank_mod == 'jssb':
+                                cur_real_item_list = sorted(real_item_list, key=lambda x: x.jssb, reverse=True)
+                            elif rank_mod and rank_mod == 'cjs':
+                                cur_real_item_list = sorted(real_item_list, key=lambda x: x.cjs, reverse=True)
+                            
                             multi_config_code_dict[key+':'+mark] = {}
-                            candidate_items = real_item_list[:limit]
+                            candidate_items = cur_real_item_list[:limit]
                             r_candidate_items = []
                             candidate_item_codes = [item.code for item in candidate_items]
                             candidate_item_codes = [qmt_trader.all_stocks[code.split('.')[0]] for code in candidate_item_codes]
@@ -3012,6 +3093,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
                     else:
                         real_item_dict = direction_filter_fuc(real_item_list, xiaocao_category_infos, params=params)
                 else:
+                    logger.error(f"xiaocao_category_info is not in item.")
                     if type(real_item_list[0]) != str:
                         real_item_list = [t.code for t in real_item_list]
                         lr = len(real_item_list)
@@ -4378,7 +4460,7 @@ def schedule_sell_stocks_everyday_at_925():
                             
                             current_price = full_tick[stock_code]['lastPrice']
                             cur_profit = current_price / trade_price - 1
-                            if cur_profit > take_profit_pct:
+                            if cur_profit >= take_profit_pct:
                                 sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id))
                             elif cur_profit < stop_loss_pct:
                                 sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id))

@@ -522,7 +522,7 @@ def build_evaluater_1to2_data_list(result_tuples):
         if n_open / order_price > 1:
             monitor_type = 1
         else:
-            monitor_type = 3
+            monitor_type = 2
         stock_infos['monitor_type'] = monitor_type
         stock_infos['tick_datas'] = tick_datas
         stock_infos['n_open'] = n_open
@@ -542,11 +542,16 @@ def build_evaluater_1to2_data_list_from_file(nums = 3):
     import pandas as pd
     res_list = []
     # 读取CSV文件
-    save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv'
-    save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv'
-    # save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_z1.csv'
+    save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv'
+    save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv'
+    save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
+    save_path4 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
+    # save_path5 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv'
+    # save_path6 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv'
+
     # for save_path in [save_path1, save_path2, save_path3]:
-    for save_path in [save_path1, save_path2]:
+    for save_path in [save_path1, save_path2, save_path4, save_path3]:
+
         loaded_df = pd.read_csv(save_path)
         result_tuples = list(zip(loaded_df['date_key'], loaded_df['stock_code']))
         result_tuples.sort(key=lambda x: pd.to_datetime(x[0], format='%Y-%m-%d'))

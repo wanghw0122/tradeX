@@ -1044,7 +1044,7 @@ class QMTTrader:
                                     
                                 elif 'take_profit' in reason:
                                     take_profit_pct = float(reason.split('|')[1])
-                                    if lastPrice / trade_price - 1 > take_profit_pct:
+                                    if lastPrice / trade_price - 1 >= take_profit_pct:
                                         left_total_volume = left_total_volume + volume
                                         left_sell_order_infos.append(left_order_info)
                                 elif 'stop_loss' in reason:

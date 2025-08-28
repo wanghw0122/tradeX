@@ -765,7 +765,7 @@ class MinCostOrderMonitor(object):
                 if self.current_tick_steps == 0 or self.base_price < 0:
                     self.base_price = lastPrice
                     self.reference_price = self.base_price
-                if self.current_tick_steps > 210:
+                if self.current_tick_steps > 300:
                     logger.error(f"current_tick_steps > 410 break. {self.current_tick_steps} {time} {self.stock_code} {self.stock_name}")
                     break
                 self.smooth_price = self.filter.update(lastPrice)

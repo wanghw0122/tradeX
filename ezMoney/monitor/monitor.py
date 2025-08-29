@@ -486,13 +486,12 @@ class StockMonitor(object):
 
     def monitor(self):
         while True:
-            start_time = tm.time() * 1000
-
             if not self.left_row_ids:
                 logger.error(f"{self.stock_code}-{self.stock_name} 没有需要监控的卖出任务")
                 self.end = True
                 break
             data = self.bq.get()
+            start_time = tm.time() * 1000
             if data is None:
                 end_time = tm.time() * 1000
                 elapsed_time = end_time - start_time

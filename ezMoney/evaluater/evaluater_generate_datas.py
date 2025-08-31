@@ -542,15 +542,16 @@ def build_evaluater_1to2_data_list_from_file(nums = 3):
     import pandas as pd
     res_list = []
     # 读取CSV文件
-    save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv'
-    save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv'
-    save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
-    save_path4 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
+    # save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv'
+    # save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv'
+    # save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
+    # save_path4 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
     # save_path5 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv'
     # save_path6 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv'
+    save_path7 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zz1.csv'
 
     # for save_path in [save_path1, save_path2, save_path3]:
-    for save_path in [save_path1, save_path2, save_path4, save_path3]:
+    for save_path in [save_path7]:
 
         loaded_df = pd.read_csv(save_path)
         result_tuples = list(zip(loaded_df['date_key'], loaded_df['stock_code']))

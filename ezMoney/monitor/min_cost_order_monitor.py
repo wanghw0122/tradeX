@@ -71,8 +71,26 @@ strategy_name_to_sub_strategy_name = {
 }
 
 
-def get_strategy_and_sub_strategy_name(strategy_name):
-    return strategy_name_to_main_strategy_name[strategy_name], strategy_name_to_sub_strategy_name[strategy_name]
+def get_strategy_and_sub_strategy_name(strategy_name, sub_strategy_str):
+    new_strategy_name = strategy_name_to_main_strategy_name[strategy_name]
+    new_sub_strategy_name = strategy_name_to_sub_strategy_name[strategy_name]
+
+    if '一进二弱转强' in strategy_name:
+        sub_strategy_list = ','.split(sub_strategy_str)
+        if '倒接力31' in sub_strategy_list or '倒接力3' in sub_strategy_list:
+            new_sub_strategy_name = '倒接力31'
+        elif '倒接力41' in sub_strategy_list or '倒接力4' in sub_strategy_list:
+            new_sub_strategy_name = '倒接力4'
+        elif '倒接力51' in sub_strategy_list or '倒接力5' in sub_strategy_list:
+            new_sub_strategy_name = '倒接力5'
+        elif '接力倒接力3' in sub_strategy_list:
+            new_sub_strategy_name = '接力倒接力3'
+        elif '接力倒接力4' in sub_strategy_list:
+            new_sub_strategy_name = '接力倒接力4'
+        else:
+            pass
+
+    return new_strategy_name, new_sub_strategy_name
 
 
 def calculate_seconds_difference(specified_time):
@@ -698,7 +716,8 @@ class MinCostOrderMonitor(object):
                         from date_utils import date
                         date_key = date.get_current_date()
                         table_name = 'trade_data'
-                        main_strategy_name, sub_strategy_name = get_strategy_and_sub_strategy_name(self.strategy_name)
+                        main_strategy_name, sub_strategy_name = get_strategy_and_sub_strategy_name(self.strategy_name, self.sub_strategy_str)
+
 
                         with SQLiteManager(r'D:\workspace\TradeX\ezMoney\sqlite_db\strategy_data.db') as manager:
                             if sub_strategy_name:

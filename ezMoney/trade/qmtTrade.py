@@ -212,6 +212,8 @@ class QMTTrader:
             return
         monning = date.is_after_920() and not date.is_after_1300()
         afternoon = date.is_after_1300()
+        current_date = date.get_current_date()
+
 
         # self.sell_stock_infos[order_id] = (stock_code, left_volume, trade_price, o_id, strategy_name, trade_day, reason, volume)
         if afternoon:
@@ -421,6 +423,7 @@ class QMTTrader:
                                     order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
+                                        "current_date": current_date,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
@@ -430,11 +433,14 @@ class QMTTrader:
                                     order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
+                                        "current_date": current_date,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
-                                budget_change_log_json_str = json.dumps(budget_change_log_json)
-                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                budget_change_log_json_str = json.dumps(budget_change_log_json, ensure_ascii=False)
+
+                                profit_loss_log_json_str = json.dumps(profit_loss_log_json, ensure_ascii=False)
+
                                 total_profit = total_profit + cur_day_profit
                                 
                                 manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
@@ -513,6 +519,7 @@ class QMTTrader:
                                     order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
+                                        "current_date": current_date,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
@@ -522,6 +529,7 @@ class QMTTrader:
                                     order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
+                                        "current_date": current_date,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
@@ -566,13 +574,12 @@ class QMTTrader:
                                 budget_change_log_json = []
 
 
-
                             add_profit, cur_day_profit, profit_loss_log_json_update, budget_change_log_json_update = update_info
                             profit_loss_log_json.extend(profit_loss_log_json_update)
                             budget_change_log_json.extend(budget_change_log_json_update)
 
-                            profit_loss_log_json_str = json.dumps(profit_loss_log_json)
-                            budget_change_log_json_str = json.dumps(budget_change_log_json)
+                            profit_loss_log_json_str = json.dumps(profit_loss_log_json, ensure_ascii=False)
+                            budget_change_log_json_str = json.dumps(budget_change_log_json, ensure_ascii=False)
 
                             # new_budget = origin_budget + add_profit
 
@@ -708,6 +715,7 @@ class QMTTrader:
                                     order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
+                                        "current_date": current_date,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
@@ -717,11 +725,13 @@ class QMTTrader:
                                     order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                     budget_change_log_json.append({
                                         "date": date_key,
+                                        "current_date": current_date,
                                         "add_budget": add_profit,
                                         "timetag": "moning"
                                     })
-                                budget_change_log_json_str = json.dumps(budget_change_log_json)
-                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
+                                budget_change_log_json_str = json.dumps(budget_change_log_json, ensure_ascii=False)
+                                profit_loss_log_json_str = json.dumps(profit_loss_log_json, ensure_ascii=False)
+
                                 total_profit = total_profit + cur_day_profit
                                 
                                 manager.update_data("strategy_meta_info", {'profit_loss_log': profit_loss_log_json_str, 'budget': new_budget, 'budget_change_log': budget_change_log_json_str, 'total_profit': total_profit, 'down_pct': down_pct_update}, {'id': id})
@@ -799,6 +809,7 @@ class QMTTrader:
                                         order_logger.info(f"收益大于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新加预算 {add_profit}")
                                         budget_change_log_json.append({
                                             "date": date_key,
+                                            "current_date": current_date,
                                             "add_budget": add_profit,
                                             "timetag": "moning"
                                         })
@@ -808,6 +819,7 @@ class QMTTrader:
                                         order_logger.info(f"收益小于0 要更新总预算 {strategy_name} - {cur_day_profit} - 更新减预算 {add_profit}")
                                         budget_change_log_json.append({
                                             "date": date_key,
+                                            "current_date": current_date,
                                             "add_budget": add_profit,
                                             "timetag": "moning"
                                         })
@@ -856,8 +868,8 @@ class QMTTrader:
                                 profit_loss_log_json.extend(profit_loss_log_json_update)
                                 budget_change_log_json.extend(budget_change_log_json_update)
 
-                                profit_loss_log_json_str = json.dumps(profit_loss_log_json)
-                                budget_change_log_json_str = json.dumps(budget_change_log_json)
+                                profit_loss_log_json_str = json.dumps(profit_loss_log_json, ensure_ascii=False)
+                                budget_change_log_json_str = json.dumps(budget_change_log_json, ensure_ascii=False)
 
                                 # new_budget = origin_budget + add_profit
 

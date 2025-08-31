@@ -1590,6 +1590,24 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': False,
                     'except_is_track': False
+                    },
+                    {
+                    'mark': '接力倒接力3',
+                    'limit': 3,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'rank_mod': 'jsjl',
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
                     }
                 ]
             }

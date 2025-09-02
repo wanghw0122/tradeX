@@ -28,6 +28,7 @@ from monitor.monitor import StockMonitor
 from monitor.limit_up_monitor import LimitUpStockMonitor
 from monitor.min_cost_order_monitor import MinCostOrderMonitor
 from common import factors
+from commod_listener import NamedPipeServer
 
 # 初始化锁
 code_to_limit_up_monitor_lock = threading.Lock()
@@ -70,7 +71,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-08-26"
+test_date = "2025-09-02"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1724,7 +1725,8 @@ default_strategy_positions = {
     "追涨-小高开追涨": 1,
     "低吸-中位小低开低吸": 1,
     "低吸-中位中强小低开低吸": 1,
-    "接力-一进二弱转强": 1
+    "接力-一进二弱转强": 1,
+    "强更强": 1,
 }
 
 strategy_name_to_min_cost_params = {
@@ -2057,8 +2059,29 @@ strategy_name_to_min_cost_params = {
         "price_drop_threshold": 0.018654280026694246,
         "max_confirm_ticks": 20,
         "debug": False
+    },
+    '强更强': {
+        "ema_alpha": 0.11731169217801875,
+        "kalman_q": 0.05,
+        "kalman_r": 0.032779386595630504,
+        "sg_window": 13,
+        "macd_fast": 2,
+        "macd_slow_ratio": 1.923502368920664,
+        "macd_signal": 2,
+        "ema_fast": 4,
+        "ema_slow_ratio": 2.0120113875614254,
+        "volume_window": 10,
+        "price_confirm_ticks": 6,
+        "strength_confirm_ticks": 7,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.9841988854678615,
+        "use_price_confirm": False,
+        "use_strength_confirm": False,
+        "dead_cross_threshold": 0.05,
+        "price_drop_threshold": 0.008308440100195527,
+        "max_confirm_ticks": 20,
+        "debug": False
     }
-
 
 }
 
@@ -2094,6 +2117,8 @@ def get_min_cost_strategy_by_strategy_name(strategy_name):
         return '中位小低开低吸'
     elif '中位中强小低开低吸' in strategy_name:
         return '中位中强小低开低吸'
+    elif '强更强' in strategy_name:
+        return '强更强'
     else:
         return None
 
@@ -3376,7 +3401,7 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
 
                     ps = get_strategy_position(strategy_name, sub_strategy_name)
                     if ps <= 0.0001:
-                        order_logger.error(f"get_strategy_position error! ps {ps}")
+                        strategy_logger.error(f"get_strategy_position error! ps {ps}")
                         continue
                     min_cost_strategy_name = get_min_cost_strategy_by_strategy_name(strategy_name)
 
@@ -3389,7 +3414,7 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         else:
                             all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name,'strategy_status': 1}, columns="*")
                         if not all_data:
-                            order_logger.error(f"strategy_budget not found in db")
+                            strategy_logger.error(f"strategy_budget not found in db")
                             continue
                         total_assert = all_data[0]['budget']
                         multipy_position = all_data[0]['multipy_position']
@@ -3432,10 +3457,10 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                             code_to_order_info_dict[code].append((c_cash * ps, strategy_name, sub_strategy_name, max_buffer))
                         else:
                             code_to_order_info_dict[code] = [(c_cash * ps, strategy_name, sub_strategy_name, max_buffer)]
-                order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
+                # order_logger.info(f"code_to_order_info_dict: {code_to_order_info_dict}")
 
-                order_logger.info(f"code_strategy_name_to_base_budget: {code_strategy_name_to_base_budget}")
-                order_logger.info(f"code_strategy_name_to_sub_strategy_names: {code_strategy_name_to_sub_strategy_names}")
+                # order_logger.info(f"code_strategy_name_to_base_budget: {code_strategy_name_to_base_budget}")
+                # order_logger.info(f"code_strategy_name_to_sub_strategy_names: {code_strategy_name_to_sub_strategy_names}")
 
 
                 if code_strategy_name_to_base_budget:
@@ -3451,13 +3476,13 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         budget = base_budgets['budget']
                         base_budget = base_budgets['base_budget']
                         min_cost_q.put((code, strategy_name, budget, base_budget, sub_strategy_str))
-                        logger.info(f"min_cost_q: {code, strategy_name, budget, base_budget, sub_strategy_str}")
+                        strategy_logger.info(f"min_cost_q: {code, strategy_name, budget, base_budget, sub_strategy_str}")
 
                 cash_thresh, t_cash = get_order_info_dict_cash_thresh(code_to_order_info_dict=code_to_order_info_dict, cash = cash, cash_discount=cash_discount)
                 if cash_thresh < 0.99999:
-                    order_logger.error(f"cash_thresh < 1 ! cash_thresh {cash_thresh} {cash} - {t_cash}")
+                    strategy_logger.error(f"cash_thresh < 1 ! cash_thresh {cash_thresh} {cash} - {t_cash}")
                 else:
-                    order_logger.info(f"cash_thresh = 1 ! {cash_thresh} {cash} - {t_cash}")
+                    strategy_logger.info(f"cash_thresh = 1 ! {cash_thresh} {cash} - {t_cash}")
                 code_to_buy_price_dict = {}
                 code_to_order_volume_dict = {}
                 code_to_total_buy_volume_dict = {}
@@ -3466,7 +3491,7 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                     buy_volume = 0
                     full_tick_info = qmt_trader.get_full_tick_info(code)
                     if not full_tick_info:
-                        order_logger.error(f"get_full_tick_info error! no cache {full_tick_info}, code {code}")
+                        strategy_logger.error(f"get_full_tick_info error! no cache {full_tick_info}, code {code}")
                         continue
                     
                     for order_info in order_info_list:
@@ -3479,10 +3504,10 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         buy_vol = qmt_trader.get_stock_buy_vol(cash_discount * c_cash, full_tick_info)
                         if buy_vol <= 0:
                             if cash_thresh > 0.999:
-                                order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code} add 100")
+                                strategy_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code} add 100")
                                 buy_vol = 100
                             else:
-                                order_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
+                                strategy_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
                                 buy_vol = 0
                                 continue
                         buy_volume = buy_volume + buy_vol
@@ -3496,17 +3521,17 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                 for code, buy_volume in code_to_total_buy_volume_dict.items():
                     code_to_total_buy_volume_dict[code] = int(round(buy_volume // 100 * buy_total_coef)) * 100
 
-                order_logger.info(f"code_to_buy_price_dict: {code_to_buy_price_dict}")
-                order_logger.info(f"code_to_order_volume_dict: {code_to_order_volume_dict}")
-                order_logger.info(f"code_to_total_buy_volume_dict: {code_to_total_buy_volume_dict}")
+                # order_logger.info(f"code_to_buy_price_dict: {code_to_buy_price_dict}")
+                # order_logger.info(f"code_to_order_volume_dict: {code_to_order_volume_dict}")
+                # order_logger.info(f"code_to_total_buy_volume_dict: {code_to_total_buy_volume_dict}")
 
                 for code, buy_volume in code_to_total_buy_volume_dict.items():
                     if code not in code_to_order_volume_dict or buy_volume <= 0:
-                        order_logger.error(f"code not found in code_to_order_volume_dict")
+                        strategy_logger.error(f"code not found in code_to_order_volume_dict")
                         continue
                     order_volume_infos = code_to_order_volume_dict[code]
                     if not order_volume_infos:
-                        order_logger.error(f"order_volume_info not found in db")
+                        strategy_logger.error(f"order_volume_info not found in db")
                         continue
                     stock_name = offlineStockQuery.get_stock_name(code.split('.')[0])
                     if not stock_name:
@@ -3524,11 +3549,11 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         if order_id <= 0:
                             order_id = qmt_trader.buy_immediate(code, buy_volume, buy_price, remark=order_remark)
                     if order_id <= 0:
-                        order_logger.error(f"委托失败，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
+                        strategy_logger.error(f"委托失败，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
                     else:
-                        order_logger.info(f"委托成功，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
+                        strategy_logger.info(f"委托成功，股票代码: {code} - {stock_name}, 委托价格: {buy_price}, 委托类型: {xtconstant.FIX_PRICE}, 委托数量: {buy_volume}, 委托ID: {order_id}")
     
-                        order_logger.info(f"reorder order_id {order_id}")
+                        strategy_logger.info(f"reorder order_id {order_id}")
                         reorder(order_id, 1)
                         
                         for order_volume_info in order_volume_infos:
@@ -3552,7 +3577,7 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                                         manager.insert_data(table_name, {'date_key': date_key,'order_id': order_id, 'strategy_name': strategy_name, 'buy0_or_sell1': 0, 'stock_code': stock_code ,'order_type': order_type, 'order_price': new_price, 'order_volume': volume, 'stock_name': stock_name})
                             except Exception as e:
                                 logger.error(f"插入数据失败 {e}")
-                                order_logger.error(f"插入数据失败 {e}")
+                                strategy_logger.error(f"插入数据失败 {e}")
 
                         if orders_dict != None:
                             orders_dict[order_id] = (code, buy_price, buy_volume, order_type, order_volume_infos, time.time(), True)
@@ -5327,6 +5352,12 @@ if __name__ == "__main__":
     print('done')
     # print('xtdc.listen')
 
+    server = NamedPipeServer(qmt_trader=qmt_trader, buy_queue=threading_q, rebuy_queue=qq)
+    
+    # 启动服务器
+    server.start_server()
+    print("股票交易程序已启动...")
+
     if is_after_1230() and not do_test:
         is_trade, pre_trade_date = date.is_trading_day()
         if is_trade:
@@ -5457,6 +5488,7 @@ if __name__ == "__main__":
                 print_latest_tick(full_tick_info_dict)
         except (KeyboardInterrupt, SystemExit):
             # 关闭调度器
+            server.stop_server()
             scheduler.shutdown(wait=False)
         
         print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
@@ -5469,22 +5501,10 @@ if __name__ == "__main__":
         consumer_thread.join()
         subscribe_thread.join()
         logger.info("Consumer thread joined.")
-        logger.info("Subscribe thread joined.")  
-
-        # # 卖出股票
-        # order_id = qmt_trader.sell('600000.SH', 11.0, 50)
-        # print(f"卖出委托ID: {order_id}")
-
-        # # 撤单
-        # cancel_result = qmt_trader.cancel_order(order_id)
-        # print(f"撤单结果: {cancel_result}")
-
-        # 获取账户信息
-        # account_info = qmt_trader.get_account_info()
-        # print(f"账户信息: {account_info}")
-
-        # get_tradable_stocks = qmt_trader.get_tradable_stocks()
-        # print(f"股票数据: {get_tradable_stocks}")
-
-        # qmt_trader.set_running()
+        logger.info("Subscribe thread joined.")
+        try:
+            server.stop_server()
+            logger.info("Named pipe server stopped.")
+        except Exception as e:
+            logger.error(f"Error stopping named pipe server: {e}")
     print('end')

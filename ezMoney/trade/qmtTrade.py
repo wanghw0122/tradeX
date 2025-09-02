@@ -1274,7 +1274,7 @@ class QMTTrader:
             return seq_id
 
 
-    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1, limit_up_monitor = False, afternoon = False):
+    def sell_quickly(self, stock_code, stock_name, volume, order_type=xtconstant.FIX_PRICE, order_remark='', sync = True, buffer = 0, extra_infos = None, up_sell=True, s_price = -1, limit_up_monitor = False, afternoon = False, amount = 0, position = 0):
         """
         卖出股票
 
@@ -1312,6 +1312,21 @@ class QMTTrader:
                 order_logger.info(f"股票 {stock_code} 价格涨停了，不进行出售")
                 return 0
         sell_price = max(new_price, limit_down_price)
+
+        if amount > 0:
+            volume = int(amount / new_price // 100 * 100)
+            tradable_stocks = self.get_tradable_stocks()
+            for tradable_stock in tradable_stocks:
+                if tradable_stock['stock_code'] == stock_code:
+                    volume = min(volume, tradable_stock['available_qty'])
+                    break
+        elif amount == 0 and volume == 0:
+            tradable_stocks = self.get_tradable_stocks()
+            for tradable_stock in tradable_stocks:
+                if tradable_stock['stock_code'] == stock_code:
+                    volume = tradable_stock['available_qty'] * position
+                    volume = volume // 100 * 100
+                    break
         if s_price > 0:
             sell_price = s_price
         if sync:

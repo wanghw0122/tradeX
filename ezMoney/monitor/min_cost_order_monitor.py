@@ -32,6 +32,7 @@ strategy_name_to_max_down_pct = {
     '小高开追涨': 6.6,
     '中位小低开低吸': 5,
     '中位中强小低开低吸': 5,
+    '强更强': 6.6,
 }
 
 strategy_name_to_main_strategy_name = {
@@ -50,6 +51,7 @@ strategy_name_to_main_strategy_name = {
     '小高开追涨': '追涨-小高开追涨',
     '中位小低开低吸': '低吸-中位小低开低吸',
     '中位中强小低开低吸': '低吸-中位中强小低开低吸',
+    '强更强': '强更强',
 }
 
 strategy_name_to_sub_strategy_name = {
@@ -68,6 +70,7 @@ strategy_name_to_sub_strategy_name = {
     '小高开追涨': '',
     '中位小低开低吸': '',
     '中位中强小低开低吸': '',
+    '强更强': '第一',
 }
 
 

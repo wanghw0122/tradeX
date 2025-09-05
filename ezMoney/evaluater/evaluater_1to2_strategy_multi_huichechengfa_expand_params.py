@@ -1372,7 +1372,7 @@ def plot_capital_curve(capital_curve, gen, total_return, max_drawdown, sharpe_ra
                      color='red', alpha=0.1)
     
     plt.legend()
-    plt.t tight_layout()
+    plt.tight_layout()
     plt.savefig(f"{capital_dir}/capital_gen_{gen:04d}.png", dpi=150)
     plt.close()
 

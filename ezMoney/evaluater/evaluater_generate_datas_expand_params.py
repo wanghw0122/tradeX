@@ -88,8 +88,7 @@ def get_stock_open_close_price(auction_code, date, next_date):
     print(f"获取股票{auction_code} {date} {next_date} 数据")
 
     xtdata.download_history_data(auction_code, period='1d', start_time=n_date, end_time=n_next_date, incrementally = None)
-    x1dpdata = xtdata.get_local_data(field_list=[], stock_list=[auction_code], period='1d', start_time=n_date, end_time=n_next_date, count=-1,
-               dividend_type='none', fill_data=True)
+    x1dpdata = xtdata.get_local_data(field_list=[], stock_list=[auction_code], period='1d', start_time=n_date, end_time=n_next_date, count=-1, fill_data=True)
     df = x1dpdata[auction_code]
     length = len(df)
     if length != 2:
@@ -535,20 +534,23 @@ def build_evaluater_1to2_data_list(result_tuples):
     return res
   # 确保导入Timestamp
 
-def build_evaluater_1to2_data_list_from_file(nums = 3):
+def build_evaluater_1to2_data_list_from_file(nums = 3, file_path = None):
     import pandas as pd
     res_list = []
     # 读取CSV文件
     # save_path1 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv'
     # save_path2 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv'
-    # save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv'
+    save_path3 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
     # save_path4 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
     # save_path5 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv'
     # save_path6 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv'
-    save_path7 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_shd.csv'
+    # save_path7 = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwzqzdk.csv'
+
+    if file_path:
+        save_path3 = file_path
 
     # for save_path in [save_path1, save_path2, save_path3]:
-    for save_path in [save_path7]:
+    for save_path in [save_path3]:
 
         loaded_df = pd.read_csv(save_path)
         result_tuples = list(zip(loaded_df['date_key'], loaded_df['stock_code']))

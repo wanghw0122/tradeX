@@ -1,0 +1,73 @@
+================================================================================
+STOCK MONITORING STRATEGY OPTIMIZATION REPORT
+================================================================================
+
+Optimization Date: 2025-09-05 18:37:39
+Max Drawdown Threshold: 0.26
+Total Generations: 97
+Best Fitness: 4.265128
+Total Return: 13322.81%
+Max Drawdown: 37.39%
+Sharpe Ratio: 5.5378
+
+Optimized Parameters:
+--------------------------------------------------------------------------------
+per_step_tick_gap                  : 2.000000 (int)
+cold_start_steps                   : 0.000000 (int)
+max_abserve_tick_steps             : 159.000000 (int)
+max_abserce_avg_price_down_steps   : 6.000000 (int)
+stop_profit_open_hc_pct            : -0.042394 (float)
+dynamic_hc_stop_profit_thres       : 1.872548 (float)
+last_close_price_hc_pct            : 0.004522 (float)
+last_day_sell_thres                : 0.977526 (float)
+last_day_sell_huiche               : 0.013840 (float)
+fd_mount                           : 104984593.000000 (int)
+fd_vol_pct                         : 0.721401 (float)
+fd_ju_ticks                        : 1.000000 (int)
+max_zb_times                       : 1.000000 (int)
+stagnation_kline_ticks             : 5.000000 (int)
+decline_kline_ticks                : 14.000000 (int)
+yang_yin_threshold                 : 0.024186 (float)
+stagnation_n                       : 7.000000 (int)
+stagnation_volume_ratio_threshold  : 5.719381 (float)
+stagnation_ratio_threshold         : 551.000000 (int)
+decline_volume_ratio_threshold     : 89.290296 (float)
+max_rebounds                       : 1.000000 (int)
+decline_ratio_threshold            : 1435.000000 (int)
+flxd_ticks                         : 477.000000 (int)
+flzz_ticks                         : 1813.000000 (int)
+use_simiple_kline_strategy_flxd    : 1.000000 (bool)
+use_simiple_kline_strategy_flzz    : 1.000000 (bool)
+flzz_use_smooth_price              : 0.000000 (bool)
+flzz_zf_thresh                     : 0.004833 (float)
+kline_sell_flxd_zy                 : 0.000000 (bool)
+kline_sell_flxd_zs                 : 1.000000 (bool)
+kline_sell_flzz_zs                 : 1.000000 (bool)
+kline_sell_flzz_zy                 : 0.000000 (bool)
+last_open_price_hc_pct             : 0.009980 (float)
+open_price_max_hc                  : -0.016143 (float)
+loss_per_step_tick_gap             : 3.000000 (int)
+loss_cold_start_steps              : 30.000000 (int)
+loss_max_abserve_tick_steps        : 451.000000 (int)
+loss_max_abserce_avg_price_down_steps: 1.000000 (int)
+loss_dynamic_hc_stop_profit_thres  : 4.503206 (float)
+loss_last_close_price_hc_pct       : -0.077528 (float)
+loss_last_open_price_hc_pct        : -0.024139 (float)
+loss_open_price_max_hc             : -0.099781 (float)
+loss_down_open_sell_wait_time      : 1.000000 (bool)
+down_open_sell_wait_time           : 1.000000 (bool)
+day_zy_line                        : 0.003139 (float)
+day_zs_line                        : -0.128800 (float)
+sell_afternoon                     : 1.000000 (bool)
+sell_half_afternoon                : 0.000000 (bool)
+sell_max_days                      : 2.000000 (int)
+stop_profit_pct                    : 0.000000 (float)
+static_hc_stop_profit_pct          : 1.000000 (float)
+loss_static_hc_stop_profit_pct     : 1.000000 (float)
+
+Optimization Summary:
+--------------------------------------------------------------------------------
+Best generation: 76
+Best fitness in generation 76: 4.265128
+Max fitness improvement: 2.595208
+Average population fitness: 3.547433

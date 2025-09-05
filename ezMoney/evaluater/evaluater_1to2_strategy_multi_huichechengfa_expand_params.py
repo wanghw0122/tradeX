@@ -237,7 +237,7 @@ def decode_individual(individual):
     return params
 
 def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=200000, 
-                                    fitness_weights=(0.33, 0.34, 0.33)):  # 调整权重，更注重回撤
+                                    fitness_weights=(0.33, 0.34, 0.33), max_drawdown_threshold=0.25):
     """评估策略在单个股票子列表上的表现 - 增加对回撤的惩罚"""
     try:
         params = decode_individual(individual)
@@ -479,11 +479,11 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
 
         w_return, w_drawdown, w_sharpe = fitness_weights
         
-        # 增加对回撤的惩罚 - 如果回撤超过30%，大幅降低适应度
+        # 增加对回撤的惩罚 - 使用传入的回撤阈值
         drawdown_penalty = 1.0
-        if max_drawdown > 0.25:
+        if max_drawdown > max_drawdown_threshold:
             # 指数惩罚，回撤越大惩罚越重
-            drawdown_penalty = np.exp(-5 * (max_drawdown - 0.25))
+            drawdown_penalty = np.exp(-5 * (max_drawdown - max_drawdown_threshold))
 
         return_component = max(1e-8, total_return)
         drawdown_component = max(1e-8, 1 - max_drawdown)
@@ -502,100 +502,8 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
         logger.error(traceback.format_exc())
         return 1e-8, -0.9, 0.9, 0, [initial_capital]
 
-# def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=200000, 
-#                                     fitness_weights=(0.4, 0.3, 0.3)):
-#     """评估策略在单个股票子列表上的表现"""
-#     try:
-#         params = decode_individual(individual)
-#         capital = initial_capital
-#         capital_curve = [capital]
-#         daily_returns = []
-        
-#         for stock_data in stock_sublist:
-#             stock_code = stock_data['stock_code']
-#             stock_name = stock_data['stock_name']
-#             stock_infos = stock_data['stock_infos']
-#             mkt_datas = stock_data['mkt_datas']
-            
-#             if 'params' in stock_infos:
-#                 stock_infos['params'].update(params)
-#             else:
-#                 stock_infos['params'] = params
-            
-#             monitor = StockMonitor(
-#                 stock_code=stock_code,
-#                 stock_name=stock_name,
-#                 stock_infos=stock_infos,
-#                 mkt_datas=mkt_datas,
-#                 params=stock_infos['params']
-#             )
-            
-#             sold, sell_price = monitor.get_result()
-            
-#             trade_price = stock_infos['trade_price']
-#             close_price = stock_infos['close_price']
-#             limit_up = stock_infos['limit_up']
-#             limit_down = stock_infos['limit_down']
-#             n_next_open = stock_infos['n_next_open']
-#             n_next_close = stock_infos['n_next_close']
-
-#             if sold:
-#                 actual_sell_price = sell_price
-#             else:
-#                 actual_sell_price = close_price
-#                 if limit_up == 1 or limit_down == 1:
-#                     actual_sell_price = n_next_open
-            
-#             if actual_sell_price <= 0:
-#                 actual_sell_price = close_price
-            
-#             if trade_price > 0:
-#                 shares = (capital / trade_price // 100) * 100
-#                 profit = shares * (actual_sell_price - trade_price)
-#                 capital += profit
-            
-#             capital_curve.append(capital)
-            
-#             if len(capital_curve) >= 2 and capital_curve[-2] > 0:
-#                 daily_return = (capital_curve[-1] - capital_curve[-2]) / capital_curve[-2]
-#                 daily_returns.append(daily_return)
-        
-#         if initial_capital > 0:
-#             total_return = (capital - initial_capital) / initial_capital
-#         else:
-#             total_return = 0
-        
-#         if len(capital_curve) > 1:
-#             capital_array = np.array(capital_curve)
-#             peak = np.maximum.accumulate(capital_array)
-#             drawdowns = (peak - capital_array) / peak
-#             max_drawdown = np.max(drawdowns)
-#         else:
-#             max_drawdown = 0
-        
-#         returns_array = np.array(daily_returns)
-#         if len(returns_array) > 1:
-#             excess_returns = returns_array - DAILY_RISK_FREE_RATE
-#             sharpe_ratio = np.mean(excess_returns) / (np.std(excess_returns) + 1e-8) * np.sqrt(252)
-#         else:
-#             sharpe_ratio = 0
-
-#         w_return, w_drawdown, w_sharpe = fitness_weights
-        
-#         return_component = max(1e-8, 1 + total_return)
-#         drawdown_component = max(1e-8, 1 - max_drawdown)
-#         sharpe_component = max(1e-8, sharpe_ratio)
-        
-#         fitness = (return_component ** w_return) * (drawdown_component ** w_drawdown) * (sharpe_component ** w_sharpe)
-        
-#         return fitness, total_return, max_drawdown, sharpe_ratio, capital_curve
-        
-#     except Exception as e:
-#         logger.error(f"Error evaluating strategy on single list: {str(e)}")
-#         return 1e-8, -0.9, 0.9, 0, [initial_capital]
-
 def evaluate_strategy(individual, stock_lists, initial_capital=200000, 
-                      fitness_weights=(0.4, 0.3, 0.3), return_capital_curve=False):
+                      fitness_weights=(0.4, 0.3, 0.3), return_capital_curve=False, max_drawdown_threshold=0.25):
     """
     评估策略在多个股票列表上的平均表现
     
@@ -605,6 +513,7 @@ def evaluate_strategy(individual, stock_lists, initial_capital=200000,
         initial_capital: 初始资金
         fitness_weights: 适应度权重 (return, drawdown, sharpe)
         return_capital_curve: 是否返回资金曲线
+        max_drawdown_threshold: 最大回撤阈值
         
     返回:
         如果 return_capital_curve=True: (avg_fitness, avg_return, avg_drawdown, avg_sharpe, capital_curves)
@@ -622,12 +531,12 @@ def evaluate_strategy(individual, stock_lists, initial_capital=200000,
         # logger.info(f"Evaluating sublist {i+1}/{len(stock_lists)} and {len(stock_sublist)} stocks")
         if return_capital_curve:
             fitness, total_return, max_drawdown, sharpe_ratio, capital_curve = evaluate_strategy_on_single_list(
-                individual, stock_sublist, initial_capital, fitness_weights
+                individual, stock_sublist, initial_capital, fitness_weights, max_drawdown_threshold
             )
             all_capital_curves.append(capital_curve)
         else:
             fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-                individual, stock_sublist, initial_capital, fitness_weights
+                individual, stock_sublist, initial_capital, fitness_weights, max_drawdown_threshold
             )
         
         all_fitnesses.append(fitness)
@@ -642,7 +551,8 @@ def evaluate_strategy(individual, stock_lists, initial_capital=200000,
     avg_sharpe = np.mean(all_sharpes)
     
     # 记录评估结果
-    logger.info(f"Evaluated individual: avg_fitness={avg_fitness:.4f}, avg_return={avg_return:.2%}, "
+    logger.info(f"Evaluated individual with max_drawdown_threshold={max_drawdown_threshold}: "
+                 f"avg_fitness={avg_fitness:.4f}, avg_return={avg_return:.2%}, "
                  f"avg_drawdown={avg_drawdown:.2%}, avg_sharpe={avg_sharpe:.2f}")
     
     if return_capital_curve:
@@ -650,46 +560,14 @@ def evaluate_strategy(individual, stock_lists, initial_capital=200000,
     else:
         return avg_fitness, avg_return, avg_drawdown, avg_sharpe
 
-def evaluate(individual, stock_lists, fitness_weights):
+def evaluate(individual, stock_lists, fitness_weights, max_drawdown_threshold=0.25):
     """适应度评估函数"""
-    fitness, _, _, _ = evaluate_strategy(individual, stock_lists, fitness_weights=fitness_weights)
+    fitness, _, _, _ = evaluate_strategy(individual, stock_lists, fitness_weights=fitness_weights, 
+                                       max_drawdown_threshold=max_drawdown_threshold)
     return (fitness,)
 
-
-# def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights=(0.4, 0.3, 0.3)):
-#     """使用全局变量 global_stock_lists 进行评估"""
-#     global global_stock_lists
-#     fitness, _, _, _ = evaluate_strategy(individual, global_stock_lists, initial_capital, fitness_weights)
-#     return (fitness,) 
-
-# def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights=(0.4, 0.3, 0.3)):
-#     """使用共享数据评估策略"""
-#     try:
-#         global global_shared_data
-#         stock_lists = global_shared_data.stock_lists
-        
-#         all_fitnesses = []
-#         all_returns = []
-#         all_drawdowns = []
-#         all_sharpes = []
-        
-#         for stock_sublist in stock_lists:
-#             fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-#                 individual, stock_sublist, initial_capital, fitness_weights
-#             )
-#             all_fitnesses.append(fitness)
-#             all_returns.append(total_return)
-#             all_drawdowns.append(max_drawdown)
-#             all_sharpes.append(sharpe_ratio)
-        
-#         avg_fitness = np.mean(all_fitnesses)
-#         return (avg_fitness,)
-        
-#     except Exception as e:
-#         logger.error(f"Error in evaluate_strategy_global: {str(e)}")
-#         return (0.0,)
-
-def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights=(0.4, 0.3, 0.3)):
+def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights=(0.4, 0.3, 0.3), 
+                           max_drawdown_threshold=0.25):
     """使用共享数据评估策略"""
     try:
         global global_shared_data
@@ -705,7 +583,7 @@ def evaluate_strategy_global(individual, initial_capital=200000, fitness_weights
         for i, stock_sublist in enumerate(stock_lists):
             # logger.info(f"Evaluating sublist {i+1}/{len(stock_lists)}")
             fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-                individual, stock_sublist, initial_capital, fitness_weights
+                individual, stock_sublist, initial_capital, fitness_weights, max_drawdown_threshold
             )
             all_fitnesses.append(fitness)
             all_returns.append(total_return)
@@ -926,7 +804,8 @@ def adaptive_cx_mutate(population, toolbox, cxpb, mutpb, diversity_score):
 
 def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100, 
                            n_processes=None, fitness_weights=(0.2, 0.5, 0.3),  # 调整权重，更注重回撤
-                           save_interval=5, early_stopping_patience=25, diversity_threshold=0.05):
+                           save_interval=5, early_stopping_patience=25, diversity_threshold=0.05,
+                           max_drawdown_threshold=0.25):
     """设置并运行遗传算法（支持并行），添加早停机制"""
     # 创建共享数据对象
     shared_data = SharedData(stock_lists)
@@ -954,7 +833,8 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     toolbox.decorate("mutate", check_bounds_decorator)
     
     # 使用部分函数固定参数
-    evaluate_with_params = partial(evaluate_strategy_global, initial_capital=200000, fitness_weights=fitness_weights)
+    evaluate_with_params = partial(evaluate_strategy_global, initial_capital=200000, 
+                                 fitness_weights=fitness_weights, max_drawdown_threshold=max_drawdown_threshold)
     toolbox.register("evaluate", evaluate_with_params)
     
     # 创建种群
@@ -1029,7 +909,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         
         for stock_sublist in stock_lists:
             fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-                best_individual, stock_sublist, 200000, fitness_weights
+                best_individual, stock_sublist, 200000, fitness_weights, max_drawdown_threshold
             )
             all_fitnesses.append(fitness)
             all_returns.append(total_return)
@@ -1058,7 +938,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         
         # 打印初始代信息
         logger.info(f"\n{'='*80}")
-        logger.info(f"Initial Generation Summary:")
+        logger.info(f"Initial Generation Summary (max_drawdown_threshold={max_drawdown_threshold}):")
         logger.info(f"{'='*80}")
         logger.info(f"Best Fitness: {best_fitness:.6f}")
         logger.info(f"Average Return: {avg_return:.2%}")
@@ -1123,7 +1003,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             
             for stock_sublist in stock_lists:
                 fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-                    best_individual, stock_sublist, 200000, fitness_weights
+                    best_individual, stock_sublist, 200000, fitness_weights, max_drawdown_threshold
                 )
                 all_fitnesses.append(fitness)
                 all_returns.append(total_return)
@@ -1172,7 +1052,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             
             # 打印当前代信息
             logger.info(f"\n{'='*80}")
-            logger.info(f"Generation {gen} Summary:")
+            logger.info(f"Generation {gen} Summary (max_drawdown_threshold={max_drawdown_threshold}):")
             logger.info(f"{'='*80}")
             logger.info(f"Best Fitness: {best_fitness:.6f}")
             logger.info(f"Average Return: {avg_return:.2%}")
@@ -1204,7 +1084,8 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
             if gen % save_interval == 0 or gen == num_generations:
                 best_params = decode_individual(best_individual)
                 save_optimization_state(gen, best_individual, best_params, best_fitness, 
-                                      avg_return, avg_drawdown, avg_sharpe, stock_lists, fitness_weights)
+                                      avg_return, avg_drawdown, avg_sharpe, stock_lists, 
+                                      fitness_weights, max_drawdown_threshold)
             
             # 检查早停条件
             if no_improvement_count >= early_stopping_patience:
@@ -1228,7 +1109,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         
         for stock_sublist in stock_lists:
             fitness, total_return, max_drawdown, sharpe_ratio, _ = evaluate_strategy_on_single_list(
-                best_individual, stock_sublist, 200000, fitness_weights
+                best_individual, stock_sublist, 200000, fitness_weights, max_drawdown_threshold
             )
             all_fitnesses.append(fitness)
             all_returns.append(total_return)
@@ -1242,9 +1123,16 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
         return best_individual, best_params, best_fitness, avg_return, avg_drawdown, avg_sharpe, logbook, history
 
 def save_optimization_state(gen, individual, params, fitness, total_return, 
-                           max_drawdown, sharpe_ratio, stock_lists, fitness_weights):
+                           max_drawdown, sharpe_ratio, stock_lists, fitness_weights,
+                           max_drawdown_threshold=0.25):
 
     """保存优化状态 - 添加更多信息"""
+    # 创建特定回撤阈值的目录
+    results_dir = f"optimization_results_{max_drawdown_threshold}"
+    capital_dir = f"capital_curves_{max_drawdown_threshold}"
+    os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(capital_dir, exist_ok=True)
+    
     # 保存参数
     state = {
         'generation': gen,
@@ -1254,28 +1142,30 @@ def save_optimization_state(gen, individual, params, fitness, total_return,
         'sharpe_ratio': sharpe_ratio,
         'params': params,
         'timestamp': datetime.datetime.now().isoformat(),
-        'individual': individual  # 保存原始个体
+        'individual': individual,  # 保存原始个体
+        'max_drawdown_threshold': max_drawdown_threshold
     }
     
     # 保存为JSON
-    with open(f"optimization_results/gen_{gen:04d}.json", "w") as f:
+    with open(f"{results_dir}/gen_{gen:04d}.json", "w") as f:
         json.dump(state, f, indent=2, default=lambda o: o.tolist() if hasattr(o, 'tolist') else o)
     
     # 保存为Pickle
-    with open(f"optimization_results/gen_{gen:04d}.pkl", "wb") as f:
+    with open(f"{results_dir}/gen_{gen:04d}.pkl", "wb") as f:
         pickle.dump(state, f)
     
     # 保存收益曲线图
     if multiprocessing.current_process().name == 'MainProcess':
         _, _, _, _, capital_curves = evaluate_strategy(
-            individual, stock_lists, fitness_weights=fitness_weights, return_capital_curve=True
-
+            individual, stock_lists, fitness_weights=fitness_weights, 
+            return_capital_curve=True, max_drawdown_threshold=max_drawdown_threshold
         )
         # 绘制平均资金曲线
         avg_capital_curve = np.mean([curve for curve in capital_curves if len(curve) > 0], axis=0)
-        plot_capital_curve(avg_capital_curve, gen, total_return, max_drawdown, sharpe_ratio)
+        plot_capital_curve(avg_capital_curve, gen, total_return, max_drawdown, sharpe_ratio, capital_dir, max_drawdown_threshold)
     
-    logger.info(f"Saved state for generation {gen}: Fitness={fitness:.4f}, Return={total_return:.2%}")
+    logger.info(f"Saved state for generation {gen} with max_drawdown_threshold={max_drawdown_threshold}: "
+                f"Fitness={fitness:.4f}, Return={total_return:.2%}")
 
 def main(stock_lists, population_size=50, num_generations=50, 
         fitness_weights=(0.2, 0.5, 0.3), save_interval=5,  # 调整权重，更注重回撤
@@ -1296,77 +1186,102 @@ def main(stock_lists, population_size=50, num_generations=50,
         logger.info(f"  Trade price: {stock['trade_price']}")
         logger.info(f"  date: {stock['datekey']}")
     
-    # 运行遗传算法优化
-    try:
-        (best_individual, best_params, best_fitness, 
-         best_return, best_drawdown, sharpe_ratio, logbook, history) = setup_genetic_algorithm(
-            stock_lists,
-            population_size=population_size,
-            num_generations=num_generations,
-            fitness_weights=fitness_weights,
-            save_interval=save_interval,
-            early_stopping_patience=early_stopping_patience,
-            diversity_threshold=diversity_threshold
-        )
+    # 同时运行两个不同回撤阈值的优化
+    results = {}
+    for max_drawdown_threshold in [0.26, 0.18]:
+        logger.info(f"\n{'#'*80}")
+        logger.info(f"Starting optimization with max_drawdown_threshold={max_drawdown_threshold}")
+        logger.info(f"{'#'*80}")
         
-        # 打印优化结果
-        logger.info("\nOptimization completed!")
-        logger.info(f"Best fitness: {best_fitness:.4f}")
-        logger.info(f"Total return: {best_return:.2%}")
-        logger.info(f"Max drawdown: {best_drawdown:.2%}")
-        logger.info(f"Sharpe ratio: {sharpe_ratio:.4f}")
-        logger.info("\nOptimized parameters:")
-        for param, value in best_params.items():
-            param_type = PARAM_RANGES.get(param, (0, 0, float))[2].__name__
-            logger.info(f"{param}: {value} ({param_type})")
-        
-        # 保存最佳参数
-        with open("optimization_results/best_params.pkl", "wb") as f:
-            pickle.dump({
-                'params': best_params,
-                'fitness': best_fitness,
-                'return': best_return,
-                'drawdown': best_drawdown,
-                'sharpe': sharpe_ratio,
-                'individual': best_individual
-            }, f)
-        
-        with open("optimization_results/best_params.json", "w") as f:
-            json.dump({
-                'params': best_params,
-                'fitness': best_fitness,
-                'return': best_return,
-                'drawdown': best_drawdown,
-                'sharpe': sharpe_ratio,
-                'individual': best_individual.tolist() if hasattr(best_individual, 'tolist') else list(best_individual)
-            }, f, indent=2)
-        
-        # 保存完整历史记录
-        with open("optimization_results/optimization_history.pkl", "wb") as f:
-            pickle.dump(history, f)
-        
-        # 保存历史为JSON
-        with open("optimization_results/optimization_history.json", "w") as f:
-            json.dump(history, f, default=lambda o: o.tolist() if hasattr(o, 'tolist') else str(o), indent=2)
-        
-        logger.info("Best parameters saved to optimization_results/")
-        
-        # 生成详细报告
-        generate_final_report(best_params, best_fitness, best_return, best_drawdown, sharpe_ratio, history)
-        
-        # 绘制结果
-        plot_optimization_results(logbook, best_params, best_return, best_drawdown, sharpe_ratio)
-        plot_optimization_history(history)
-        
-        return best_params, history
-        
-    except Exception as e:
-        logger.error(f"Error in main optimization: {str(e)}")
-        logger.error(traceback.format_exc())
-        return {}, {}
+        # 运行遗传算法优化
+        try:
+            (best_individual, best_params, best_fitness, 
+             best_return, best_drawdown, sharpe_ratio, logbook, history) = setup_genetic_algorithm(
+                stock_lists,
+                population_size=population_size,
+                num_generations=num_generations,
+                fitness_weights=fitness_weights,
+                save_interval=save_interval,
+                early_stopping_patience=early_stopping_patience,
+                diversity_threshold=diversity_threshold,
+                max_drawdown_threshold=max_drawdown_threshold
+            )
+            
+            # 存储结果
+            results[max_drawdown_threshold] = {
+                'best_individual': best_individual,
+                'best_params': best_params,
+                'best_fitness': best_fitness,
+                'best_return': best_return,
+                'best_drawdown': best_drawdown,
+                'sharpe_ratio': sharpe_ratio,
+                'logbook': logbook,
+                'history': history
+            }
+            
+            # 打印优化结果
+            logger.info(f"\nOptimization completed for max_drawdown_threshold={max_drawdown_threshold}!")
+            logger.info(f"Best fitness: {best_fitness:.4f}")
+            logger.info(f"Total return: {best_return:.2%}")
+            logger.info(f"Max drawdown: {best_drawdown:.2%}")
+            logger.info(f"Sharpe ratio: {sharpe_ratio:.4f}")
+            logger.info("\nOptimized parameters:")
+            for param, value in best_params.items():
+                param_type = PARAM_RANGES.get(param, (0, 0, float))[2].__name__
+                logger.info(f"{param}: {value} ({param_type})")
+            
+            # 保存最佳参数
+            results_dir = f"optimization_results_{max_drawdown_threshold}"
+            with open(f"{results_dir}/best_params.pkl", "wb") as f:
+                pickle.dump({
+                    'params': best_params,
+                    'fitness': best_fitness,
+                    'return': best_return,
+                    'drawdown': best_drawdown,
+                    'sharpe': sharpe_ratio,
+                    'individual': best_individual,
+                    'max_drawdown_threshold': max_drawdown_threshold
+                }, f)
+            
+            with open(f"{results_dir}/best_params.json", "w") as f:
+                json.dump({
+                    'params': best_params,
+                    'fitness': best_fitness,
+                    'return': best_return,
+                    'drawdown': best_drawdown,
+                    'sharpe': sharpe_ratio,
+                    'individual': best_individual.tolist() if hasattr(best_individual, 'tolist') else list(best_individual),
+                    'max_drawdown_threshold': max_drawdown_threshold
+                }, f, indent=2)
+            
+            # 保存完整历史记录
+            with open(f"{results_dir}/optimization_history.pkl", "wb") as f:
+                pickle.dump(history, f)
+            
+            # 保存历史为JSON
+            with open(f"{results_dir}/optimization_history.json", "w") as f:
+                json.dump(history, f, default=lambda o: o.tolist() if hasattr(o, 'tolist') else str(o), indent=2)
+            
+            logger.info(f"Best parameters saved to {results_dir}/")
+            
+            # 生成详细报告
+            generate_final_report(best_params, best_fitness, best_return, best_drawdown, sharpe_ratio, history, max_drawdown_threshold)
+            
+            # 绘制结果
+            plot_optimization_results(logbook, best_params, best_return, best_drawdown, sharpe_ratio, max_drawdown_threshold)
+            plot_optimization_history(history, max_drawdown_threshold)
+            
+        except Exception as e:
+            logger.error(f"Error in main optimization for max_drawdown_threshold={max_drawdown_threshold}: {str(e)}")
+            logger.error(traceback.format_exc())
+    
+    return results
 
-def generate_final_report(params, fitness, total_return, max_drawdown, sharpe_ratio, history):
+def generate_final_report(params, fitness, total_return, max_drawdown, sharpe_ratio, history, max_drawdown_threshold=0.25):
     """生成最终优化报告"""
+    # 创建特定回撤阈值的目录
+    results_dir = f"optimization_results_{max_drawdown_threshold}"
+    
     report = {
         "optimization_date": datetime.datetime.now().isoformat(),
         "total_generations": len(history['gen']),
@@ -1374,6 +1289,7 @@ def generate_final_report(params, fitness, total_return, max_drawdown, sharpe_ra
         "total_return": total_return,
         "max_drawdown": max_drawdown,
         "sharpe_ratio": sharpe_ratio,
+        "max_drawdown_threshold": max_drawdown_threshold,
         "optimized_parameters": params,
         "optimization_history": {
             "generations": history['gen'],
@@ -1389,15 +1305,16 @@ def generate_final_report(params, fitness, total_return, max_drawdown, sharpe_ra
     }
     
     # 保存报告
-    with open("optimization_results/final_report.json", "w") as f:
+    with open(f"{results_dir}/final_report.json", "w") as f:
         json.dump(report, f, indent=2)
     
     # 文本格式报告
-    with open("optimization_results/final_report.txt", "w") as f:
+    with open(f"{results_dir}/final_report.txt", "w") as f:
         f.write("="*80 + "\n")
         f.write("STOCK MONITORING STRATEGY OPTIMIZATION REPORT\n")
         f.write("="*80 + "\n\n")
         f.write(f"Optimization Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Max Drawdown Threshold: {max_drawdown_threshold}\n")
         f.write(f"Total Generations: {len(history['gen'])}\n")
         f.write(f"Best Fitness: {fitness:.6f}\n")
         f.write(f"Total Return: {total_return:.2%}\n")
@@ -1418,62 +1335,9 @@ def generate_final_report(params, fitness, total_return, max_drawdown, sharpe_ra
         f.write(f"Max fitness improvement: {max(history['best_fitness']) - min(history['best_fitness']):.6f}\n")
         f.write(f"Average population fitness: {np.mean(history['avg_fitness']):.6f}\n")
         
-        logger.info("Final report generated")
+        logger.info(f"Final report generated for max_drawdown_threshold={max_drawdown_threshold}")
 
-# def generate_final_report(params, fitness, total_return, max_drawdown, sharpe_ratio, history):
-#     """生成最终优化报告"""
-#     report = {
-#         "optimization_date": datetime.datetime.now().isoformat(),
-#         "total_generations": len(history['gen']),
-#         "best_fitness": fitness,
-#         "total_return": total_return,
-#         "max_drawdown": max_drawdown,
-#         "sharpe_ratio": sharpe_ratio,
-#         "optimized_parameters": params,
-#         "optimization_history": {
-#             "generations": history['gen'],
-#             "best_fitness": history['best_fitness'],
-#             "best_return": history['best_return'],
-#             "best_drawdown": history['best_drawdown'],
-#             "best_sharpe": history['best_sharpe'],
-#             "avg_fitness": history['avg_fitness'],
-#             "min_fitness": history['min_fitness']
-#         }
-#     }
-    
-#     # 保存报告
-#     with open("optimization_results/final_report.json", "w") as f:
-#         json.dump(report, f, indent=2)
-    
-#     # 文本格式报告
-#     with open("optimization_results/final_report.txt", "w") as f:
-#         f.write("="*80 + "\n")
-#         f.write("STOCK MONITORING STRATEGY OPTIMIZATION REPORT\n")
-#         f.write("="*80 + "\n\n")
-#         f.write(f"Optimization Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-#         f.write(f"Total Generations: {len(history['gen'])}\n")
-#         f.write(f"Best Fitness: {fitness:.6f}\n")
-#         f.write(f"Total Return: {total_return:.2%}\n")
-#         f.write(f"Max Drawdown: {max_drawdown:.2%}\n")
-#         f.write(f"Sharpe Ratio: {sharpe_ratio:.4f}\n\n")
-        
-#         f.write("Optimized Parameters:\n")
-#         f.write("-"*80 + "\n")
-#         for param, value in params.items():
-#             param_type = PARAM_RANGES.get(param, (0, 0, float))[2].__name__
-#             f.write(f"{param.ljust(35)}: {value:.6f} ({param_type})\n")
-        
-#         f.write("\nOptimization Summary:\n")
-#         f.write("-"*80 + "\n")
-#         best_gen = np.argmax(history['best_fitness'])
-#         f.write(f"Best generation: {best_gen}\n")
-#         f.write(f"Best fitness in generation {best_gen}: {history['best_fitness'][best_gen]:.6f}\n")
-#         f.write(f"Max fitness improvement: {max(history['best_fitness']) - min(history['best_fitness']):.6f}\n")
-#         f.write(f"Average population fitness: {np.mean(history['avg_fitness']):.6f}\n")
-        
-#         logger.info("Final report generated")
-
-def plot_capital_curve(capital_curve, gen, total_return, max_drawdown, sharpe_ratio):
+def plot_capital_curve(capital_curve, gen, total_return, max_drawdown, sharpe_ratio, capital_dir="capital_curves", max_drawdown_threshold=0.25):
     """绘制并保存资金曲线图"""
     plt.figure(figsize=(12, 6))
     
@@ -1481,7 +1345,7 @@ def plot_capital_curve(capital_curve, gen, total_return, max_drawdown, sharpe_ra
     plt.plot(capital_curve, 'b-', linewidth=2)
     plt.xlabel("Trade")
     plt.ylabel("Capital")
-    plt.title(f"Average Capital Curve (Gen {gen})\n"
+    plt.title(f"Average Capital Curve (Gen {gen}, Max Drawdown Threshold={max_drawdown_threshold})\n"
               f"Return: {total_return:.2%} | Drawdown: {max_drawdown:.2%} | Sharpe: {sharpe_ratio:.2f}")
     plt.grid(True)
     
@@ -1502,11 +1366,14 @@ def plot_capital_curve(capital_curve, gen, total_return, max_drawdown, sharpe_ra
     
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"capital_curves/capital_gen_{gen:04d}.png", dpi=150)
+    plt.savefig(f"{capital_dir}/capital_gen_{gen:04d}.png", dpi=150)
     plt.close()
 
-def plot_optimization_history(history):
+def plot_optimization_history(history, max_drawdown_threshold=0.25):
     """绘制优化历史指标"""
+    # 创建特定回撤阈值的目录
+    results_dir = f"optimization_results_{max_drawdown_threshold}"
+    
     plt.figure(figsize=(14, 10))
     
     # 1. 适应度变化
@@ -1514,7 +1381,7 @@ def plot_optimization_history(history):
     plt.plot(history['gen'], history['best_fitness'], 'b-o')
     plt.xlabel("Generation")
     plt.ylabel("Fitness")
-    plt.title("Best Fitness Evolution")
+    plt.title(f"Best Fitness Evolution (Max Drawdown Threshold={max_drawdown_threshold})")
     plt.grid(True)
     
     # 2. 总收益变化
@@ -1522,7 +1389,7 @@ def plot_optimization_history(history):
     plt.plot(history['gen'], [r * 100 for r in history['best_return']], 'g-o')
     plt.xlabel("Generation")
     plt.ylabel("Total Return (%)")
-    plt.title("Total Return Evolution")
+    plt.title(f"Total Return Evolution (Max Drawdown Threshold={max_drawdown_threshold})")
     plt.grid(True)
     
     # 3. 最大回撤变化
@@ -1530,7 +1397,7 @@ def plot_optimization_history(history):
     plt.plot(history['gen'], [d * 100 for d in history['best_drawdown']], 'r-o')
     plt.xlabel("Generation")
     plt.ylabel("Max Drawdown (%)")
-    plt.title("Max Drawdown Evolution")
+    plt.title(f"Max Drawdown Evolution (Max Drawdown Threshold={max_drawdown_threshold})")
     plt.grid(True)
     
     # 4. 夏普比率变化
@@ -1538,15 +1405,18 @@ def plot_optimization_history(history):
     plt.plot(history['gen'], history['best_sharpe'], 'm-o')
     plt.xlabel("Generation")
     plt.ylabel("Sharpe Ratio")
-    plt.title("Sharpe Ratio Evolution")
+    plt.title(f"Sharpe Ratio Evolution (Max Drawdown Threshold={max_drawdown_threshold})")
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig("optimization_results/optimization_metrics_evolution.png", dpi=200)
+    plt.savefig(f"{results_dir}/optimization_metrics_evolution.png", dpi=200)
     plt.show()
 
-def plot_optimization_results(logbook, best_params, best_return, best_drawdown, sharpe_ratio):
+def plot_optimization_results(logbook, best_params, best_return, best_drawdown, sharpe_ratio, max_drawdown_threshold=0.25):
     """绘制优化结果"""
+    # 创建特定回撤阈值的目录
+    results_dir = f"optimization_results_{max_drawdown_threshold}"
+    
     plt.figure(figsize=(14, 12))
     
     # 1. 绘制进化过程
@@ -1562,7 +1432,7 @@ def plot_optimization_results(logbook, best_params, best_return, best_drawdown, 
     plt.fill_between(gen, min_fitness, max_fitness, color='gray', alpha=0.1)
     plt.xlabel("Generation")
     plt.ylabel("Fitness")
-    plt.title("Evolution of Fitness")
+    plt.title(f"Evolution of Fitness (Max Drawdown Threshold={max_drawdown_threshold})")
     plt.legend()
     plt.grid(True)
     
@@ -1582,14 +1452,14 @@ def plot_optimization_results(logbook, best_params, best_return, best_drawdown, 
     plt.barh(y_pos, param_values, color='skyblue')
     plt.yticks(y_pos, param_types)
     plt.xlabel("Value")
-    plt.title("Optimized Parameters")
+    plt.title(f"Optimized Parameters (Max Drawdown Threshold={max_drawdown_threshold})")
     
     # 3. 添加参数值文本
     plt.subplot(3, 1, 3)
     plt.axis('off')
     param_text = "\n".join([f"{param}: {value:.6f}" for param, value in best_params.items()])
     plt.text(0.1, 0.5, 
-             f"Optimized Strategy Parameters:\n\n{param_text}\n\n"
+             f"Optimized Strategy Parameters (Max Drawdown Threshold={max_drawdown_threshold}):\n\n{param_text}\n\n"
              f"Total Return: {best_return:.2%}\n"
              f"Max Drawdown: {best_drawdown:.2%}\n"
              f"Sharpe Ratio: {sharpe_ratio:.4f}",
@@ -1604,7 +1474,7 @@ def plot_optimization_results(logbook, best_params, best_return, best_drawdown, 
     )
     
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig("optimization_results/final_optimization_results.png", dpi=300)
+    plt.savefig(f"{results_dir}/final_optimization_results.png", dpi=300)
     plt.show()
 
 def generate_sample_stock_data(n_days=100, n_stocks_per_day=3):
@@ -1661,17 +1531,24 @@ def generate_sample_stock_data(n_days=100, n_stocks_per_day=3):
 
 if __name__ == "__main__":
     from evaluater_generate_datas_expand_params import build_evaluater_1to2_data_list_from_file
+
+    file_path = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
+    file_dict = {
+        '接力倒接力3': file_path
+    }
+
+    for strategy_name, file_path in file_dict.items():
     
-    stock_lists = build_evaluater_1to2_data_list_from_file(200)
-    
-    logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks")
-    
-    best_params, history = main(
-        stock_lists,
-        population_size=300,
-        num_generations=300,
-        fitness_weights=(0.33, 0.34, 0.33),  # 更注重回撤
-        save_interval=10,
-        early_stopping_patience=20,  # 20代没有改进就停止
-        diversity_threshold=0.05  # 多样性低于0.05视为过低
-    )
+        stock_lists = build_evaluater_1to2_data_list_from_file(200, file_path)
+        
+        logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks")
+        
+        results = main(
+            stock_lists,
+            population_size=300,
+            num_generations=300,
+            fitness_weights=(0.33, 0.34, 0.33),  # 更注重回撤
+            save_interval=10,
+            early_stopping_patience=20,  # 20代没有改进就停止
+            diversity_threshold=0.05  # 多样性低于0.05视为过低
+        )

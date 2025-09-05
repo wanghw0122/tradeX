@@ -1190,7 +1190,7 @@ def main(stock_lists, population_size=50, num_generations=50,
     
     # 同时运行两个不同回撤阈值的优化
     results = {}
-    for max_drawdown_threshold in [0.26, 0.18]:
+    for max_drawdown_threshold in [0.25, 0.15]:
         logger.info(f"\n{'#'*80}")
         logger.info(f"Starting optimization with max_drawdown_threshold={max_drawdown_threshold}")
         logger.info(f"{'#'*80}")
@@ -1540,16 +1540,42 @@ def generate_sample_stock_data(n_days=100, n_stocks_per_day=3):
 if __name__ == "__main__":
     from evaluater_generate_datas_expand_params import build_evaluater_1to2_data_list_from_file
 
-    file_path = r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv'
     file_dict = {
-        '接力倒接力3': file_path
+        '接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv',
+        '接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv',
+        '接力倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv',
+        '低位高强低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwgqdx.csv',
+        '高强中低开低吸前1': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdkq1.csv',
+        '高强中低开低吸前2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdkq2.csv',
+        '高强中低开低吸2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdk2.csv',
+        '高位高强追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gwgqzz.csv',
+        '启动低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_qddx.csv',
+        '低位断板低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwdbdx.csv',
+        '中位小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwxdkdx.csv',
+        '中位中强小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwzqxdk.csv',
+        '高强中高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzgkzz.csv',
+        '小高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_xgkzz.csv'
     }
+
+    missing_files = []
+    for strategy_name, file_path in file_dict.items():
+        if not os.path.exists(file_path):
+            missing_files.append((strategy_name, file_path))
+
+    # 如果有缺失的文件，抛出异常
+    if missing_files:
+        error_message = "以下文件路径不存在:\n"
+        for strategy, path in missing_files:
+            error_message += f"策略 '{strategy}': {path}\n"
+        raise FileNotFoundError(error_message)
+
+    print("所有文件路径均存在！")
 
     for strategy_name, file_path in file_dict.items():
     
         stock_lists = build_evaluater_1to2_data_list_from_file(200, file_path)
         
-        logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks")
+        logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks， strategy_name: {strategy_name}")
         
         results = main(
             stock_lists,

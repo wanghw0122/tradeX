@@ -1557,7 +1557,11 @@ if __name__ == "__main__":
         '中位小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwxdkdx.csv',
         '中位中强小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwzqxdk.csv',
         '高强中高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzgkzz.csv',
-        '小高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_xgkzz.csv'
+        '小高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_xgkzz.csv',
+        '倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv',
+        '倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv',
+        '倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv',
+        '首红断': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_shd.csv',
     }
 
     missing_files = []

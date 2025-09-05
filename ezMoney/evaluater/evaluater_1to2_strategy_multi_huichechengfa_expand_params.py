@@ -304,14 +304,17 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                 actual_sell_prices.append(actual_sell_price)
                                 actual_sell_prices.append(actual_sell_price)
                                 break
+                        if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
+                                continue
                         if close_profit > day_zy_line or close_profit < day_zs_line:
                             actual_sell_price = close
-                            if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
-                                actual_sell_price = next_open
                             if sell_half_afternoon:
                                 if actual_sell_prices:
                                     actual_sell_prices.append(actual_sell_price)
                                     break
+                                else:
+                                    actual_sell_prices.append(actual_sell_price)
+                                    continue
                             else:
                                 if actual_sell_prices:
                                     actual_sell_prices.append(actual_sell_price)
@@ -384,10 +387,10 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                 actual_sell_prices.append(actual_sell_price)
                                 break
                         if sell_afternoon:
+                            if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
+                                continue
                             if close_profit > day_zy_line or close_profit < day_zs_line:
                                 actual_sell_price = close
-                                if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
-                                    actual_sell_price = next_open
                                 if sell_half_afternoon:
                                     if actual_sell_prices:
                                         actual_sell_prices.append(actual_sell_price)

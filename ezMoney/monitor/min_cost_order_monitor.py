@@ -61,15 +61,15 @@ strategy_name_to_sub_strategy_name = {
     '低位孕线低吸': '回撤小收益大',
     '低位中强中低开低吸': '第一高频',
     '中强中低开低吸': '第二高频',
-    '首红断低吸': '',
+    '首红断低吸': '第一高频',
     '一进二弱转强': '倒接力31',
     '高位高强追涨': '',
     '启动低吸': '第一高频2',
     '低位断板低吸': '第一高频',
     '高强中高开追涨': '',
-    '小高开追涨': '',
+    '小高开追涨': '第一',
     '中位小低开低吸': '',
-    '中位中强小低开低吸': '',
+    '中位中强小低开低吸': '第一高频',
     '强更强': '第一',
 }
 
@@ -80,7 +80,7 @@ def get_strategy_and_sub_strategy_name(strategy_name, sub_strategy_str):
 
     if '一进二弱转强' in strategy_name:
         sub_strategy_list = ','.split(sub_strategy_str)
-        if '倒接力31' in sub_strategy_list or '倒接力3' in sub_strategy_list:
+        if '倒接力31' in sub_strategy_list or '倒接力3' in sub_strategy_list or '倒接力32' in sub_strategy_list:
             new_sub_strategy_name = '倒接力31'
         elif '倒接力41' in sub_strategy_list or '倒接力4' in sub_strategy_list:
             new_sub_strategy_name = '倒接力4'

@@ -199,6 +199,23 @@ strategies = {
                     'gap': 0,
                     'except_is_ppp': True,
                     'except_is_track': False
+                    },
+                    {
+                    'mark': '第一高频2',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
                     }
                 ]
             },
@@ -286,6 +303,23 @@ strategies = {
                     },
                     {
                     'mark': '回撤小收益大',
+                    'limit': 10,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '回撤小收益大2',
                     'limit': 10,
                     'filtered': True,
                     'fx_filtered': True,
@@ -1308,6 +1342,25 @@ strategies = {
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '第一高频',
+                    'limit': 10,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '第二高频',
+                    'limit': 10,
                     'filtered': False,
                     'fx_filtered': True,
                     'topn': 1,
@@ -1354,6 +1407,25 @@ strategies = {
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '第一高频',
+                    'limit': 5,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 2,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '第二高频',
+                    'limit': 5,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -1429,6 +1501,25 @@ strategies = {
                 'returnFullInfo': True,
                 'filter_params': [
                     {
+                    'mark': '第一',
+                    'limit': 10,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 1,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 6000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True
+                    },
+                    {
+                    'mark': '第二',
+                    'limit': 10,
                     'filtered': True,
                     'fx_filtered': True,
                     'topn': 1,
@@ -1524,6 +1615,23 @@ strategies = {
                     'except_is_track': False
                     },
                     {
+                    'mark': '倒接力32',
+                    'limit': 3,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
                     'mark': '倒接力51',
                     'limit': 5,
                     'filtered': False,
@@ -1594,6 +1702,24 @@ strategies = {
                     },
                     {
                     'mark': '接力倒接力3',
+                    'limit': 3,
+                    'filtered': False,
+                    'fx_filtered': True,
+                    'rank_mod': 'jsjl',
+                    'topn': -1,
+                    'top_fx': 101,
+                    'top_cx': 101,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': True,
+                    'min_trade_amount': 8000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': False,
+                    'except_is_track': False
+                    },
+                    {
+                    'mark': '接力倒接力31',
                     'limit': 3,
                     'filtered': False,
                     'fx_filtered': True,
@@ -1703,9 +1829,11 @@ default_strategy_positions = {
     "低吸-低位孕线低吸:第一高频": 1,
     "低吸-低位孕线低吸:第一高频2": 1,
     "低吸-低位孕线低吸:回撤小收益大": 1,
+    "低吸-低位孕线低吸:回撤小收益大2": 1,
     "低吸-启动低吸:第一高频": 1,
     "低吸-启动低吸:第一高频2": 1,
     "低吸-低位断板低吸:第一高频": 1,
+    "低吸-低位断板低吸:第一高频2": 1,
     "低吸-低位中强中低开低吸:第一高频": 1,
     # "低吸-低位中强中低开低吸:第二高频": 0,
     "低吸-低位高强低吸:中低频2": 1,
@@ -2132,6 +2260,7 @@ def get_strategy_position(strategy, sub_strategy=None, default_strategy_position
     :param sub_strategy: 子策略名称，可选
     :return: 对应的系数，如果未找到则返回 None
     """
+    return 1
     if sub_strategy:
         full_key = f"{strategy}:{sub_strategy}"
         if full_key in default_strategy_positions:
@@ -2142,7 +2271,7 @@ def get_strategy_position(strategy, sub_strategy=None, default_strategy_position
         if key == strategy:
             return default_strategy_positions[key]
     
-    return 0
+    return 1
 
 # ... existing code ...
 

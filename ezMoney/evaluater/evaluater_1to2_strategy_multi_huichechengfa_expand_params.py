@@ -77,7 +77,7 @@ PARAM_RANGES = {
     'day_zs_line': (-1, 0, float),
     'sell_afternoon': (0, 1, bool),
     'sell_half_afternoon': (0, 1, bool),
-    'sell_max_days': (1, 4, int),
+    'sell_max_days': (1, 7, int),
 }
 # 需要优化的参数列表
 OPTIMIZABLE_PARAMS = [
@@ -261,7 +261,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
             trade_price = stock_data['trade_price']
             
             cur_res_datas = stock_data['cur_res_datas']
-            if not cur_res_datas or len(cur_res_datas) != 4:
+            if not cur_res_datas or len(cur_res_datas) != 7:
                 raise ValueError(f"股票 {stock_code} 数据异常")
             i = 0
             actual_sell_price = 0
@@ -293,7 +293,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                     monitor_type = 0
                 if monitor_type == 0:
                     if sell_afternoon:
-                        if i >= sell_max_days or i >= 4:
+                        if i >= sell_max_days or i >= 7:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -324,7 +324,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                     actual_sell_prices.append(actual_sell_price)
                                     break
                         else:
-                            if i >= sell_max_days or i >= 4:
+                            if i >= sell_max_days or i >= 7:
                                 actual_sell_price = close
                                 if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                     actual_sell_price = next_open
@@ -338,7 +338,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                             else:
                                 continue
                     else:
-                        if i >= sell_max_days or i >= 4:
+                        if i >= sell_max_days or i >= 7:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -375,7 +375,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                             actual_sell_prices.append(actual_sell_price)
                             break
                     else:
-                        if i >= sell_max_days or i >= 4:
+                        if i >= sell_max_days or i >= 7:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -407,7 +407,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                         actual_sell_prices.append(actual_sell_price)
                                         break
                             else:
-                                if i >= sell_max_days or i >= 4:
+                                if i >= sell_max_days or i >= 7:
                                     actual_sell_price = close
                                     if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                         actual_sell_price = next_open
@@ -421,7 +421,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                 else:
                                     continue
                         else:
-                            if i >= sell_max_days or i >= 4:
+                            if i >= sell_max_days or i >= 7:
                                 actual_sell_price = close
                                 if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                     actual_sell_price = next_open
@@ -846,6 +846,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     # 设置并行处理
     if n_processes is None:
         n_processes = min(multiprocessing.cpu_count(), 20)
+    n_processes =  10
     logger.info(f"Using {n_processes} processes for parallel evaluation")
     
     # 初始化历史记录
@@ -1543,25 +1544,32 @@ def generate_sample_stock_data(n_days=100, n_stocks_per_day=3):
 if __name__ == "__main__":
     from evaluater_generate_datas_expand_params import build_evaluater_1to2_data_list_from_file
 
+    # file_dict = {
+    #     '小高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_xgkzz.csv',
+    #     '接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv',
+    #     '接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv',
+    #     '接力倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv',
+    #     '低位高强低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwgqdx.csv',
+    #     '高强中低开低吸前1': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdkq1.csv',
+    #     '高强中低开低吸前2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdkq2.csv',
+    #     '高强中低开低吸2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdk2.csv',
+    #     '高位高强追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gwgqzz.csv',
+    #     '启动低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_qddx.csv',
+    #     '低位断板低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwdbdx.csv',
+    #     '中位小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwxdkdx.csv',
+    #     '中位中强小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwzqxdk.csv',
+    #     '高强中高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzgkzz.csv',
+    #     '倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv',
+    #     '倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv',
+    #     '倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv',
+    #     '首红断': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_shd.csv',
+    # }
+
+
     file_dict = {
-        '小高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_xgkzz.csv',
-        '接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd3.csv',
-        '接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd4.csv',
-        '接力倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dd5.csv',
-        '低位高强低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwgqdx.csv',
-        '高强中低开低吸前1': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdkq1.csv',
-        '高强中低开低吸前2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdkq2.csv',
-        '高强中低开低吸2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzdk2.csv',
-        '高位高强追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gwgqzz.csv',
-        '启动低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_qddx.csv',
-        '低位断板低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwdbdx.csv',
-        '中位小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwxdkdx.csv',
-        '中位中强小低开低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_zwzqxdk.csv',
-        '高强中高开追涨': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_gqzgkzz.csv',
-        '倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d3.csv',
-        '倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d4.csv',
-        '倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d5.csv',
-        '首红断': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_shd.csv',
+        '低位孕线7天': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwyx.csv',
+        '低位中强中低开7天': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwzqzdk.csv',
+        '启动低吸7天': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_qddx.csv',
     }
 
     missing_files = []

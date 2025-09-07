@@ -326,8 +326,19 @@ class QMTTrader:
                             profit_pct = trade_info['profit_pct']
                             left_volume = trade_info['left_volume']
                             if left_volume > 0:
-                                order_logger.info(f"left_volume > 0, 不更新收益和预算 {left_volume}")
-                                continue
+                                hold_positions = self.get_tradable_stocks()
+                                have_stock_quantity = 0
+                                for hold_position in hold_positions:
+                                    if hold_position['stock_code'] == stock_code:
+                                        have_stock_quantity = hold_position['quantity']
+                                        break
+                                if have_stock_quantity > 0:
+                                    order_logger.info(f"left_volume > 0, 不更新收益和预算 {left_volume}")
+                                    continue
+                                else:
+                                    order_logger.info(f"持仓为0, 更新收益和预算 {left_volume}")
+                                    with SQLiteManager(db_name) as manager:
+                                        manager.update_data("trade_data", {'left_volume': 0}, {'id': oid})
 
                             profit_info = {
                                 "date": date_key,
@@ -623,7 +634,19 @@ class QMTTrader:
                                 profit_pct = trade_info['profit_pct']
                                 left_volume = trade_info['left_volume']
                                 if left_volume > 0:
-                                    continue
+                                    hold_positions = self.get_tradable_stocks()
+                                    have_stock_quantity = 0
+                                    for hold_position in hold_positions:
+                                        if hold_position['stock_code'] == stock_code:
+                                            have_stock_quantity = hold_position['quantity']
+                                            break
+                                    if have_stock_quantity > 0:
+                                        order_logger.info(f"left_volume > 0, 不更新收益和预算 {left_volume}")
+                                        continue
+                                    else:
+                                        order_logger.info(f"持仓为0, 更新收益和预算 {left_volume}")
+                                        with SQLiteManager(db_name) as manager:
+                                            manager.update_data("trade_data", {'left_volume': 0}, {'id': oid})
 
                                 profit_info = {
                                     "date": date_key,

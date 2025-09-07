@@ -1,4 +1,5 @@
 from numpy import real
+from ezMoney import trade
 from trade.qmtTrade import *
 import datetime
 
@@ -137,6 +138,11 @@ def schedule_sell_stocks_everyday_at_1457():
                     if order_type == 1:
                         trade_price = order_price
                     left_volume = trade_day_data['left_volume']
+                    trade_volume = trade_day_data['trade_volume']
+                    if trade_volume <= 0:
+                        trade_volume = left_volume
+                    if trade_volume < left_volume:
+                        trade_volume = left_volume
                     
                     order_id = trade_day_data['order_id']
                     row_id =  trade_day_data['id']
@@ -144,8 +150,7 @@ def schedule_sell_stocks_everyday_at_1457():
                         days_strategy_to_stock_volume[trade_day] = {}
                     if strategy_name not in days_strategy_to_stock_volume[trade_day]:
                         days_strategy_to_stock_volume[trade_day][strategy_name] = []
-                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id, real_trade_price))
-
+                    days_strategy_to_stock_volume[trade_day][strategy_name].append((stock_code, left_volume, trade_price, order_id, row_id, real_trade_price, trade_volume))
 
         if not days_strategy_to_stock_volume:
             order_logger.info("无数据可出售")
@@ -161,8 +166,6 @@ def schedule_sell_stocks_everyday_at_1457():
 
             for strategy_meta_info in all_strategy_meta_infos:
                 trade_at_close = strategy_meta_info['trade_at_close']
-                if not trade_at_close:
-                    continue
                 strategy_name = strategy_meta_info['strategy_name']
                 sub_strategy_name = strategy_meta_info['sub_strategy_name']
                 if sub_strategy_name:
@@ -171,12 +174,15 @@ def schedule_sell_stocks_everyday_at_1457():
                 stop_loss_pct = strategy_meta_info['stop_loss_pct']
                 take_profit_pct = strategy_meta_info['take_profit_pct']
                 max_trade_days = strategy_meta_info['max_trade_days']
+                sell_half_afternoon = strategy_meta_info['sell_half_afternoon']
 
                 strategy_meta_dict[strategy_name] = {
                     'budget': budget,
                     'stop_loss_pct': stop_loss_pct,
                     'take_profit_pct': take_profit_pct,
-                    'max_trade_days': max_trade_days
+                    'max_trade_days': max_trade_days,
+                    'sell_half_afternoon': sell_half_afternoon,
+                    'trade_at_close': trade_at_close,
                 }
         ll = len(last_10_trade_days)
 
@@ -193,6 +199,8 @@ def schedule_sell_stocks_everyday_at_1457():
                     stop_loss_pct = strategy_meta_info['stop_loss_pct']
                     take_profit_pct = strategy_meta_info['take_profit_pct']
                     max_trade_days = strategy_meta_info['max_trade_days']
+                    sell_half_afternoon = strategy_meta_info['sell_half_afternoon']
+                    trade_at_close = strategy_meta_info['trade_at_close']
                     if gap_days >= max_trade_days:
                         order_logger.info(f"策略 {strategy_name} 最大交易天数 {max_trade_days} 已超过 {gap_days} 天")
                         for strategy_stock_volume_info in strategy_stock_volumes:
@@ -202,8 +210,11 @@ def schedule_sell_stocks_everyday_at_1457():
                             order_id = strategy_stock_volume_info[3]
                             row_id = strategy_stock_volume_info[4]
                             real_trade_price = strategy_stock_volume_info[5]
+                            trade_volume = strategy_stock_volume_info[6]
                             sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day, 'max_days', row_id, real_trade_price))
                     else:
+                        if not trade_at_close:
+                            continue
                         for strategy_stock_volume_info in strategy_stock_volumes:
                             stock_code = strategy_stock_volume_info[0]
                             left_volume = strategy_stock_volume_info[1]
@@ -211,6 +222,7 @@ def schedule_sell_stocks_everyday_at_1457():
                             order_id = strategy_stock_volume_info[3]
                             row_id = strategy_stock_volume_info[4]
                             real_trade_price = strategy_stock_volume_info[5]
+                            trade_volume = strategy_stock_volume_info[6]
 
                             full_tick = xtdata.get_full_tick([stock_code])
         
@@ -230,12 +242,18 @@ def schedule_sell_stocks_everyday_at_1457():
                             current_price = full_tick[stock_code]['lastPrice']
                             cur_profit = current_price / trade_price - 1
                             if cur_profit >= take_profit_pct:
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, real_trade_price))
+                                if sell_half_afternoon and left_volume > ((trade_volume // 100 + 1) // 2) * 100:
+                                    sells_candidates.append((stock_code, ((trade_volume // 100 + 1) // 2) * 100, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, real_trade_price))
+                                else:
+                                    sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'take_profit|{take_profit_pct}', row_id, real_trade_price))
 
                             elif cur_profit < stop_loss_pct:
                                 if gap_days >= 3 and '低位高强低吸' in strategy_name:
                                     continue
-                                sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, real_trade_price))
+                                if sell_half_afternoon and left_volume > ((trade_volume // 100 + 1) // 2) * 100:
+                                    sells_candidates.append((stock_code, ((trade_volume // 100 + 1) // 2) * 100, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, real_trade_price))
+                                else:
+                                    sells_candidates.append((stock_code, left_volume, trade_price, order_id, strategy_name, trade_day,f'stop_loss|{stop_loss_pct}', row_id, real_trade_price))
                             else:
                                 continue
         

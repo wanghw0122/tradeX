@@ -259,6 +259,6 @@ if __name__ == "__main__":
     # print(trade_date_list)
     # print(is_trading_day("2025-03-03"))
 
-    print(get_trade_dates_by_start("2025-09-01", 4))
+    print(get_trade_dates_by_end("2025-09-01", 10))
     # print(find_next_nth_date('2025-05-05', 10))
     # print(get_previous_trade_date_n('2025-07-21'))

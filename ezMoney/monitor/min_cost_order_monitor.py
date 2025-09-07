@@ -86,7 +86,7 @@ def get_strategy_and_sub_strategy_name(strategy_name, sub_strategy_str):
             new_sub_strategy_name = '倒接力4'
         elif '倒接力51' in sub_strategy_list or '倒接力5' in sub_strategy_list:
             new_sub_strategy_name = '倒接力5'
-        elif '接力倒接力3' in sub_strategy_list:
+        elif '接力倒接力3' in sub_strategy_list or '接力倒接力31' in sub_strategy_list:
             new_sub_strategy_name = '接力倒接力3'
         elif '接力倒接力4' in sub_strategy_list:
             new_sub_strategy_name = '接力倒接力4'

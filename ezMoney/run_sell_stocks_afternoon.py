@@ -1,5 +1,3 @@
-from numpy import real
-from ezMoney import trade
 from trade.qmtTrade import *
 import datetime
 

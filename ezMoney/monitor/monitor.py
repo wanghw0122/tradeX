@@ -1768,6 +1768,8 @@ class StockMonitor(object):
             self.query_data_lists = db.query_data_dict(monitor_table, condition_dict= {'date_key': date.get_current_date(), 'stock_code': stock_code, 'monitor_status': 1})
             if not self.query_data_lists:
                 logger.error(f"query_data_lists null. {stock_code}-{stock_name}")
+            #过滤最后一天监听数据
+            self.query_data_lists = [data for data in self.query_data_lists if data['monitor_type'] != 3]
             for query_data in self.query_data_lists:
                 row_id = query_data['id']
                 origin_row_id = query_data['origin_row_id']

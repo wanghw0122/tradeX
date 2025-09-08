@@ -5315,6 +5315,7 @@ def start_monitor_monning():
                 if not query_data_results:
                     strategy_logger.error("[start_monitor_monning] 无监听任务。")
                     return
+            query_data_results = [data for data in query_data_results if data['monitor_type'] != 3]
             for data_result in query_data_results:
                 stock_code = data_result['stock_code']
                 if stock_code and stock_code not in monitor_stock_codes:

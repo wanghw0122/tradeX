@@ -339,6 +339,108 @@ def is_after_1510():
     target_time = now.replace(hour=15, minute=10, second=0, microsecond=0)
     return now > target_time
 
+
+def get_real_open_price(stock_code, datekey):
+    import datetime
+
+    today = datetime.datetime.strptime(datekey, '%Y-%m-%d').date()
+
+    time_0930 = datetime.time(9, 29, 0)
+
+    dt_0930 = datetime.datetime.combine(today, time_0930)
+
+    timestamp_0930 = dt_0930.timestamp()
+
+    time_09305 = datetime.time(9, 30, 5)
+
+    dt_09305 = datetime.datetime.combine(today, time_09305)
+
+    timestamp_09305 = dt_09305.timestamp()
+
+    tims = int(timestamp_0930*1000)
+
+    tims5 = int(timestamp_09305*1000)
+    import numpy as np
+    n_data_key = datekey.replace('-', '')
+    xtdata.download_history_data(stock_code, 'tick', n_data_key, n_data_key)
+    all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=n_data_key, end_time=n_data_key)
+
+    # 假设 all_tick_data['000759.SZ'] 是 numpy.void 数组
+    if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
+        df = pd.DataFrame(all_tick_data[stock_code].tolist(), columns=all_tick_data[stock_code].dtype.names)
+    else:
+        raise
+
+    filtered_df = df[(df['time'] >= tims) & (df['time'] <= tims5)]
+
+    # 按 time 列升序排序
+    sorted_df = filtered_df.sort_values(by='time')
+
+    # 取 time 最小的行
+    min_time_row = sorted_df.head(1)
+
+    last_price = min_time_row['lastPrice']
+
+    # 检查 Series 是否只有一个元素
+    if len(last_price) == 1:
+        last_price_real = last_price.item()
+    else:
+        print(f"{stock_code}-{datekey}")
+        last_price_real = -1
+
+    return last_price_real
+
+
+def update_all_orders_order_price():
+    try:
+        current_date = date.get_current_date()
+        with SQLiteManager(db_name) as manager:
+            all_data_infos = manager.query_data_dict("trade_data", condition_dict={'date_key': current_date, 'buy0_or_sell1': 0}, columns="*")
+            all_data_infos = [data for data in all_data_infos if data['left_volume'] > 0 and data['order_type'] != 1]
+            
+            if not all_data_infos:
+                logger.info(f"没有符合条件的订单数据需要更新")
+                return
+                
+            all_stock_codes = list(set([data['stock_code'] for data in all_data_infos]))
+            logger.info(f"all_stock_codes {all_stock_codes}")
+            
+            # 优化：如果支持批量查询，改为批量获取开盘价
+            real_open_prices = {}
+            for stock_code in all_stock_codes:
+                try:
+                    price = get_real_open_price(stock_code, current_date)
+                    # 检查价格有效性
+                    if isinstance(price, (int, float)) and price > 0:
+                        real_open_prices[stock_code] = price
+                    else:
+                        real_open_prices[stock_code] = -1
+                        logger.warning(f"{stock_code} 开盘价无效: {price}")
+                except Exception as e:
+                    real_open_prices[stock_code] = -1
+                    logger.error(f"获取 {stock_code} 开盘价失败: {str(e)}")
+            
+            # 开始事务处理
+            try:
+                for data_info in all_data_infos:
+                    id = data_info['id']
+                    stock_code = data_info['stock_code']
+                    trade_price = data_info['trade_price']
+                    
+                    open_price = real_open_prices.get(stock_code, -1)
+                    if open_price > 0:
+                        # 注意：这里的价格更新逻辑需要确认是否符合业务需求
+                        manager.update_data("trade_data", {"trade_price": open_price, 'order_price': trade_price}, {"id": id})
+                    else:
+                        logger.info(f"{stock_code} {current_date} 没有开盘价")
+                # 提交事务（如果需要显式提交）
+            except Exception as e:
+                # 回滚事务（如果需要显式回滚）
+                logger.error(f"更新订单价格时发生错误: {str(e)}")
+                raise
+    except Exception as e:
+        logger.error(f"执行update_all_orders_order_price失败: {str(e)}")
+
 if __name__ == '__main__':
 
     is_trade, pre_trade_date = date.is_trading_day()
@@ -405,6 +507,7 @@ if __name__ == '__main__':
             print("等待1分钟...")
             if is_after_1510():
                 logger.info("达到最大执行时间，退出程序")
+                update_all_orders_order_price()
                 break
             time.sleep(60)
     except (KeyboardInterrupt, SystemExit):

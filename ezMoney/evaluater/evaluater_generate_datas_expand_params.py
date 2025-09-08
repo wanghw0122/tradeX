@@ -146,7 +146,7 @@ def get_marketting_datas(stock_code, cur_date):
     return res
 
 def build_stock_datas_extend(stock_code, datekey):
-    next_trade_days = dt.get_trade_dates_by_start(datekey, 6)
+    next_trade_days = dt.get_trade_dates_by_start(datekey, 3)
     if not next_trade_days:
         return None
     res = []
@@ -155,7 +155,7 @@ def build_stock_datas_extend(stock_code, datekey):
         if not dres:
             continue
         res.append(dres)
-    if len(res) != 7:
+    if len(res) != 4:
         return None
     return res
 
@@ -494,12 +494,12 @@ def build_evaluater_1to2_data_list(result_tuples):
     i = 1
     for cur_results in results:
 
-        if len(cur_results) != 7:
+        if len(cur_results) != 4:
             print(f"len(cur_results) != 7. {cur_results}")
             continue
         cur_res = {}
         cur_res['cur_res_datas'] = []
-        for i in range(7):
+        for i in range(4):
             result = cur_results[i]
             cur_res_datas = {}
             if i == 0:

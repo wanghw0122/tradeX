@@ -77,7 +77,7 @@ PARAM_RANGES = {
     'day_zs_line': (-1, 0, float),
     'sell_afternoon': (0, 1, bool),
     'sell_half_afternoon': (0, 1, bool),
-    'sell_max_days': (1, 7, int),
+    'sell_max_days': (1, 4, int),
 }
 # 需要优化的参数列表
 OPTIMIZABLE_PARAMS = [
@@ -261,7 +261,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
             trade_price = stock_data['trade_price']
             
             cur_res_datas = stock_data['cur_res_datas']
-            if not cur_res_datas or len(cur_res_datas) != 7:
+            if not cur_res_datas or len(cur_res_datas) != 4:
                 raise ValueError(f"股票 {stock_code} 数据异常")
             i = 0
             actual_sell_price = 0
@@ -293,7 +293,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                     monitor_type = 0
                 if monitor_type == 0:
                     if sell_afternoon:
-                        if i >= sell_max_days or i >= 7:
+                        if i >= sell_max_days or i >= 4:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -324,7 +324,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                     actual_sell_prices.append(actual_sell_price)
                                     break
                         else:
-                            if i >= sell_max_days or i >= 7:
+                            if i >= sell_max_days or i >= 4:
                                 actual_sell_price = close
                                 if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                     actual_sell_price = next_open
@@ -338,7 +338,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                             else:
                                 continue
                     else:
-                        if i >= sell_max_days or i >= 7:
+                        if i >= sell_max_days or i >= 4:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -375,7 +375,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                             actual_sell_prices.append(actual_sell_price)
                             break
                     else:
-                        if i >= sell_max_days or i >= 7:
+                        if i >= sell_max_days or i >= 4:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -407,7 +407,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                         actual_sell_prices.append(actual_sell_price)
                                         break
                             else:
-                                if i >= sell_max_days or i >= 7:
+                                if i >= sell_max_days or i >= 4:
                                     actual_sell_price = close
                                     if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                         actual_sell_price = next_open
@@ -421,7 +421,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                 else:
                                     continue
                         else:
-                            if i >= sell_max_days or i >= 7:
+                            if i >= sell_max_days or i >= 4:
                                 actual_sell_price = close
                                 if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                     actual_sell_price = next_open
@@ -846,7 +846,7 @@ def setup_genetic_algorithm(stock_lists, population_size=50, num_generations=100
     # 设置并行处理
     if n_processes is None:
         n_processes = min(multiprocessing.cpu_count(), 20)
-    n_processes =  10
+    # n_processes =  10
     logger.info(f"Using {n_processes} processes for parallel evaluation")
     
     # 初始化历史记录
@@ -1194,7 +1194,7 @@ def main(stock_lists, population_size=50, num_generations=50,
     
     # 同时运行两个不同回撤阈值的优化
     results = {}
-    for max_drawdown_threshold in [0.25, 0.15]:
+    for max_drawdown_threshold in [0.25]:
         logger.info(f"\n{'#'*80}")
         logger.info(f"Starting optimization with max_drawdown_threshold={max_drawdown_threshold}")
         logger.info(f"{'#'*80}")
@@ -1567,9 +1567,11 @@ if __name__ == "__main__":
 
 
     file_dict = {
-        '低位孕线7天': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwyx.csv',
-        '低位中强中低开7天': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwzqzdk.csv',
-        '启动低吸7天': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_qddx.csv',
+        # 'X接力倒接力1': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd1.csv',
+        'X接力倒接力2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd2.csv',
+        'X接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd3.csv',
+        'X接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd4.csv',
+        'X接力倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd5.csv',
     }
 
     missing_files = []

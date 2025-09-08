@@ -1568,9 +1568,9 @@ if __name__ == "__main__":
 
     file_dict = {
         # 'X接力倒接力1': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd1.csv',
-        'X接力倒接力2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd2.csv',
-        'X接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd3.csv',
-        'X接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd4.csv',
+        # 'X接力倒接力2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd2.csv',
+        # 'X接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd3.csv',
+        # 'X接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd4.csv',
         'X接力倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd5.csv',
     }
 

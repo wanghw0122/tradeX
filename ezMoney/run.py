@@ -4778,6 +4778,8 @@ def schedule_update_sell_stock_infos_everyday_at_925():
                     real_trade_price = trade_day_data['trade_price']
                     if order_type == 1:
                         trade_price = order_price
+                    else:
+                        real_trade_price = order_price
                     left_volume = trade_day_data['left_volume']
                     order_id = trade_day_data['order_id']
                     row_id =  trade_day_data['id']

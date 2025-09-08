@@ -135,6 +135,8 @@ def schedule_sell_stocks_everyday_at_1457():
                     real_trade_price = trade_day_data['trade_price']
                     if order_type == 1:
                         trade_price = order_price
+                    else:
+                        real_trade_price = order_price
                     left_volume = trade_day_data['left_volume']
                     trade_volume = trade_day_data['trade_volume']
                     if trade_volume <= 0:

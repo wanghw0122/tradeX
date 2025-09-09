@@ -29,6 +29,7 @@ from xtquant import xtdata
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+y = 4
 
 def build_all_stock_datas(tuple_list = None):
     # 获取股票列表
@@ -146,7 +147,7 @@ def get_marketting_datas(stock_code, cur_date):
     return res
 
 def build_stock_datas_extend(stock_code, datekey):
-    next_trade_days = dt.get_trade_dates_by_start(datekey, 3)
+    next_trade_days = dt.get_trade_dates_by_start(datekey, y - 1)
     if not next_trade_days:
         return None
     res = []
@@ -155,7 +156,7 @@ def build_stock_datas_extend(stock_code, datekey):
         if not dres:
             continue
         res.append(dres)
-    if len(res) != 4:
+    if len(res) != y:
         return None
     return res
 
@@ -494,12 +495,12 @@ def build_evaluater_1to2_data_list(result_tuples):
     i = 1
     for cur_results in results:
 
-        if len(cur_results) != 4:
+        if len(cur_results) != y:
             print(f"len(cur_results) != 7. {cur_results}")
             continue
         cur_res = {}
         cur_res['cur_res_datas'] = []
-        for i in range(4):
+        for i in range(y):
             result = cur_results[i]
             cur_res_datas = {}
             if i == 0:

@@ -24,6 +24,7 @@ import traceback
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+y = 4
 
 # 定义参数范围和类型
 PARAM_RANGES = {
@@ -77,7 +78,7 @@ PARAM_RANGES = {
     'day_zs_line': (-1, 0, float),
     'sell_afternoon': (0, 1, bool),
     'sell_half_afternoon': (0, 1, bool),
-    'sell_max_days': (1, 4, int),
+    'sell_max_days': (1, y, int),
 }
 # 需要优化的参数列表
 OPTIMIZABLE_PARAMS = [
@@ -261,7 +262,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
             trade_price = stock_data['trade_price']
             
             cur_res_datas = stock_data['cur_res_datas']
-            if not cur_res_datas or len(cur_res_datas) != 4:
+            if not cur_res_datas or len(cur_res_datas) != y:
                 raise ValueError(f"股票 {stock_code} 数据异常")
             i = 0
             actual_sell_price = 0
@@ -293,7 +294,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                     monitor_type = 0
                 if monitor_type == 0:
                     if sell_afternoon:
-                        if i >= sell_max_days or i >= 4:
+                        if i >= sell_max_days or i >= y:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -324,7 +325,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                     actual_sell_prices.append(actual_sell_price)
                                     break
                         else:
-                            if i >= sell_max_days or i >= 4:
+                            if i >= sell_max_days or i >= y:
                                 actual_sell_price = close
                                 if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                     actual_sell_price = next_open
@@ -338,7 +339,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                             else:
                                 continue
                     else:
-                        if i >= sell_max_days or i >= 4:
+                        if i >= sell_max_days or i >= y:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -375,7 +376,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                             actual_sell_prices.append(actual_sell_price)
                             break
                     else:
-                        if i >= sell_max_days or i >= 4:
+                        if i >= sell_max_days or i >= y:
                             actual_sell_price = close
                             if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                 actual_sell_price = next_open
@@ -407,7 +408,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                         actual_sell_prices.append(actual_sell_price)
                                         break
                             else:
-                                if i >= sell_max_days or i >= 4:
+                                if i >= sell_max_days or i >= y:
                                     actual_sell_price = close
                                     if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                         actual_sell_price = next_open
@@ -421,7 +422,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                                 else:
                                     continue
                         else:
-                            if i >= sell_max_days or i >= 4:
+                            if i >= sell_max_days or i >= y:
                                 actual_sell_price = close
                                 if cur_res_data['limit_up'] == 1 or cur_res_data['limit_down'] == 1:
                                     actual_sell_price = next_open
@@ -1194,7 +1195,7 @@ def main(stock_lists, population_size=50, num_generations=50,
     
     # 同时运行两个不同回撤阈值的优化
     results = {}
-    for max_drawdown_threshold in [0.25]:
+    for max_drawdown_threshold in [0.3]:
         logger.info(f"\n{'#'*80}")
         logger.info(f"Starting optimization with max_drawdown_threshold={max_drawdown_threshold}")
         logger.info(f"{'#'*80}")
@@ -1567,11 +1568,10 @@ if __name__ == "__main__":
 
 
     file_dict = {
-        # 'X接力倒接力1': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd1.csv',
-        # 'X接力倒接力2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd2.csv',
-        # 'X接力倒接力3': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd3.csv',
-        # 'X接力倒接力4': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd4.csv',
-        'X接力倒接力5': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_ddd5.csv',
+        '低位孕线': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwyx.csv',
+        # '低位中强': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_dwzqzdk.csv',
+        # '启动低吸': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_qddx.csv',
+        # '倒接力2': r'd:\workspace\TradeX\notebook\new_strategy_eval\date_1to2_stock_data_d2.csv',
     }
 
     missing_files = []
@@ -1589,8 +1589,9 @@ if __name__ == "__main__":
     print("所有文件路径均存在！")
 
     for strategy_name, file_path in file_dict.items():
-    
+
         stock_lists = build_evaluater_1to2_data_list_from_file(200, file_path)
+        # print(f'len(stock_lists) = {len(stock_lists)}, len(stock_lists[0]) = {len(stock_lists[0])}')
         
         logger.info(f"Generated {len(stock_lists)} stock sublists, each with {len(stock_lists[0])} stocks， strategy_name: {strategy_name}")
         

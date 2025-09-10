@@ -1,9 +1,5 @@
 from functools import lru_cache
 import os
-from re import A
-from tkinter import E
-from typing import ItemsView
-from venv import logger
 
 from py import log
 
@@ -14,12 +10,10 @@ import akshare as ak
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import matplotlib.dates as mdates
 
 import sqlite3
 
 from datetime import datetime, timedelta
-from arrow import get
 import pandas_market_calendars as mcal
 import pandas as pd
 import pandas_market_calendars as mcal

@@ -1748,6 +1748,8 @@ class StockMonitor(object):
         self.to_sell_row_ids = []
         # 剩余未卖出
         self.left_row_ids = []
+        # 准备卖出
+        self.to_sell = True
 
         self.bq = queue.Queue()
         self.row_id_to_monitor_data = {}
@@ -1910,6 +1912,7 @@ class StockMonitor(object):
                 logger.error(f"{self.stock_code}-{self.stock_name} 没有需要监控的卖出任务")
                 self.end = True
                 break
+            
             data = self.bq.get()
             start_time = tm.time() * 1000
             if data is None:
@@ -1918,7 +1921,10 @@ class StockMonitor(object):
                 logger.info(f"[StockMonitor] {self.stock_code} - {self.stock_name} monitor循环耗时: {elapsed_time:.2f}ms (无数据)")
                 continue
             # m = {}
+            stock = data['stock']
+            assert stock == self.stock_code, f"stock code not match. {stock} {self.stock_code}"
             time = data['time']
+            origin_diff = data['diff']
             lastPrice = data['lastPrice']
             open = data['open']
             high = data['high']
@@ -1934,12 +1940,18 @@ class StockMonitor(object):
             bidPrice = data['bidPrice']
             askVol = data['askVol']
             bidVol = data['bidVol']
-            
+            self.to_sell = True
             diff = calculate_seconds_difference(time)
             if diff > 10:
-                logger.error(f"time diff > 10s. {diff} {time} {self.stock_code} {self.stock_name}")
-                self.pre_volume = volume
-                continue
+                logger.error(f"time diff > 10s. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps}")
+                if self.current_tick_steps < 0:
+                    self.pre_volume = volume
+                    continue
+                else:
+                    logger.error(f"[StockMonitor] 盘中数据有积压. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps} {len(self.bq)}")
+            if diff > 7:
+                logger.error(f"[StockMonitor] time diff > 7s. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps}")
+                self.to_sell = False
             if self.open_status == -1:
                 self.open_status = constants.OpenStatus.DOWN_OPEN if open <= lastClose else constants.OpenStatus.UP_OPEN
             if amount <= 0 or volume <= 0:
@@ -2146,7 +2158,7 @@ class StockMonitor(object):
             
             if self.limit_up_status:
                 continue
-
+            
             current_time_str = datetime.datetime.now().strftime("%H:%M:%S")
             
             for monitor_type, row_ids in self.monitor_type_to_row_ids.items():
@@ -3057,6 +3069,8 @@ class StockMonitor(object):
         pass
 
     def add_to_sell(self, row_id):
+        if not self.to_sell:
+            return
         if row_id not in self.to_sell_row_ids:
             self.to_sell_row_ids.append(row_id)
 

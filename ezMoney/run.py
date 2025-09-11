@@ -29,6 +29,7 @@ from monitor.limit_up_monitor import LimitUpStockMonitor
 from monitor.min_cost_order_monitor import MinCostOrderMonitor
 from common import factors
 from commod_listener import NamedPipeServer
+from subscribe_service import UnifiedSubscriptionService, SubscriptionTaskType
 
 # 初始化锁
 code_to_limit_up_monitor_lock = threading.Lock()
@@ -43,7 +44,7 @@ q = Queue(10)
 qq = Queue(10)
 global tick_q
 
-tick_q = Queue(10)
+tick_q = queue.Queue(10)
 
 end_subscribe = True
 start_subscribe = True
@@ -71,7 +72,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-09-10"
+test_date = "2025-09-11"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -3475,12 +3476,12 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
     while True:
         try:
             data = q.get()
-            logger.info(f"[consumer] Consumed: {data}")
+            logger.info(f"[consumer_to_buy] Consumed: {data}")
             _, cash, _, _, total_assert = qmt_trader.get_account_info()
             if cash == None or cash <= 0:
                 logger.error(f"get_account_info error! no cache {cash}")
                 continue
-            logger.info(f"[consumer] get account info total can used cash: {cash}")
+            logger.info(f"[consumer_to_buy] get account info total can used cash: {cash}")
             total_assert = total_assert - back_cash
             
             if (type(data) == tuple):
@@ -3816,7 +3817,7 @@ def consumer_to_rebuy(orders_dict, tick_queue = tick_q):
                 order_logger.error(f"[consumer_to_rebuy] 已过交易时间，结束任务")
                 break
             data = tick_queue.get()
-            order_logger.info(f"[consumer] Consumed: {data}")
+            order_logger.info(f"[consumer_to_rebuy] Consumed: {data}")
             # update 撤单dict
             budgets_list = get_cancel_budgets(orders_dict, budgets_list)
 
@@ -4088,16 +4089,67 @@ def consumer_to_subscribe(qq):
 
 
 
-def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, selected_port):
+def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, subscription_service):
     if not subscribe:
         return
-    # from multiprocessing import Manager
-    from xtquant import xtdata
-    xtdata.connect(port=selected_port)
     print ("consumer_to_subscribe_whole connect success")
-    subscribe_ids = []
     subscribe_codes = []
     scribed = False
+
+    def on_data(stock_data):
+        """数据处理回调函数"""
+                
+        m = {}
+        diff = stock_data['diff']
+        time_val = stock_data['time']
+        lastPrice = stock_data['lastPrice']
+        open = stock_data['open']
+        high = stock_data['high']
+        low = stock_data['low']
+        lastClose = stock_data['lastClose']
+        volume = stock_data['volume']
+        amount = stock_data['amount']
+        pvolume = stock_data['pvolume'] if stock_data['pvolume'] > 0 else 1
+        askPrice = stock_data['askPrice']
+        bidPrice = stock_data['bidPrice']
+        askVol = stock_data['askVol']
+        bidVol = stock_data['bidVol']
+        stock = stock_data['stock']
+
+        m['time'] = time_val
+        m['diff'] = diff
+        m['lastPrice'] = lastPrice
+        m['open'] = open
+        m['high'] = high
+        m['low'] = low
+        m['lastClose'] = lastClose
+        m['totalVolume'] = volume
+        m['totalAmount'] = amount
+        m['askPrice'] = askPrice
+        m['bidPrice'] = bidPrice
+        m['askVol'] = askVol
+        m['bidVol'] = bidVol
+        m['avgPrice'] = amount / pvolume
+
+        if stock in full_tick_info_dict:
+            bf = full_tick_info_dict[stock]
+            if bf:
+                info = bf[-1]
+                info_volume = info['totalVolume']
+                info_amount = info['totalAmount']
+                if volume >= info_volume:
+                    m['volume'] = volume - info_volume
+                    m['amount'] = amount - info_amount
+            else:
+                m['volume'] = volume
+                m['amount'] = amount
+            bf.append(m)
+            full_tick_info_dict[stock] = bf
+        else:
+            full_tick_info_dict[stock] = [m]
+        m['stock'] = stock
+        tick_q.put(m)
+        logger.info(f'时间戳：{time_val}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff}, 平均价格：{m["avgPrice"]}，总成交额：{amount}, 总成交量：{volume}')
     while True:
         try:
             data = qq.get()
@@ -4118,79 +4170,25 @@ def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, selected_port):
                         continue
                     if len(subscribe_codes) == 0:
                         logger.error(f"[subscribe] 没有股票代码需要订阅，跳出: {subscribe_codes}")
+                        subscription_service.mark_task_ready(
+                            SubscriptionTaskType.TICK_DATA, 
+                            []
+                        )
                         continue
-                    def calculate_seconds_difference(specified_time):
-                        current_time = datetime.datetime.now().timestamp()
-                        time_difference =  current_time - (specified_time / 1000)
-                        return time_difference
-                    def on_data(res, stocks=subscribe_codes, info_dict = full_tick_info_dict, tick_q = tick_q):
-                        for stock in stocks:
-                            if stock not in res:
-                                continue
-                            m = {}
-                            data = res[stock]
-                            time = data['time']
-                            diff = calculate_seconds_difference(time)
-                            lastPrice = data['lastPrice']
-                            open = data['open']
-                            high = data['high']
-                            low = data['low']
-                            lastClose = data['lastClose']
-                            volume = data['volume']
-                            amount = data['amount']
-                            pvolume = data['pvolume'] if data['pvolume'] > 0 else 1
-                            askPrice = data['askPrice']
-                            bidPrice = data['bidPrice']
-                            askVol = data['askVol']
-                            bidVol = data['bidVol']
-
-                            
-                            m['time'] = time
-                            m['diff'] = diff
-                            m['lastPrice'] = lastPrice
-                            m['open'] = open
-                            m['high'] = high
-                            m['low'] = low
-                            m['lastClose'] = lastClose
-                            m['totalVolume'] = volume
-                            m['totalAmount'] = amount
-                            m['askPrice'] = askPrice
-                            m['bidPrice'] = bidPrice
-                            m['askVol'] = askVol
-                            m['bidVol'] = bidVol
-                            m['avgPrice'] = amount / pvolume
-
-                            if stock in info_dict:
-                                bf = info_dict[stock]
-                                if bf:
-                                    info  = bf[-1]
-                                    info_volume = info['totalVolume']
-                                    info_amount = info['totalAmount']
-                                    if volume >= info_volume:
-                                        m['volume'] = volume - info_volume
-                                        m['amount'] = amount - info_amount
-                                else:
-                                    m['volume'] = volume
-                                    m['amount'] = amount
-                                bf.append(m)
-                                info_dict[stock] = bf
-                            else:
-                                info_dict[stock] = [m]
-                            m['stock'] = stock
-                            tick_q.put(m)
-                            logger.info(f'时间戳：{time}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff},  平均价格：{m["avgPrice"]}，总成交额：{amount}, 总成交量：{volume}, open - {open}, high - {high}, low - {low}, lastClose - {lastClose}, volume - {volume}, amount - {amount}, pvolume - {pvolume}, askPrice - {askPrice}, bidPrice - {bidPrice}, askVol - {askVol}, bidVol - {bidVol}')
-
+                    
                     for code in subscribe_codes:
                         full_tick_info_dict[code] = []
                     logger.info(f"初始化 info dict {full_tick_info_dict}")
-                    id = xtdata.subscribe_whole_quote(subscribe_codes, callback=on_data) # 设置count = -1来取到当天所有
-                    if id < 0:
-                        logger.error(f"[subscribe] subscribe_quote error: {subscribe_codes}")
-                        continue
-                    else:
-                        logger.info(f"[subscribe] subscribe_quote success: {subscribe_codes}")
-                        scribed = True
-                        subscribe_ids.append(id)
+                   
+                    
+                    # 注册回调函数
+                    subscription_service.subscribe(subscribe_codes, on_data, name = 'tick')
+                    subscription_service.mark_task_ready(
+                        SubscriptionTaskType.TICK_DATA, 
+                        subscribe_codes
+                    )
+                    scribed = True
+                    logger.info(f"[subscribe] subscribe_quote success: {subscribe_codes}")
                         
                 elif data == 'end':
                     if full_tick_info_dict:
@@ -4198,8 +4196,7 @@ def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, selected_port):
                         file_path = "tick_" + str(datetime.datetime.now().strftime("%Y-%m-%d")) + ".json"
                         with open(file_path, 'w', encoding='utf-8') as file:
                             json.dump(dict(full_tick_info_dict), file, ensure_ascii=False, indent=4)
-                    for id in subscribe_ids:
-                        xtdata.unsubscribe_quote(id)
+                    
                     break
             else:
                 continue
@@ -4215,6 +4212,14 @@ def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, selected_port):
         except Exception as e:
             logger.error(f"[subscribe] 执行任务出现错误: {e}")
             break
+        finally:
+            try:
+                subscription_service.mark_task_ready(
+                    SubscriptionTaskType.TICK_DATA, 
+                    []
+                )
+            except Exception as e:
+                logger.error(f"[subscribe] 执行任务出现错误: {e}")
 
 
 def consumer_to_get_full_tik(qq, full_tick_info_dict):
@@ -5152,64 +5157,97 @@ def start_limit_up_monitor():
 
 
 
-def start_min_cost_order_monitor(min_cost_queue):
+def start_min_cost_order_monitor(min_cost_queue, subscription_service):
     is_trade, pre_trade_date = date.is_trading_day()
     if not is_trade:
         strategy_logger.info("[start_min_cost_order_monitor] 非交易日，不打板。")
         return
+        
     have_sub_scribe = False
     monitor_stock_codes = []
+    code_to_min_cost_order_monitor = {}
+    
+    def monitor_callback(data):
+        """监控回调函数"""
+        if not data:
+            return
+        stock = data['stock']
+        if stock not in code_to_min_cost_order_monitor:
+            return
+            
+        s_monitors = code_to_min_cost_order_monitor[stock]
+        if not s_monitors:
+            return
+            
+        for s_monitor in s_monitors:
+            s_monitor.consume(data)
+    
     try:
         while True and not have_sub_scribe:
             data = min_cost_queue.get()
-            if type(data) == tuple:
+            if isinstance(data, tuple):
                 stock_code, strategy_name, budget, base_budget, sub_strategy_str = data
 
                 if budget <=0 and base_budget <= 0:
                     continue
+                    
                 stock_name = offlineStockQuery.get_stock_name(stock_code)
                 if not stock_name:
                     stock_name = ''
+                    
                 if strategy_name in strategy_name_to_min_cost_params:
                     params = strategy_name_to_min_cost_params[strategy_name]
                 else:
                     params = {}
+                    
                 if not params:
                     strategy_logger.error(f"[start_min_cost_order_monitor] 策略参数错误: {strategy_name}")
                     continue
+                    
                 params['budget'] = budget
                 params['base_budget'] = base_budget
-                stock_monitor = MinCostOrderMonitor(stock_code=stock_code, stock_name=stock_name, strategy_name=strategy_name, params=params, sub_strategy_str=sub_strategy_str, qmt_trader=qmt_trader)
+                
+                stock_monitor = MinCostOrderMonitor(
+                    stock_code=stock_code, 
+                    stock_name=stock_name, 
+                    strategy_name=strategy_name, 
+                    params=params, 
+                    sub_strategy_str=sub_strategy_str, 
+                    qmt_trader=qmt_trader
+                )
+                
                 if stock_code in code_to_min_cost_order_monitor:
                     code_to_min_cost_order_monitor[stock_code].append(stock_monitor)
                 else:
                     code_to_min_cost_order_monitor[stock_code] = [stock_monitor]
+                    
                 if stock_code not in monitor_stock_codes:
                     monitor_stock_codes.append(stock_code)
-            elif type(data) == str and data == 'start' and not have_sub_scribe:
-                
-                def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict = code_to_min_cost_order_monitor):
-                    for stock in stocks:
-                        if stock not in res:
-                            continue
-                        data = res[stock]
-                        s_monitors = monitor_dict[stock]
-                        if not s_monitors:
-                            continue
-                        for s_monitor in s_monitors:
-                            s_monitor.consume(data)
+                    
+            elif isinstance(data, str) and data == 'start' and not have_sub_scribe:
+                # 注册回调函数
 
-                sid = xtdata.subscribe_whole_quote(monitor_stock_codes, callback=monitor_call_back)
-                if sid < 0:
-                    strategy_logger.error(f"[start_min_cost_order_monitor] 订阅错误: {monitor_stock_codes}")
-                else:
-                    strategy_logger.info(f"[start_min_cost_order_monitor] 订阅成功: {monitor_stock_codes}")
-                    have_sub_scribe = True
+                subscription_service.subscribe(monitor_stock_codes, monitor_callback, name = 'mincost')
+
+                # 标记任务已准备好
+
+                subscription_service.mark_task_ready(
+                    SubscriptionTaskType.MIN_COST_MONITOR,
+                    monitor_stock_codes
+                )
+                    
+                have_sub_scribe = True
+                strategy_logger.info(f"[start_min_cost_order_monitor] 订阅准备完成: {monitor_stock_codes}")
 
     except Exception as e:
         stack_trace = traceback.format_exc()
         strategy_logger.error(f"发生异常: {str(e)}\n堆栈信息:\n{stack_trace}")
-        pass
+    finally:
+        subscription_service.mark_task_ready(
+            SubscriptionTaskType.MIN_COST_MONITOR,
+            []
+        )
+
 
 def get_previous_days_avg_volumes(stock_code):
     import numpy as np
@@ -5296,31 +5334,49 @@ def get_stock_data(stock_code):
     pre_days_avg_volumes = get_previous_days_avg_volumes(stock_code)
     return mkt_datas, pre_days_avg_volumes
 
-def start_monitor_monning():
+def start_monitor_monning(subscription_service):
     if not sell_at_monning:
         return
+        
     try:
         is_trade, pre_trade_date = date.is_trading_day()
         if not is_trade:
             strategy_logger.info("[start_monitor_monning] 非交易日，不更新预算。")
             return
+            
         current_date = date.get_current_date()
         monitor_stock_codes = []
         code_to_monitor_dict = {}
+        
         with SQLiteManager(db_name) as manager:
-            query_data_results = manager.query_data_dict("monitor_data", condition_dict={'date_key': current_date, 'monitor_status': 1})
+            query_data_results = manager.query_data_dict(
+                "monitor_data", 
+                condition_dict={'date_key': current_date, 'monitor_status': 1}
+            )
+            
             if not query_data_results:
                 schedule_update_sell_stock_infos_everyday_at_925()
-                query_data_results = manager.query_data_dict("monitor_data", condition_dict={'date_key': current_date, 'monitor_status': 1})
+                query_data_results = manager.query_data_dict(
+                    "monitor_data", 
+                    condition_dict={'date_key': current_date, 'monitor_status': 1}
+                )
+                
                 if not query_data_results:
                     strategy_logger.error("[start_monitor_monning] 无监听任务。")
                     return
+                    
             query_data_results = [data for data in query_data_results if data['monitor_type'] != 3]
+            
             for data_result in query_data_results:
                 stock_code = data_result['stock_code']
                 if stock_code and stock_code not in monitor_stock_codes:
                     monitor_stock_codes.append(stock_code)
-        
+        if not monitor_stock_codes:
+            subscription_service.mark_task_ready(
+                SubscriptionTaskType.MORNING_MONITOR,
+                []
+            )
+            return
         if monitor_stock_codes:
             # 使用线程池并行获取数据
             with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -5348,22 +5404,35 @@ def start_monitor_monning():
                     except Exception as e:
                         strategy_logger.error(f"处理股票 {stock_code} 时发生错误: {e}")
             
-            def monitor_call_back(res, stocks=monitor_stock_codes, monitor_dict=code_to_monitor_dict):
-                for stock in stocks:
-                    if stock not in res:
-                        continue
-                    data = res[stock]
-                    s_monitor = monitor_dict[stock]
-                    s_monitor.consume(data)
+            def monitor_callback(data):
+                """监控回调函数"""
+                if not data:
+                    return
+                if type(data) != dict:
+                    return
+                stock = data['stock']
+                if stock not in code_to_monitor_dict:
+                    return
+                s_monitor = code_to_monitor_dict[stock]
+                s_monitor.consume(data)
+            
+            subscription_service.subscribe(monitor_stock_codes, monitor_callback, name = 'monitor')
 
-            sid = xtdata.subscribe_whole_quote(monitor_stock_codes, callback=monitor_call_back)
-            if sid < 0:
-                strategy_logger.error(f"[start_monitor_monning] 订阅错误: {monitor_stock_codes}")
-            else:
-                logger.info(f"[start_monitor_monning] 订阅成功: {monitor_stock_codes}")
+            # 标记任务已准备好
+            subscription_service.mark_task_ready(
+                SubscriptionTaskType.MORNING_MONITOR,
+                monitor_stock_codes
+            )
+            
+            logger.info(f"[start_monitor_monning] 订阅准备完成: {monitor_stock_codes}")
                 
     except Exception as e:
         strategy_logger.error(f"[start_monitor_monning] 发生错误: {e}")
+    finally:
+        subscription_service.mark_task_ready(
+                SubscriptionTaskType.MORNING_MONITOR,
+                []
+        )
 
 
 def get_marketting_datas(stock_code):
@@ -5563,7 +5632,10 @@ if __name__ == "__main__":
         # print(servers)
         # for k, v in servers.items():
             # print(k, v)
-        full_tick_info_dict = Manager().dict()
+        full_tick_info_dict = {}
+
+        subscription_service = UnifiedSubscriptionService(selected_port)
+        subscription_service.start()
 
         qmt_trader.init_order_context(flag = use_threading_buyer)
         qmt_trader.start_sell_listener()
@@ -5575,8 +5647,11 @@ if __name__ == "__main__":
 
         # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe, args=(qq,))
         # subscribe_thread = multiprocessing.Process(target=consumer_to_get_full_tik, args=(qq,full_tick_info_dict))
-
-        subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q, selected_port))
+        subscribe_thread = threading.Thread(
+            target=consumer_to_subscribe_whole, 
+            args=(qq, full_tick_info_dict, tick_q, subscription_service)
+        )
+        # subscribe_thread = multiprocessing.Process(target=consumer_to_subscribe_whole, args=(qq, full_tick_info_dict, tick_q, selected_port))
         consumer_thread.start()
         subscribe_thread.start()
         cached_auction_infos.clear()
@@ -5585,13 +5660,31 @@ if __name__ == "__main__":
         # 每隔5秒执行一次 job_func 方法
         scheduler.add_job(strategy_schedule_job, 'interval', seconds=8, id="code_schedule_job")
 
+        scheduler.add_job(
+            start_min_cost_order_monitor, 
+            'cron', 
+            hour=9, 
+            minute=29, 
+            second=0, 
+            id="start_min_cost_order_monitor", 
+            args=[min_cost_q, subscription_service]
+        )
         # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
-        scheduler.add_job(start_min_cost_order_monitor, 'cron', hour=9, minute=29, second=0, id="start_min_cost_order_monitor", args=[min_cost_q])
-        scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+        # scheduler.add_job(start_min_cost_order_monitor, 'cron', hour=9, minute=29, second=0, id="start_min_cost_order_monitor", args=[min_cost_q])
+        scheduler.add_job(consumer_to_rebuy, 'cron', hour=0, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
         # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 
-        scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=27, second=0, id="start_monitor_monning")
+        scheduler.add_job(
+            start_monitor_monning, 
+            'cron', 
+            hour=9, 
+            minute=27, 
+            second=0, 
+            id="start_monitor_monning", 
+            args=[subscription_service]
+        )
+        # scheduler.add_job(start_monitor_monning, 'cron', hour=9, minute=27, second=0, id="start_monitor_monning")
         # scheduler.add_job(start_limit_up_monitor, 'cron', hour=9, minute=29, second=0, id="start_limit_up_monitor")
 
         scheduler.add_job(schedule_update_sell_stock_infos_everyday_at_925, 'cron', hour=9, minute=25, second=10, id="schedule_update_sell_stock_infos_everyday_at_925")
@@ -5617,12 +5710,14 @@ if __name__ == "__main__":
                     scheduler.shutdown(wait=False)
                     break
                 time.sleep(3)
-                print_latest_tick(full_tick_info_dict)
+                # print_latest_tick(full_tick_info_dict)
         except (KeyboardInterrupt, SystemExit):
             # 关闭调度器
             server.stop_server()
             scheduler.shutdown(wait=False)
-        
+            subscription_service.stop()
+        subscription_service.stop()
+
         print(f"cancel infos: {qmt_trader.get_all_cancel_order_infos()}")
         if not use_threading_buyer:
             q.close()

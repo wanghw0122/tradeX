@@ -752,6 +752,10 @@ class MinCostOrderMonitor(object):
                     continue
                 time = data['time']
                 diff = calculate_seconds_difference(time)
+                origin_diff = data['diff']
+                stock = data['stock']
+                assert stock == self.stock_code, f"stock code not match. {stock} {self.stock_code}"
+                logger.info(f"[mincost] monitor data. {self.stock_code} - {self.stock_name} - {data} - {time} - {diff} - {origin_diff} - {diff - origin_diff}")
                 lastPrice = data['lastPrice']
                 open = data['open']
                 # high = data['high']
@@ -773,8 +777,8 @@ class MinCostOrderMonitor(object):
                 if lastPrice <= 0:
                     logger.error(f"lastPrice <= 0. {lastPrice} {time} {self.stock_code} {self.stock_name}")
                     continue
-                if diff > 10:
-                    logger.error(f"time diff > 10s. {diff} {time} {self.stock_code} {self.stock_name}")
+                if diff > 10 and self.current_tick_steps < 0:
+                    logger.error(f"[mincost] time diff > 10s. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps}")
                     continue
                 
                 self.current_price = lastPrice
@@ -799,6 +803,10 @@ class MinCostOrderMonitor(object):
                     self.limit_down_price = limit_down_price_0
                     self.max_down_pct = (self.base_price - self.limit_down_price) / self.base_price
 
+                if diff > 6:
+                    logger.error(f"[mincost] time diff > 6s. {diff} {origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps}")
+                    self.pre_volume = volume
+                    continue
                 if self.signal:
                     # 计算价格差异（相对于基准价）
                     price_diff = (self.reference_price - lastPrice) / self.base_price

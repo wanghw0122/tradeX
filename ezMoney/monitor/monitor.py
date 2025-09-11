@@ -2000,13 +2000,14 @@ class StockMonitor(object):
             self.current_min_increase = (self.current_min_price - self.last_close_price) / self.last_close_price
 
             logger.info(
-                f"股票代码： {self.stock_code}, 股票名称： {self.stock_name}, "
+                f"[StockMonitor] 股票代码： {self.stock_code}, 股票名称： {self.stock_name}, "
+                f"当前步数: {self.current_tick_steps},  延迟: {diff:.2f}, 原延迟：{origin_diff:.2f}, "
                 f"均价: {self.avg_price:.2f}, 当前价: {self.current_price:.2f}, 开盘价: {self.open_price:.2f}, "
-                f"昨天收盘价: {self.last_close_price:.2f}, 当前步数: {self.current_tick_steps}, "
+                f"昨天收盘价: {self.last_close_price:.2f}, 当前成交量: {self.cur_volume}, 前一交易日成交量: {self.pre_volume}, "
                 f"当前天内涨幅: {self.current_open_increase:.2%}, 当天涨幅: {self.current_increase:.2%}, "
                 f"当天最高价: {self.current_max_price:.2f}, 当天最低价: {self.current_min_price:.2f}, "
                 f"当天天内最高涨幅: {self.current_max_open_increase:.2%}, 当天天内最低涨幅: {self.current_min_open_increase:.2%}, "
-                f"当天最高涨幅: {self.current_max_increase:.2%}, 当天最低涨幅: {self.current_min_increase:.2%}"
+                f"当天最高涨幅: {self.current_max_increase:.2%}, 当天最低涨幅: {self.current_min_increase:.2%},"
             )
 
             if self.strategy_to_kline_strategy:

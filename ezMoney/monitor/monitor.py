@@ -1948,7 +1948,7 @@ class StockMonitor(object):
                     self.pre_volume = volume
                     continue
                 else:
-                    logger.error(f"[StockMonitor] 盘中数据有积压. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps} {len(self.bq)}")
+                    logger.error(f"[StockMonitor] 盘中数据有积压. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps} {self.bq.qsize()}")
             if diff > 7:
                 logger.error(f"[StockMonitor] time diff > 7s. {diff} {origin_diff} {diff - origin_diff} {time} {self.stock_code} {self.stock_name} {self.current_tick_steps}")
                 self.to_sell = False

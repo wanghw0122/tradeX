@@ -915,4 +915,10 @@ class MinCostOrderMonitor(object):
 
     def consume(self, data):
         logger.info(f"{self.stock_code} {self.stock_name} mincost 监控器接收到数据 {data}")
-        self.bq.put(data)
+        try:
+            self.bq.put_nowait(data)
+        except queue.Full:
+            logger.error(f"[MinCostOrderMonitor] {self.stock_code} - {self.stock_name} 监控器队列已满，丢弃数据 {data}")
+        except Exception as e:
+            logger.error(f"[MinCostOrderMonitor] {self.stock_code} - {self.stock_name} 监控器队列其他异常 {e}")
+        # self.bq.put(data)

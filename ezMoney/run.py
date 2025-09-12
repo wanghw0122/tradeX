@@ -4148,8 +4148,14 @@ def consumer_to_subscribe_whole(qq, full_tick_info_dict, tick_q, subscription_se
         else:
             full_tick_info_dict[stock] = [m]
         m['stock'] = stock
-        tick_q.put(m)
-        logger.info(f'时间戳：{time_val}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff}, 平均价格：{m["avgPrice"]}，总成交额：{amount}, 总成交量：{volume}')
+        try:
+            tick_q.put_nowait(m)
+            logger.info(f'时间戳：{time_val}, 股票代码：{stock}, 当前价格：{lastPrice}, 延迟：{diff}, 平均价格：{m["avgPrice"]}，总成交额：{amount}, 总成交量：{volume}')
+        except queue.Full:
+            logger.error(f"[consumer_to_subscribe_whole] tick_q 队列已满，丢弃股票 {stock} 的数据")
+        except Exception as e:
+            logger.error(f"[consumer_to_subscribe_whole] tick_q 队列其他异常 {e}")
+        # tick_q.put(m)
     while True:
         try:
             data = qq.get()

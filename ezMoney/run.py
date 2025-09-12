@@ -5671,7 +5671,7 @@ if __name__ == "__main__":
         )
         # scheduler.add_job(cancel_orders, 'interval', seconds=5, id="code_cancel_job")
         # scheduler.add_job(start_min_cost_order_monitor, 'cron', hour=9, minute=29, second=0, id="start_min_cost_order_monitor", args=[min_cost_q])
-        scheduler.add_job(consumer_to_rebuy, 'cron', hour=0, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
+        scheduler.add_job(consumer_to_rebuy, 'cron', hour=9, minute=30, second=0, id="consumer_to_rebuy", args=[qmt_trader.orders_dict, tick_q])
 
         # scheduler.add_job(update_trade_budgets, 'cron', hour=9, minute=25, second=5, id="update_trade_budgets")
 

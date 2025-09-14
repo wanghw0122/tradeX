@@ -1,0 +1,47 @@
+{
+  "generation": 5,
+  "fitness": 24.353391646680148,
+  "params": {
+    "remaining_buy_down_min_pct": 0.07116796772458707,
+    "max_strategy_down_pct": 25.417745938594525,
+    "base_buy_gap_ticks": 148,
+    "base_buy_down_min_pct": -0.05,
+    "base_buy_times": 5,
+    "base_max_buy_ticks": 1506,
+    "max_buy_ticks": 543,
+    "base_budget_pct": 0.3065972585144129
+  },
+  "stats": {
+    "total_return_rate": 3.352204999999999,
+    "trade_days": 184,
+    "total_days": 184,
+    "trade_day_ratio": 1.0,
+    "win_rate": 0.5271739130434783,
+    "max_drawdown": 0.09082227385499941,
+    "drawdown_start": 24,
+    "drawdown_end": 36,
+    "avg_daily_ratio": 0.2816844235640771,
+    "avg_daily_real_return": 0.00836187599326001,
+    "avg_daily_budget_return": 0.03588970517489473,
+    "final_budget": 870441.0,
+    "base_budget_total_return_rate": 3.2170399999999995,
+    "remaining_budget_total_return_rate": 0.13516500000000006,
+    "base_budget_total_return": 643407.9999999999,
+    "remaining_budget_total_return": 27033.000000000015,
+    "total_trade_count": 851,
+    "avg_trade_count": 4.625,
+    "avg_trade_ratio": 0.2816844235640771,
+    "fitness": 24.353391646680148
+  },
+  "timestamp": "2025-09-14T22:47:45.924177",
+  "individual": [
+    0.07116796772458707,
+    25.417745938594525,
+    148.0,
+    -0.05,
+    5.0,
+    1506.0,
+    543.0,
+    0.3065972585144129
+  ]
+}

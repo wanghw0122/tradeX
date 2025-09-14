@@ -1,4 +1,3 @@
-from functools import lru_cache
 import logging
 import sys
 import datetime
@@ -160,6 +159,64 @@ def build_stock_datas_extend(stock_code, datekey):
         return None
     return res
 
+
+def get_tick_data(stock_code, datekey):
+    if '-' in datekey:
+        datekey = datekey.replace('-', '')
+    import numpy as np
+    xtdata.download_history_data(stock_code, 'tick', datekey, datekey)
+    all_tick_data = xtdata.get_market_data(stock_list=[stock_code], period='tick', start_time=datekey, end_time=datekey)
+
+
+    if isinstance(all_tick_data[stock_code], np.ndarray) and all_tick_data[stock_code].dtype.type is np.void:
+        ndf = pd.DataFrame(all_tick_data[stock_code].tolist(), columns=all_tick_data[stock_code].dtype.names)
+    else:
+        raise
+    ndf['datetime'] = pd.to_datetime(ndf['time'], unit='ms').dt.tz_localize('UTC')
+    # 将 UTC 时间转换为上海时间
+    ndf['datetime'] = ndf['datetime'].dt.tz_convert('Asia/Shanghai')
+
+    # 筛选出 9:30 之后的行
+    time_930 = pd.to_datetime('09:30:00').time()
+    time_1230 = pd.to_datetime('12:30:00').time()
+    filtered_df = ndf[ndf['datetime'].dt.time >= time_930]
+    filtered_df = filtered_df[filtered_df['datetime'].dt.time < time_1230]
+    all_tick_datas = []
+    for index, row in filtered_df.iterrows():
+
+        data = row.to_dict()
+        data_new = {}
+        timestamp = data['time']
+        lastPrice = data['lastPrice']
+        open = data['open']
+        high = data['high']
+        low = data['low']
+        lastClose = data['lastClose']
+        volume = data['volume']
+        amount = data['amount']
+        askPrice = data['askPrice']
+        bidPrice = data['bidPrice']
+        askVol = data['askVol']
+        bidVol = data['bidVol']
+        
+        data_new['time'] = timestamp
+
+        data_new['lastPrice'] = lastPrice
+        data_new['open'] = open
+        data_new['high'] = high
+        data_new['low'] = low
+        data_new['lastClose'] = lastClose
+        data_new['volume'] = volume
+        data_new['amount'] = amount
+        data_new['askPrice'] = askPrice
+        data_new['bidPrice'] = bidPrice
+        data_new['askVol'] = askVol
+        data_new['bidVol'] = bidVol
+
+        all_tick_datas.append(data_new)
+
+        
+    return all_tick_datas
 
 def build_stock_datas(stock_code, datekey):
     # from xtquant import xtdata
@@ -528,6 +585,7 @@ def build_evaluater_1to2_data_list(result_tuples):
             cur_res_datas['tick_datas'] = result['n_datas']
             cur_res_datas['next_open'] = result['n_next_open']
             cur_res_datas['next_close'] = result['n_next_close']
+            cur_res_datas['date'] = result['n_datekey']
             cur_res_datas['mkt_datas'] = result['n_mkt_datas']
             cur_res['cur_res_datas'].append(cur_res_datas)
 

@@ -1,0 +1,10 @@
+{
+  "remaining_buy_down_min_pct": 0,
+  "max_strategy_down_pct": 16.79014777512054,
+  "base_buy_gap_ticks": 14,
+  "base_buy_down_min_pct": -0.02971626502450693,
+  "base_buy_times": 11,
+  "base_max_buy_ticks": 225,
+  "max_buy_ticks": 1599,
+  "base_budget_pct": 0.4561614237246209
+}

@@ -1,11 +1,8 @@
 import sys
 sys.path.append(r"D:\workspace\TradeX\ezMoney")
-from matplotlib import use
 from common import constants
-from sqlite_processor.mysqlite import SQLiteManager
 import os
 import logging
-from date_utils import date
 import datetime
 from logger import strategy_logger as logger
 
@@ -237,7 +234,7 @@ class StockMonitor(object):
 
     def get_result(self):
         """返回监控结果元组 (是否卖出, 卖出价格)"""
-        return (self.sell_success, self.sell_price)
+        return (self.sell_success, self.sell_price, self.current_tick_steps)
 
     # def _create_process_safe_logger(self):
     #     """创建进程安全的日志记录器"""

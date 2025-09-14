@@ -364,7 +364,7 @@ def evaluate_strategy_on_single_list(individual, stock_sublist, initial_capital=
                         mkt_datas=mkt_datas,
                         params=params
                     )
-                    sold, sell_price = monitor.get_result()
+                    sold, sell_price, _ = monitor.get_result()
 
                     if sold:
                         actual_sell_price = sell_price

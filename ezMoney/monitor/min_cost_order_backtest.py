@@ -18,6 +18,13 @@ strategy_name_to_max_down_pct = {
     '首红断低吸': 6.6,
     '一进二弱转强': 6.6,
     '高位高强追涨': 6.6,
+    '启动低吸': 5,
+    '低位断板低吸': 5,
+    '高强中高开追涨': 6.6,
+    '小高开追涨': 6.6,
+    '中位小低开低吸': 5,
+    '中位中强小低开低吸': 5,
+    '强更强': 6.6,
 }
 
 strategy_name_to_main_strategy_name = {
@@ -30,25 +37,55 @@ strategy_name_to_main_strategy_name = {
     '首红断低吸': '低吸-首红断低吸',
     '一进二弱转强': '接力-一进二弱转强',
     '高位高强追涨': '追涨-高位高强追涨',
-
+    '启动低吸': '低吸-启动低吸',
+    '低位断板低吸': '低吸-低位断板低吸',
+    '高强中高开追涨': '追涨-高强中高开追涨',
+    '小高开追涨': '追涨-小高开追涨',
+    '中位小低开低吸': '低吸-中位小低开低吸',
+    '中位中强小低开低吸': '低吸-中位中强小低开低吸',
+    '强更强': '强更强',
 }
 
 strategy_name_to_sub_strategy_name = {
-    '高强中低开低吸': '强方向前1',
+    '高强中低开低吸': '方向前2',
     '低位高强中低开低吸': '方向低频2',
     '低位高强低吸': '中低频2',
-    '低位孕线低吸': '第一高频',
+    '低位孕线低吸': '回撤小收益大',
     '低位中强中低开低吸': '第一高频',
     '中强中低开低吸': '第二高频',
-    '首红断低吸': '',
-    '一进二弱转强': '倒接力4',
+    '首红断低吸': '第一高频',
+    '一进二弱转强': '倒接力31',
     '高位高强追涨': '',
+    '启动低吸': '第一高频2',
+    '低位断板低吸': '第一高频',
+    '高强中高开追涨': '',
+    '小高开追涨': '第一',
+    '中位小低开低吸': '',
+    '中位中强小低开低吸': '第一高频',
+    '强更强': '第一',
 }
 
 
-def get_strategy_and_sub_strategy_name(strategy_name):
-    return strategy_name_to_main_strategy_name[strategy_name], strategy_name_to_sub_strategy_name[strategy_name]
+def get_strategy_and_sub_strategy_name(strategy_name, sub_strategy_str):
+    new_strategy_name = strategy_name_to_main_strategy_name[strategy_name]
+    new_sub_strategy_name = strategy_name_to_sub_strategy_name[strategy_name]
 
+    if '一进二弱转强' in strategy_name:
+        sub_strategy_list = ','.split(sub_strategy_str)
+        if '倒接力31' in sub_strategy_list or '倒接力3' in sub_strategy_list or '倒接力32' in sub_strategy_list:
+            new_sub_strategy_name = '倒接力31'
+        elif '倒接力41' in sub_strategy_list or '倒接力4' in sub_strategy_list:
+            new_sub_strategy_name = '倒接力4'
+        elif '倒接力51' in sub_strategy_list or '倒接力5' in sub_strategy_list:
+            new_sub_strategy_name = '倒接力5'
+        elif '接力倒接力3' in sub_strategy_list or '接力倒接力31' in sub_strategy_list:
+            new_sub_strategy_name = '接力倒接力3'
+        elif '接力倒接力4' in sub_strategy_list:
+            new_sub_strategy_name = '接力倒接力4'
+        else:
+            pass
+
+    return new_strategy_name, new_sub_strategy_name
 
 class TripleFilter:
     """三级滤波价格平滑器"""
@@ -494,6 +531,15 @@ class MinCostOrderMonitor:
             debug=params.get('debug', False)
         )
 
+        self.remaining_buy_down_min_pct = params.get('remaining_buy_down_min_pct', 0.005)
+        self.max_strategy_down_pct = params.get('max_strategy_down_pct', 6.6)
+        self.base_buy_gap_ticks = params.get('base_buy_gap_ticks', 100)
+        self.base_buy_down_min_pct = params.get('base_buy_down_min_pct', 0.005)
+        self.base_buy_times = params.get('base_buy_times', 5)
+        self.base_max_buy_ticks = params.get('base_max_buy_ticks', 200)
+
+        self.max_buy_ticks = params.get('max_buy_ticks', 400)
+
         # 状态变量
         self.base_price = -1
         self.reference_price = -1
@@ -551,7 +597,11 @@ class MinCostOrderMonitor:
                 lastClose = data['lastClose']
                 volume = data['volume']
                 amount = data['amount']
-                                
+                askPrice = data['askPrice']
+                bidPrice = data['bidPrice']
+                askVol = data['askVol']
+                bidVol = data['bidVol']
+
                 # 初始化成交量
                 if self.pre_volume < 0:
                     self.pre_volume = volume
@@ -559,7 +609,8 @@ class MinCostOrderMonitor:
                 # 更新状态
                 self.current_price = lastPrice
                 self.open_price = open_price
-                self.last_close_price = lastClose
+                if self.last_close_price == 0:
+                    self.last_close_price = lastClose
                 self.current_tick_steps += 1
                 
                 # 初始化基准价
@@ -583,6 +634,14 @@ class MinCostOrderMonitor:
                 buy_reason = None
                 buy_amount = 0
                 base_buy_budget = 0
+                buy_total_budget = 0
+
+                sell1 = askPrice[0] if askPrice else 0
+                if sell1 == 0 and abs(self.limit_up_price - lastPrice) <= 0.01:
+                    continue
+                if sell1 <= 0:
+                    logger.error(f"sell1 price is {sell1} {self.limit_up_price} {lastPrice} {self.current_tick_steps} {self.stock_code}")
+                    continue
                 
                 if self.signal:
                     # 计算价格差异（相对于基准价）
@@ -599,23 +658,23 @@ class MinCostOrderMonitor:
                     elif (self.base_price - lastPrice) / self.base_price > 0.01 and self.left_base_budget > 0:
                         # 价格低于基准价超过1%时的保护
                         down_base_pct = (self.base_price - lastPrice) / self.base_price
-                        base_buy_budget = max(1/3, down_base_pct / self.max_down_pct) * self.base_budget
+                        base_buy_budget = max(1/self.base_buy_times, down_base_pct / self.max_down_pct) * self.base_budget
                         base_buy_budget = min(base_buy_budget, self.left_base_budget)
                         self.left_base_budget -= base_buy_budget
                         self.last_base_buy_tick_time = self.current_tick_steps
                         buy_reason = "信号触发+价格偏离保护"
                     
                     # 价格偏离买入逻辑
-                    if price_diff >= 0.005 and self.remaining_budget > 0:
-                        max_down = strategy_name_to_max_down_pct.get(self.strategy_name, 5.5)
+                    if price_diff >= self.remaining_buy_down_min_pct and self.remaining_budget > 0:
+                        max_down = self.max_strategy_down_pct
                         buy_pct = price_diff * 100 / max_down
                         buy_amount = min(buy_pct * self.total_budget, self.remaining_budget)
                         
                         # 检查买入条件
-                        if buy_pct > 1/5 or buy_amount > 5000:
+                        if buy_pct > 1/5 or buy_amount > 500:
                             buy_total_budget = buy_amount
                             self.remaining_budget = max(0, self.remaining_budget - buy_amount)
-                            self.reference_price = lastPrice
+                            self.reference_price = sell1
                             
                             # 如果还没有原因，设置为价格偏离
                             if not buy_reason:
@@ -631,18 +690,18 @@ class MinCostOrderMonitor:
                         buy_reason = "接近跌停保护"
                     
                     # 超时补仓
-                    elif (lastPrice < self.base_price * 0.992 and 
-                        (self.current_tick_steps - self.last_base_buy_tick_time > 100 or 
+                    elif (lastPrice < self.base_price * (1 - self.base_buy_down_min_pct) and 
+                        (self.current_tick_steps - self.last_base_buy_tick_time > self.base_buy_gap_ticks or 
                         self.last_base_buy_tick_time == 0) and 
                         self.left_base_budget > 0):
-                        base_buy_budget = min(self.left_base_budget, self.base_budget * 1/3)
+                        base_buy_budget = min(self.left_base_budget, self.base_budget * 1/self.base_buy_times)
                         self.left_base_budget -= base_buy_budget
                         self.last_base_buy_tick_time = self.current_tick_steps
                         buy_reason = "超时补仓"
                     
                     # 尾盘保护
-                    elif (self.current_tick_steps > 200 and 
-                        lastPrice < self.base_price * 0.992 and 
+                    elif (self.current_tick_steps > self.base_max_buy_ticks and 
+                        lastPrice < self.base_price * (1 - self.base_buy_down_min_pct) and 
                         self.left_base_budget > 0):
                         base_buy_budget = self.left_base_budget
                         self.left_base_budget = 0
@@ -652,12 +711,17 @@ class MinCostOrderMonitor:
                 # 记录买入信号
                 total_buy_budget = buy_total_budget + base_buy_budget
                 if total_buy_budget > 0:
+                    if buy_total_budget > 0:
+                        is_base_buy = False
+                    else:
+                        is_base_buy = True
                     # 计算买入数量 (整百股)
-                    volume = int(total_buy_budget // lastPrice // 100) * 100
+                    volume = int(total_buy_budget / sell1 / 100) * 100
                     if volume > 0:
                         self.buy_signals.append({
                             'time': time,
                             'price': lastPrice,
+                            'sell1': sell1,
                             'amount': total_buy_budget,
                             'volume': volume,
                             'reason': buy_reason,
@@ -665,13 +729,14 @@ class MinCostOrderMonitor:
                             'current_step': self.current_tick_steps,
                             'stock_code': self.stock_code,
                             'strategy_name': self.strategy_name,
-                            'signal_type': 'technical' if self.signal else 'protective'
+                            'signal_type': 'technical' if self.signal else 'protective',
+                            'is_base_buy': is_base_buy
                         })
                 
                 self.pre_volume = volume
                 
                 # 达到最大tick数停止
-                if self.current_tick_steps > 410:
+                if self.current_tick_steps > self.max_buy_ticks:
                     break
                     
             except Exception as e:

@@ -549,6 +549,14 @@ class MinCostOrderMonitor(object):
             debug=params.get('debug', False)
         )
 
+        self.remaining_buy_down_min_pct = params.get('remaining_buy_down_min_pct', 0.02)
+        self.max_strategy_down_pct = params.get('max_strategy_down_pct', 15)
+        self.base_buy_gap_ticks = params.get('base_buy_gap_ticks', 100)
+        self.base_buy_down_min_pct = params.get('base_buy_down_min_pct', 0.005)
+        self.base_buy_times = params.get('base_buy_times', 5)
+        self.base_max_buy_ticks = params.get('base_max_buy_ticks', 200)
+        self.max_buy_ticks = params.get('max_buy_ticks', 400)
+
         self.stock_code = stock_code
         self.stock_name = stock_name
         if qmt_trader != None:
@@ -791,7 +799,7 @@ class MinCostOrderMonitor(object):
                 if self.current_tick_steps == 0 or self.base_price < 0:
                     self.base_price = lastPrice
                     self.reference_price = self.base_price
-                if self.current_tick_steps > 300:
+                if self.current_tick_steps > self.max_buy_ticks:
                     logger.error(f"current_tick_steps > 410 break. {self.current_tick_steps} {time} {self.stock_code} {self.stock_name}")
                     break
                 self.smooth_price = self.filter.update(lastPrice)
@@ -819,15 +827,15 @@ class MinCostOrderMonitor(object):
 
                     elif (self.base_price - lastPrice) / self.base_price > 0.01 and self.left_base_budget > 0:
                         down_base_pct = (self.base_price - lastPrice) / self.base_price
-                        base_buy_budget = max(1/3, down_base_pct / self.max_down_pct) * self.base_budget
+                        base_buy_budget = max(1/self.base_buy_times, down_base_pct / self.max_down_pct) * self.base_budget
                         base_buy_budget = min(base_buy_budget, self.left_base_budget)
                         self.left_base_budget = self.left_base_budget - base_buy_budget
 
                         self.last_base_buy_tick_time = self.current_tick_steps
                         
                     # 只有跌幅超过1%才买入
-                    if price_diff >= 0.005 and self.remaining_budget > 0:
-                        buy_pct = price_diff * 100 / (strategy_name_to_max_down_pct[self.strategy_name] if self.strategy_name in strategy_name_to_max_down_pct else price_diff * 100 / 5.5)
+                    if price_diff >= self.remaining_buy_down_min_pct and self.remaining_budget > 0:
+                        buy_pct = price_diff * 100 / self.max_strategy_down_pct
                         buy_amount = min(buy_pct * self.total_budget, self.remaining_budget)
                         
                         if buy_pct > 1/5 or buy_amount > 5000:
@@ -876,9 +884,9 @@ class MinCostOrderMonitor(object):
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
 
-                elif lastPrice < self.base_price * 0.992 and (self.current_tick_steps - self.last_base_buy_tick_time > 100 or self.last_base_buy_tick_time == 0) and self.left_base_budget > 0:
+                elif lastPrice < self.base_price * (1 - self.base_buy_down_min_pct) and (self.current_tick_steps - self.last_base_buy_tick_time > self.base_buy_gap_ticks or self.last_base_buy_tick_time == 0) and self.left_base_budget > 0:
 
-                    base_buy_budget = min(self.left_base_budget, self.base_budget * 1/3)
+                    base_buy_budget = min(self.left_base_budget, self.base_budget * 1/self.base_buy_times)
                     logger.info(
                         f"⏱️ 发送订单 | 策略 '{self.strategy_name}' | "
                         f"Tick步数: {self.current_tick_steps}/410 | "
@@ -892,7 +900,7 @@ class MinCostOrderMonitor(object):
                     self.left_base_budget = self.left_base_budget - base_buy_budget
                     self.last_base_buy_tick_time = self.current_tick_steps
                     self.send_orders(data, base_buy_budget)
-                elif self.current_tick_steps > 200 and lastPrice < self.base_price * 0.992 and self.left_base_budget > 0:
+                elif self.current_tick_steps > self.base_max_buy_ticks and lastPrice < self.base_price * (1 - self.base_buy_down_min_pct) and self.left_base_budget > 0:
                     base_buy_budget = self.left_base_budget
                     logger.info(
                         f"⌛ 发送订单 | 策略 '{self.strategy_name}' | "

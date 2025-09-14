@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 # 定义参数范围和类型
 PARAM_RANGES = {
-    'remaining_buy_down_min_pct': (0, 0.02, float),      # 0.1% - 2%
-    'max_strategy_down_pct': (1.0, 15.0, float),         # 1% - 10%
+    'remaining_buy_down_min_pct': (0, 0.1, float),      # 0.1% - 2%
+    'max_strategy_down_pct': (2.0, 30.0, float),         # 1% - 10%
     'base_buy_gap_ticks': (10, 200, int),                # 50-500个tick
     'base_buy_down_min_pct': (-0.05, 0.05, float),       # 0.1% - 2%
-    'base_buy_times': (5, 15, int),                      # 1-10次
+    'base_buy_times': (1, 15, int),                      # 1-10次
     'base_max_buy_ticks': (10, 2400, int),               # 100-1000个tick
     'max_buy_ticks': (10, 2400, int),                    # 200-2000个tick
     'base_budget_pct': (0, 1, float),                    # 1% - 10%
@@ -36,30 +36,33 @@ OPTIMIZABLE_PARAMS = list(PARAM_RANGES.keys())
 
 # 固定参数（TripleFilter和SignalDetector的参数）
 FIXED_PARAMS = {
-    "ema_alpha": 0.11731169217801875,
-    "kalman_q": 0.05,
-    "kalman_r": 0.032779386595630504,
-    "sg_window": 13,
-    "macd_fast": 2,
-    "macd_slow_ratio": 1.923502368920664,
-    "macd_signal": 2,
-    "ema_fast": 4,
-    "ema_slow_ratio": 2.0120113875614254,
-    "volume_window": 10,
-    "price_confirm_ticks": 6,
-    "strength_confirm_ticks": 7,
-    "strength_threshold": 0.3,
-    "volume_weight": 0.9841988854678615,
-    "use_price_confirm": False,
-    "use_strength_confirm": False,
-    "dead_cross_threshold": 0.05,
-    'price_drop_threshold': 0.008308440100195527,
-    'max_confirm_ticks': 20,
-    'debug': False
-}
+        "ema_alpha": 0.29013975766455613,
+        "kalman_q": 0.0320293136345791,
+        "kalman_r": 0.026940298328073715,
+        "sg_window": 20,
+        "macd_fast": 2,
+        "macd_slow_ratio": 2.1310430355291476,
+        "macd_signal": 2,
+        "ema_fast": 3,
+        "ema_slow_ratio": 1.5674748893488601,
+        "volume_window": 9,
+        "price_confirm_ticks": 5,
+        "strength_confirm_ticks": 3,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.9562258738504769,
+        "use_price_confirm": False,
+        "use_strength_confirm": False,
+        "dead_cross_threshold": 0.005525094319119402,
+        "price_drop_threshold": 0.001,
+        "max_confirm_ticks": 7,
+        "debug": False
+    }
 
 # 全局tick数据缓存
 tick_data_cache = {}
+
+# 全局共享数据变量
+global_shared_data = None
 
 def get_tick_data_main(stock_code, date_str, func):
     """获取tick数据的函数，带缓存功能"""
@@ -150,12 +153,20 @@ def calculate_max_drawdown(cumulative_returns):
     
     return max_drawdown, drawdown_start, drawdown_end
 
-def evaluate_individual(individual):
+def evaluate_individual(individual, shared_data=None):
     """评估单个个体的适应度"""
     try:
-        # 获取全局共享数据
+        # 获取共享数据
         global global_shared_data
-        trading_df = global_shared_data.trading_df
+        if shared_data is not None:
+            # 如果提供了共享数据，使用它
+            trading_df = shared_data.trading_df
+            # 临时设置全局变量，以便get_tick_data_from_cache可以使用
+            temp_global = global_shared_data
+            global_shared_data = shared_data
+        else:
+            # 否则使用全局共享数据
+            trading_df = global_shared_data.trading_df
         
         # 解码参数
         params = decode_individual(individual)
@@ -178,6 +189,10 @@ def evaluate_individual(individual):
         # 记录胜率相关数据
         winning_days = 0
         total_trade_days = 0
+        
+        # 记录交易次数相关数据
+        total_trade_count = 0  # 总交易次数
+        daily_trade_counts = []  # 每日交易次数
         
         # 对每个交易日进行处理
         for idx, row in trading_df.iterrows():
@@ -215,9 +230,11 @@ def evaluate_individual(individual):
                     'base_budget_return': 0,
                     'remaining_budget_return': 0,
                     'base_budget': day_base_budget,
-                    'remaining_budget': day_budget
+                    'remaining_budget': day_budget,
+                    'trade_count': 0  # 添加交易次数
                 })
                 daily_budgets.append(current_budget)
+                daily_trade_counts.append(0)  # 记录交易次数为0
                 continue
             
             # 设置参数
@@ -236,6 +253,11 @@ def evaluate_individual(individual):
             
             # 运行回测
             buy_signals = monitor.run_backtest(tick_data)
+            
+            # 记录交易次数
+            trade_count = len(buy_signals)
+            total_trade_count += trade_count
+            daily_trade_counts.append(trade_count)
             
             # 计算该交易的收益
             trade_investment = 0
@@ -297,7 +319,8 @@ def evaluate_individual(individual):
                 'base_budget_return_rate': base_budget_return_rate,
                 'remaining_budget_return_rate': remaining_budget_return_rate,
                 'base_budget': day_base_budget,
-                'remaining_budget': day_budget
+                'remaining_budget': day_budget,
+                'trade_count': trade_count  # 添加交易次数
             })
             
             # 记录基础预算和剩余预算的收益
@@ -333,12 +356,35 @@ def evaluate_individual(individual):
         avg_daily_real_return = np.mean([d['daily_real_return_rate'] for d in daily_results if d['has_trade']]) if trade_days > 0 else 0
         avg_daily_budget_return = np.mean([d['daily_budget_return_rate'] for d in daily_results if d['has_trade']]) if trade_days > 0 else 0
         
-        logger.info(f"Individual evaluated: fitness={total_return_rate:.6f}, "
+        # 计算平均交易次数和平均交易比例
+        avg_trade_count = np.mean(daily_trade_counts) if daily_trade_counts else 0
+        avg_trade_ratio = np.mean([d['daily_ratio'] for d in daily_results])  # 包括非交易日的比例（为0）
+        
+        # 计算适应度 - 修改后的适应度函数
+        # 基础适应度是总收益率
+        fitness = total_return_rate
+        
+        # 如果最大回撤超过20%，进行惩罚
+        if max_drawdown > 0.09:
+            fitness *= (1 - (max_drawdown - 0.09) * 5)  # 每超过1%减少1%的适应度
+        if max_drawdown > 0.12:
+            fitness = 0
+        # 增加平均交易次数和平均交易比例的奖励
+        fitness *= (1 + 0.03 * avg_trade_count)  # 每增加1次交易增加10%的适应度
+        fitness *= (1 + 10 * avg_trade_ratio)  # 每增加1%的交易比例增加0.5%的适应度
+        
+        logger.info(f"Individual evaluated: fitness={fitness:.6f}, "
+                   f"Total return: {total_return_rate:.6f}, "
                    f"Trade days: {trade_days}/{total_days} ({trade_day_ratio:.2%}), "
-                   f"Win rate: {win_rate:.2%}, Max drawdown: {max_drawdown:.2%}")
+                   f"Win rate: {win_rate:.2%}, Max drawdown: {max_drawdown:.2%}, "
+                   f"Avg trade count: {avg_trade_count:.2f}, Avg trade ratio: {avg_trade_ratio:.2%}")
+        
+        # 恢复全局变量（如果被临时修改）
+        if shared_data is not None:
+            global_shared_data = temp_global
         
         # 返回适应度和详细结果
-        return (total_return_rate, daily_results, {
+        return (fitness, daily_results, {
             'total_return_rate': total_return_rate,
             'trade_days': trade_days,
             'total_days': total_days,
@@ -354,7 +400,11 @@ def evaluate_individual(individual):
             'base_budget_total_return_rate': base_budget_total_return_rate,
             'remaining_budget_total_return_rate': remaining_budget_total_return_rate,
             'base_budget_total_return': base_budget_total_return,
-            'remaining_budget_total_return': remaining_budget_total_return
+            'remaining_budget_total_return': remaining_budget_total_return,
+            'total_trade_count': total_trade_count,
+            'avg_trade_count': avg_trade_count,
+            'avg_trade_ratio': avg_trade_ratio,
+            'fitness': fitness  # 添加适应度值
         })
     
     except Exception as e:
@@ -397,8 +447,9 @@ def mutGaussian(individual, mu, sigma, indpb):
     return (individual,)
 
 def setup_genetic_algorithm(trading_df, tick_data_cache, population_size=50, 
-                           num_generations=20, n_processes=None, cxpb=0.5, mutpb=0.2):
-    """设置并运行遗传算法"""
+                           num_generations=20, n_processes=None, cxpb=0.5, mutpb=0.2,
+                           early_stop_generations=20):
+    """设置并运行遗传算法，添加早停机制"""
     # 创建共享数据对象
     shared_data = SharedData(trading_df, tick_data_cache)
     
@@ -418,7 +469,7 @@ def setup_genetic_algorithm(trading_df, tick_data_cache, population_size=50,
     toolbox.register("mutate", mutGaussian, mu=0, sigma=0.1, indpb=0.2)
     toolbox.register("select", tools.selTournament, tournsize=3)
     
-    # 使用部分函数固定参数
+    # 使用部分函数固定参数    
     toolbox.register("evaluate", evaluate_individual)
     
     # 创建种群
@@ -429,6 +480,10 @@ def setup_genetic_algorithm(trading_df, tick_data_cache, population_size=50,
         n_processes = min(multiprocessing.cpu_count(), 8)
     
     logger.info(f"Using {n_processes} processes for parallel evaluation")
+    
+    # 早停机制变量
+    best_fitness_history = []
+    no_improvement_count = 0
     
     # 创建进程池并初始化
     with multiprocessing.Pool(processes=n_processes, initializer=init_worker, initargs=(shared_data,)) as pool:
@@ -442,6 +497,11 @@ def setup_genetic_algorithm(trading_df, tick_data_cache, population_size=50,
         # 记录最佳个体
         hof = tools.HallOfFame(1)
         hof.update(population)
+        
+        # 记录初始最佳适应度
+        current_best_fitness = max([ind.fitness.values[0] for ind in population])
+        best_fitness_history.append(current_best_fitness)
+        logger.info(f"Initial best fitness: {current_best_fitness:.6f}")
         
         # 统计记录
         stats = tools.Statistics(lambda ind: ind.fitness.values[0])
@@ -481,6 +541,18 @@ def setup_genetic_algorithm(trading_df, tick_data_cache, population_size=50,
             # 更新名人堂
             hof.update(population)
             
+            # 检查是否有改进
+            previous_best = current_best_fitness
+            current_best_fitness = max([ind.fitness.values[0] for ind in population])
+            best_fitness_history.append(current_best_fitness)
+            
+            if current_best_fitness <= previous_best:
+                no_improvement_count += 1
+                logger.info(f"No improvement for {no_improvement_count} generations")
+            else:
+                no_improvement_count = 0
+                logger.info(f"Improvement found! New best fitness: {current_best_fitness:.6f}")
+            
             # 记录统计信息
             record = stats.compile(population)
             logger.info(f"Generation {gen}: {record}")
@@ -490,10 +562,15 @@ def setup_genetic_algorithm(trading_df, tick_data_cache, population_size=50,
                 best_individual = hof[0]
                 best_params = decode_individual(best_individual)
                 
-                # 评估最佳个体获取详细结果
-                fitness, daily_results, stats_dict = evaluate_individual(best_individual)
+                # 评估最佳个体获取详细结果（使用共享数据）
+                fitness, daily_results, stats_dict = evaluate_individual(best_individual, shared_data)
                 save_optimization_state(gen, best_individual, best_params, 
                                       fitness, daily_results, stats_dict)
+            
+            # 检查早停条件
+            if no_improvement_count >= early_stop_generations:
+                logger.info(f"Early stopping triggered after {gen} generations. No improvement for {early_stop_generations} generations.")
+                break
         
         # 返回最佳个体
         return hof[0]
@@ -639,17 +716,27 @@ def plot_optimization_results(daily_results, stats_dict, gen):
     
     plt.suptitle(f'Generation {gen} - Total Return: {stats_dict["total_return_rate"]:.4f}, Final Budget: {stats_dict["final_budget"]:.2f}')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(f"optimization_results/performance_gen_{gen:04d}.png", dpi=150)
+    
+    # 修复文件保存部分，处理字符串和整数类型的gen
+    if isinstance(gen, int):
+        plt.savefig(f"optimization_results/performance_gen_{gen:04d}.png", dpi=150)
+    else:
+        plt.savefig(f"optimization_results/performance_gen_{gen}.png", dpi=150)
     plt.close()
     
     # 保存详细统计信息
     stats_df = pd.DataFrame([stats_dict])
-    stats_df.to_csv(f"optimization_results/stats_gen_{gen:04d}.csv", index=False)
+    # 同样修复CSV文件保存部分
+    if isinstance(gen, int):
+        stats_df.to_csv(f"optimization_results/stats_gen_{gen:04d}.csv", index=False)
+    else:
+        stats_df.to_csv(f"optimization_results/stats_gen_{gen}.csv", index=False)
+
 
 def main():
     """主函数"""
     # 加载交易数据
-    trading_df = pd.read_csv(r'D:\workspace\TradeX\backtest_results\倒接力31_交易记录.csv')
+    trading_df = pd.read_csv(r'D:\workspace\TradeX\backtest_results\高强中低开2_交易记录.csv')
     
     # 确保日期已经是字符串格式，不需要转换
     logger.info(f"Loaded {len(trading_df)} trading records")
@@ -670,20 +757,36 @@ def main():
     best_individual = setup_genetic_algorithm(
         trading_df, 
         tick_data_cache,  # 直接传递缓存字典
-        population_size=30, 
-        num_generations=30,
-        n_processes=20
+        population_size=50, 
+        num_generations=100,
+        n_processes=20,
+        early_stop_generations=3  # 早停机制
     )
     
     # 解码最佳参数
     best_params = decode_individual(best_individual)
     
+    # 创建共享数据对象用于评估
+    shared_data = SharedData(trading_df, tick_data_cache)
+    
     # 评估最佳个体获取详细结果
-    best_fitness, daily_results, stats_dict = evaluate_individual(best_individual)
+    best_fitness, daily_results, stats_dict = evaluate_individual(best_individual, shared_data)
     
     # 打印最佳参数
     logger.info("Optimization completed!")
+    logger.info("="*80)
+    logger.info("FINAL OPTIMIZATION RESULTS:")
+    logger.info("="*80)
     logger.info(f"Best fitness: {best_fitness:.6f}")
+    logger.info(f"Total return rate: {stats_dict['total_return_rate']:.6f}")
+    logger.info(f"Final budget: {stats_dict['final_budget']:.2f}")
+    logger.info(f"Trade days: {stats_dict['trade_days']}/{stats_dict['total_days']} ({stats_dict['trade_day_ratio']:.2%})")
+    logger.info(f"Win rate: {stats_dict['win_rate']:.2%}")
+    logger.info(f"Max drawdown: {stats_dict['max_drawdown']:.2%}")
+    logger.info(f"Average trade count: {stats_dict['avg_trade_count']:.2f}")
+    logger.info(f"Average trade ratio: {stats_dict['avg_trade_ratio']:.2%}")
+    logger.info(f"Total trade count: {stats_dict['total_trade_count']}")
+    
     logger.info("Best parameters:")
     for param, value in best_params.items():
         logger.info(f"  {param}: {value}")

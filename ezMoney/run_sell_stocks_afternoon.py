@@ -90,10 +90,10 @@ def schedule_sell_stocks_everyday_at_1457():
                     limit_down_price, limit_up_price = constants.get_limit_price(last_close, c_stock_code)
 
                     print(c_stock_code, c_available_qty, last_price, last_close, limit_up_price, high)
-                    if abs(high - limit_up_price) < 0.01 and abs(last_price - limit_up_price) > 0.02:
-                        stock_name = offlineStockQuery.get_stock_name(c_stock_code)
-                        qmt_trader.sell_quickly(c_stock_code, stock_name, c_available_qty, order_remark= "sell",  buffer=-0.03, extra_infos = None, up_sell=False, afternoon=True)
-                        selled_codes.append(c_stock_code)
+                    # if abs(high - limit_up_price) < 0.01 and abs(last_price - limit_up_price) > 0.02:
+                    #     stock_name = offlineStockQuery.get_stock_name(c_stock_code)
+                    #     qmt_trader.sell_quickly(c_stock_code, stock_name, c_available_qty, order_remark= "sell",  buffer=-0.03, extra_infos = None, up_sell=False, afternoon=True)
+                    #     selled_codes.append(c_stock_code)
 
         if selled_codes:
             # 过滤 position_stocks 列表，保留 stock_code 不在 selled_codes 中的项

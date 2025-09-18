@@ -2121,6 +2121,7 @@ strategy_name_to_min_cost_params = {
         "dead_cross_threshold": 0.05,
         "price_drop_threshold": 0.008308440100195527,
         "max_confirm_ticks": 20,
+        "max_strategy_down_pct": 50,
         "debug": False
     },
     '高位高强追涨': {

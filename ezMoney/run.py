@@ -69,10 +69,10 @@ pre_search_results = {}
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-09-11"
+test_date = "2025-10-14"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -3624,23 +3624,45 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                     if not full_tick_info:
                         strategy_logger.error(f"get_full_tick_info error! no cache {full_tick_info}, code {code}")
                         continue
-                    
+                    total_code_cash = 0
                     for order_info in order_info_list:
                         c_cash = order_info[0]
                         c_cash = c_cash * cash_thresh
+                        total_code_cash = total_code_cash + c_cash
+                    
+                    total_buy_vol = qmt_trader.get_stock_buy_vol(total_code_cash, full_tick_info)
+                    if total_buy_vol <= 0:
+                        strategy_logger.error(f"get_stock_buy_vol error! total_buy_vol {total_buy_vol}, code {code}")
+                        continue
+                    left_buy_vol = total_buy_vol
+                    order_info_list.sort(key=lambda x: x[0], reverse=True)
+
+                    for order_info in order_info_list:
+                        if left_buy_vol <= 0:
+                            break
+                        c_cash = order_info[0]
+                        c_cash = c_cash * cash_thresh
+                        cash_pct = c_cash / total_code_cash
+
                         strategy_name = order_info[1]
                         sub_strategy_name = order_info[2]
                         max_buffer = order_info[3]
                         buy_buffer = max(buy_buffer, max_buffer)
-                        buy_vol = qmt_trader.get_stock_buy_vol(cash_discount * c_cash, full_tick_info)
+                        if order_info == order_info_list[-1]:  # 最后一个策略
+                            buy_vol = left_buy_vol
+                        else:
+                            buy_vol = min(round(cash_pct * total_buy_vol / 100) * 100, left_buy_vol)
                         if buy_vol <= 0:
-                            if cash_thresh > 0.999:
-                                strategy_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code} add 100")
-                                buy_vol = 100
-                            else:
-                                strategy_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
-                                buy_vol = 0
-                                continue
+                            continue
+                        left_buy_vol = left_buy_vol - buy_vol
+                        # if buy_vol <= 0:
+                        #     if cash_thresh > 0.999:
+                        #         strategy_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code} add 100")
+                        #         # buy_vol = 100
+                        #     else:
+                        #         strategy_logger.error(f"get_stock_buy_vol error! buy_vol {buy_vol}, code {code}")
+                        #         buy_vol = 0
+                        #         continue
                         buy_volume = buy_volume + buy_vol
                         if code in code_to_order_volume_dict:
                             code_to_order_volume_dict[code].append((strategy_name, sub_strategy_name, buy_vol))

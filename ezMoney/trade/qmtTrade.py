@@ -1472,6 +1472,9 @@ class QMTTrader:
         buy_amount = min(account_cash, cash)
         #买入数量 取整为100的整数倍
         buy_vol = int(buy_amount / current_price / 100) * 100
+        if buy_vol <= 0:
+            if buy_amount / (current_price *100) > 0.7:
+                buy_vol = 100
         return buy_vol
     
 

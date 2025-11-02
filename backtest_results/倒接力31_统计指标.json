@@ -1,0 +1,16 @@
+{
+  "total_trades": 200,
+  "profitable_trades": 102,
+  "loss_trades": 98,
+  "win_rate": 0.51,
+  "total_profit": 39203723.999999985,
+  "avg_profit": 196018.61999999994,
+  "max_profit": 10196130.0,
+  "min_profit": -4939554.0,
+  "avg_return_rate": 0.03166841574337452,
+  "max_return_rate": 0.7323420074349444,
+  "min_return_rate": -0.1866404715127701,
+  "max_drawdown": 0.30825025684473495,
+  "sharpe_ratio": 4.733014771555804,
+  "final_capital": 39403723.999999985
+}

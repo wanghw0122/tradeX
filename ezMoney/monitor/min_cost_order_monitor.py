@@ -1,5 +1,3 @@
-
-from re import sub
 from scipy.signal import savgol_filter
 import sys
 import time

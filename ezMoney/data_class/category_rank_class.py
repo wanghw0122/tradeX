@@ -8,6 +8,7 @@ from date_utils.date import *
 from matplotlib import category
 from http_request import build_http_request
 from logger import logger
+import dataclasses
 
 @dataclass
 class BlockRank:
@@ -76,6 +77,28 @@ def build_category_rank_list(date = get_current_date()):
     return categoryRankList
 
 
+# @lru_cache(maxsize=10000)
+# def build_category_rank_sort_list(date = get_current_date()):
+#     rslt = build_http_request.block_category_rank(date = date)
+#     categoryRankList = []
+#     if rslt == None:
+#         return categoryRankList
+#     if 'localCategoryRankList' in rslt['result']:
+#         localCategoryRankList = rslt['result']['localCategoryRankList']
+#     if localCategoryRankList == None:
+#         return categoryRankList
+#     # for item in localCategoryRankList:
+#     #     curItem = CategoryRank(**item)
+#     #     categoryRankList.append(curItem)
+#     for item in localCategoryRankList:
+#         # 过滤掉不在 CategoryRank 类属性中的字段
+#         filtered_item = {k: v for k, v in item.items() if k in CategoryRank.__dataclass_fields__}
+#         curItem = CategoryRank(**filtered_item)
+#         categoryRankList.append(curItem)
+
+#     categoryRankList.sort(key=lambda x: x.num, reverse=True)
+#     return categoryRankList
+
 @lru_cache(maxsize=10000)
 def build_category_rank_sort_list(date = get_current_date()):
     rslt = build_http_request.block_category_rank(date = date)
@@ -86,15 +109,34 @@ def build_category_rank_sort_list(date = get_current_date()):
         localCategoryRankList = rslt['result']['localCategoryRankList']
     if localCategoryRankList == None:
         return categoryRankList
-    # for item in localCategoryRankList:
-    #     curItem = CategoryRank(**item)
-    #     categoryRankList.append(curItem)
+    
+    # 获取所有必需字段（没有默认值的字段）
+    required_fields = [field.name for field in dataclasses.fields(CategoryRank) 
+                      if field.default == dataclasses.MISSING and field.default_factory == dataclasses.MISSING]
+    
+    # 定义默认值映射
+    type_defaults = {
+        int: 0,
+        str: '',
+        float: 0.0,
+        bool: False
+    }
+    
     for item in localCategoryRankList:
         # 过滤掉不在 CategoryRank 类属性中的字段
         filtered_item = {k: v for k, v in item.items() if k in CategoryRank.__dataclass_fields__}
+        
+        # 为缺失的必需字段提供默认值
+        for field_name in required_fields:
+            if field_name not in filtered_item:
+                # 获取字段类型并设置相应的默认值
+                field_type = CategoryRank.__dataclass_fields__[field_name].type
+                filtered_item[field_name] = type_defaults.get(field_type, None)
+        
+        # 确保一定能创建对象
         curItem = CategoryRank(**filtered_item)
         categoryRankList.append(curItem)
-
+    
     categoryRankList.sort(key=lambda x: x.num, reverse=True)
     return categoryRankList
 

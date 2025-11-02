@@ -2,54 +2,54 @@ from date_utils.date import *
 from http_request import build_http_request
 from dataclasses import dataclass
 from logger import logger
-
+from typing import Optional
 from functools import partial
 
 @dataclass
 class XiaoCaoEnvironmentSecondLineV2:
-    code: str
-    codeName: str
-    vol: int
-    amt: int
-    preClose: float
-    open: float
-    high: float
-    low: float
-    trade: float
-    close: float
-    pctChange: float
-    pctChangeRate: float
-    openPctChangeRate: float
-    riseRate: float
-    tradeTimestamp: int
-    tradeDate: str
-    tradeStatus: int
-    tradeSection: int
-    volRatio: float
-    turnoverRatio: float
-    amplitude: float
-    shortLineScore: float
-    trendScore: float
-    realShortLineScore: float
-    realTrendScore: float
-    preShortLineScore: float
-    preTrendScore: float
-    preRealShortLineScore: float
-    preRealTrendScore: float
-    shortLineScoreChange:float
-    trendScoreChange: float
-    realShortLineScoreChange: float
-    realTrendScoreChange: float
-    position: int
-    finalPosition: int
-    openPosition: int
-    realPosition: int
-    isHigh: bool
-    isMeso: bool
-    isLow: bool
-    isBottom: bool
-    isFall: bool
-    isPlummet: bool
+    code: Optional[str] = ""
+    codeName: Optional[str] = ""
+    vol: Optional[int] = 0
+    amt: Optional[int] = 0
+    preClose: Optional[float] = 0.0
+    open: Optional[float] = 0.0
+    high: Optional[float] = 0.0
+    low: Optional[float] = 0.0
+    trade: Optional[float] = 0.0
+    close: Optional[float] = 0.0
+    pctChange: Optional[float] = 0.0
+    pctChangeRate: Optional[float] = 0.0
+    openPctChangeRate: Optional[float] = 0.0
+    riseRate: Optional[float] = 0.0
+    tradeTimestamp: Optional[int] = 0
+    tradeDate: Optional[str] = ""
+    tradeStatus: Optional[int] = 0
+    tradeSection: Optional[int] = 0
+    volRatio: Optional[float] = 0.0
+    turnoverRatio: Optional[float] = 0.0
+    amplitude: Optional[float] = 0.0
+    shortLineScore: Optional[float] = 0.0
+    trendScore: Optional[float] = 0.0
+    realShortLineScore: Optional[float] = 0.0
+    realTrendScore: Optional[float] = 0.0
+    preShortLineScore: Optional[float] = 0.0
+    preTrendScore: Optional[float] = 0.0
+    preRealShortLineScore: Optional[float] = 0.0
+    preRealTrendScore: Optional[float] = 0.0
+    shortLineScoreChange: Optional[float] = 0.0
+    trendScoreChange: Optional[float] = 0.0
+    realShortLineScoreChange: Optional[float] = 0.0
+    realTrendScoreChange: Optional[float] = 0.0
+    position: Optional[int] = 0
+    finalPosition: Optional[int] = 0
+    openPosition: Optional[int] = 0
+    realPosition: Optional[int] = 0
+    isHigh: Optional[bool] = False
+    isMeso: Optional[bool] = False
+    isLow: Optional[bool] = False
+    isBottom: Optional[bool] = False
+    isFall: Optional[bool] = False
+    isPlummet: Optional[bool] = False
 
     def __eq__(self, other):
         if isinstance(other, XiaoCaoEnvironmentSecondLineV2):

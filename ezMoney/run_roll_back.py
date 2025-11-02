@@ -753,7 +753,7 @@ def run_roll_back(once_daily = False, pre = False):
 
         if once_daily:
             today = date.get_current_date()
-            # today = "2025-07-25"
+            # today = "2025-10-31"
             is_trade, pre_date = date.is_trading_day(today)
             if is_trade:
                 if pre:

@@ -51,7 +51,7 @@ strategy_name_to_main_strategy_name = {
     '中位小低开低吸': '低吸-中位小低开低吸',
     '中位中强小低开低吸': '低吸-中位中强小低开低吸',
     '强更强': '强更强',
-    'AI1': 'AI1',
+    'AI1': 'AI1-第一高频',
 }
 
 strategy_name_to_sub_strategy_name = {

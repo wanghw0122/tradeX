@@ -1479,7 +1479,7 @@ class QMTTrader:
             add_amount = (buy_vol + 100) * current_price
             cur_amount = buy_vol * current_price
             target_amount = buy_amount
-            if add_amount - cur_amount > 0 and add_amount - cur_amount < 0.5 * (target_amount - cur_amount):
+            if add_amount - target_amount > 0 and (add_amount - target_amount) < 0.5 * (target_amount - cur_amount):
                 buy_vol += 100
         return buy_vol
     

@@ -472,6 +472,16 @@ def keys_10cm_filter(*args, **kwargs):
 
 @count_filtered_items
 @catch
+def keys_20cm_filter(*args, **kwargs):
+    arr = args[0]
+    filtered_arr = []
+    for code in arr:
+        if code.startswith('60') or code.startswith('00') or code.startswith('30'):
+            filtered_arr.append(code)
+    return filtered_arr
+
+@count_filtered_items
+@catch
 def limiter_filter(limit):
     def inner_filter(*args, **kwargs):
         arr = args[0]
@@ -540,6 +550,13 @@ def jw_filter(xcjwScore = 200):
         return [item for item in arr if item.xcjw and item.xcjw >= xcjwScore]
     inner_filter.__name__ = "jw_filter"
     return inner_filter
+
+@count_filtered_items
+@catch
+def jw_rank(*args, **kwargs):
+    arr = args[0]
+    arr.sort(key=lambda x: x.xcjw, reverse=True)
+    return arr
 
 @count_filtered_items
 @catch
@@ -818,12 +835,15 @@ sm.register_selector("system_time", http_context['system_time'])
 sm.register_selector("sort_v2", http_context['sort_v2'])
 sm.register_selector("xiao_cao_index_v2", http_context['xiao_cao_index_v2'])
 sm.register_selector("xiao_cao_index_v2_list", http_context['xiao_cao_index_v2_list'])
+sm.register_selector("get_teacher_stock", http_context['get_teacher_stock'])
+sm.register_selector("get_teacher_list", http_context['get_teacher_list'])
 sm.register_selector("build_xiaocao_environment_second_line_v2_dict_simple", build_xiaocao_environment_second_line_v2_dict_simple)
 sm.register_selector("build_xiaocao_mod_dict_all", build_xiaocao_mod_dict_all)
 sm.register_selector("get_code_by_block_rank", get_code_by_block_rank)
 sm.register_selector("build_category_rank_sort_list", build_category_rank_sort_list)
 
 sm.register_filter("keys_10cm_filter", keys_10cm_filter)
+sm.register_filter("keys_20cm_filter", keys_20cm_filter)
 sm.register_filter("jw_filter", jw_filter)
 sm.register_filter("jl_filter", jl_filter)
 sm.register_filter("st_filter", st_filter)
@@ -832,6 +852,7 @@ sm.register_filter("dx_filter_max0", dx_filter_max0)
 sm.register_filter("jl_filter_max0", jl_filter_max0)
 sm.register_filter("jw_filter_max0", jw_filter_max0)
 sm.register_filter("qb_filter_max0", qb_filter_max0)
+sm.register_filter("jw_rank", jw_rank)
 
 sm.register_filter("dx_filter_ranked", dx_filter_ranked)
 sm.register_filter("qb_filter_ranked", qb_filter_ranked)

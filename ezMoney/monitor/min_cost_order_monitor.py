@@ -31,6 +31,7 @@ strategy_name_to_max_down_pct = {
     '中位小低开低吸': 5,
     '中位中强小低开低吸': 5,
     '强更强': 6.6,
+    'AI1': 6.6,
 }
 
 strategy_name_to_main_strategy_name = {
@@ -50,6 +51,7 @@ strategy_name_to_main_strategy_name = {
     '中位小低开低吸': '低吸-中位小低开低吸',
     '中位中强小低开低吸': '低吸-中位中强小低开低吸',
     '强更强': '强更强',
+    'AI1': 'AI1',
 }
 
 strategy_name_to_sub_strategy_name = {
@@ -69,6 +71,7 @@ strategy_name_to_sub_strategy_name = {
     '中位小低开低吸': '',
     '中位中强小低开低吸': '第一高频',
     '强更强': '第一',
+    'AI1': '第一高频',
 }
 
 
@@ -548,7 +551,7 @@ class MinCostOrderMonitor(object):
         )
 
         self.remaining_buy_down_min_pct = params.get('remaining_buy_down_min_pct', 0.02)
-        self.max_strategy_down_pct = params.get('max_strategy_down_pct', 15)
+        self.max_strategy_down_pct = params.get('max_strategy_down_pct', 9)
         self.base_buy_gap_ticks = params.get('base_buy_gap_ticks', 100)
         self.base_buy_down_min_pct = params.get('base_buy_down_min_pct', 0.005)
         self.base_buy_times = params.get('base_buy_times', 5)

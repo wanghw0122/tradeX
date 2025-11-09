@@ -513,7 +513,57 @@ def xiao_cao_index_v2(stockCodes = "", date = get_current_date(), hpqbState = 0,
     data = {"params": params}
     return post_request(url, head, cookie, data = json.dumps(data))
 
+@log_error
+@get_result
+def get_teacher_list(tradeDate = get_current_date()):
+    """
+    获取老师列表数据
 
+    返回:
+        dict: 响应的 JSON 数据。
+    """
+    if tradeDate == "":
+        raise ValueError(f"Invalid tradeDate: {tradeDate}")
+    # 获取请求配置
+    urlConfig = get_request_confg_by_name('get_teacher_list')
+    url = url_prefix + urlConfig['path']
+    head = urlConfig['headers']
+    cookie = urlConfig['cookies']
+    params = {
+        "tradeDate": tradeDate
+    }
+    data = {"params": params}
+    return post_request(url, head, cookie, data = json.dumps(data))
+
+@log_error
+def get_teacher_stock(tradeDate = get_current_date(), groupId = 0):
+    """
+    获取老师股票数据
+
+    返回:
+        dict: 响应的 JSON 数据。
+    """
+    if tradeDate == "":
+        raise ValueError(f"Invalid tradeDate: {tradeDate}")
+    # 获取请求配置
+    urlConfig = get_request_confg_by_name('get_teacher_stock')
+    url = url_prefix + urlConfig['path']
+    head = urlConfig['headers']
+    cookie = urlConfig['cookies']
+    params = {
+        "tradeDate": tradeDate,
+        "groupId": groupId
+    }
+    data = {"params": params}
+    res = post_request(url, head, cookie, data = json.dumps(data))
+    try:
+        if 'result' not in res:
+            raise ValueError(f"Request failed with res: {res}")
+        result = res['result']
+        return [r['stockId'] for r in result]
+    except:
+        pass
+    return res
 
 @log_error
 def xiao_cao_index_v2_list(stockCodes = "", date = get_current_date(), hpqbState = 0, lpdxState = 0):

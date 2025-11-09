@@ -1,7 +1,7 @@
 configs:
-  - strategy_name: "xc_dx"
-    start: "2024-08-01"
-    end: "2025-08-16"
+  - strategy_name: "AI"
+    start: "2025-07-31"
+    end: "2025-11-07"
     sub_tasks: {}
     max_num: 1000
     valid: true
@@ -55,76 +55,6 @@ configs:
     params:
       returnNum: 1000
       returnFullInfo: true
-  # - strategy_name: "xiao_cao_1j2db_1"
-  #   start: "2024-08-01"
-  #   end: "2025-03-25"
-  #   sub_tasks: {}
-  #   max_num: 200
-  #   valid: true
-  #   daily: true
-  #   saved: true
-  #   save_type: "db"
-  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-  #   save_mod: "w"
-  #   params:
-  #     returnNum: 10
-  #     returnFullInfo: true
-  # - strategy_name: "xiao_cao_1j2db"
-  #   start: "2024-08-01"
-  #   end: "2025-03-25"
-  #   sub_tasks: {}
-  #   max_num: 200
-  #   valid: true
-  #   daily: true
-  #   saved: true
-  #   save_type: "db"
-  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-  #   save_mod: "w"
-  #   params:
-  #     returnNum: 10
-  #     returnFullInfo: true
-  # - strategy_name: "xiao_cao_dwyxdx"
-  #   start: "2024-08-01"
-  #   end: "2025-03-25"
-  #   sub_tasks: {}
-  #   max_num: 200
-  #   valid: true
-  #   daily: true
-  #   saved: true
-  #   save_type: "db"
-  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-  #   save_mod: "w"
-  #   params:
-  #     returnNum: 10
-  #     returnFullInfo: true
-  # - strategy_name: "xiao_cao_dwndx"
-  #   start: "2024-08-01"
-  #   end: "2025-03-25"
-  #   sub_tasks: {}
-  #   max_num: 200
-  #   valid: true
-  #   daily: true
-  #   saved: true
-  #   save_type: "db"
-  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-  #   save_mod: "w"
-  #   params:
-  #     returnNum: 10
-  #     returnFullInfo: true
-  # - strategy_name: "xiao_cao_dwdx_a"
-  #   start: "2024-08-01"
-  #   end: "2025-03-25"
-  #   sub_tasks: {}
-  #   max_num: 200
-  #   valid: true
-  #   daily: true
-  #   saved: true
-  #   save_type: "db"
-  #   save_path: "D:\\workspace\\TradeX\\ezMoney\\database\\{strategy_name}_{current_date}.csv"
-  #   save_mod: "w"
-  #   params:
-  #     returnNum: 10
-  #     returnFullInfo: true
   - strategy_name: "低吸"
     sub_tasks:
       - name: "绿盘低吸"

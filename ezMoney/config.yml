@@ -146,3 +146,21 @@ Steps:
       method: "post"
       step: 13
       data: '{"params":{"type":0,"loginId":"1QIgHC8Y4Z/OkUV8Av7lOQ==","passwd":"Vz53GS09rB+bsm7/8nDHgQ==", "environment":"{}"}}'
+    - path: "/user_stock_group/get_teacher_list"
+      name: "get_teacher_list"
+      method: "post"
+      step: 14
+      data: '{"params":{"tradeDate":"2025-01-07"}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 2
+      verify: false
+    - path: "/user_stock/get_teacher_stock"
+      name: "get_teacher_stock"
+      method: "post"
+      step: 15
+      data: '{"params":{"tradeDate":"2025-01-07", "groupId":360967}}'
+      headers: "{{head}}"
+      cookies: "{{Cookie}}"
+      timeout: 2
+      verify: false

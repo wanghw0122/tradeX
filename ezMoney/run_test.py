@@ -33,6 +33,11 @@ if __name__ == "__main__":
 
     # print(factors.get_n_days_data_batch(['603131.SH', '002054.SZ'], '2025-06-08', 7))
     print(build_http_request.check_user_alive())
+    print(build_http_request.get_teacher_stock(tradeDate="2025-08-27"))
+    # x =  build_http_request.sort_v2(40, date="2025-08-27")
+    # print(','.join(x))
+
+    # print(build_http_request.get_code_by_xiao_cao_block(tradeDate="2025-08-27", exponentCodeList = ['9G0127']))
 
     # print(build_http_request.system_time())
     

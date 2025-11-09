@@ -17,5 +17,7 @@ http_context = {
     'minute_line': build_http_request.minute_line,
     'xiao_cao_index_v2': build_http_request.xiao_cao_index_v2,
     'xiao_cao_index_v2_list': build_http_request.xiao_cao_index_v2_list,
-    'date_kline': build_http_request.date_kline
+    'date_kline': build_http_request.date_kline,
+    'get_teacher_list': build_http_request.get_teacher_list,
+    'get_teacher_stock': build_http_request.get_teacher_stock,
 }

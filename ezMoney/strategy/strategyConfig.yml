@@ -1171,3 +1171,65 @@ Strategies:
             logged: false
             params:
               xcjlScore: 0
+  - name: "AI"
+    type: "小草AI"
+    status: 1
+    cached: true
+    priority: 1
+    maxReturnNum: 100
+    depends: "xiao_cao_env,xiao_mods_info,xiaocao_category_info"
+    selectors:
+      - name: "check_user_alive"
+        step: 0
+        desc: "用户状态检查"
+        logged: false
+        cached: true
+        params: {}
+      - name: "system_time"
+        step: 1
+        desc: "获取系统时间"
+        logged: false
+        params:
+          formatter: "%Y-%m-%d"
+        cached: false
+      - name: "get_teacher_stock"
+        step: 2
+        desc: "获取教师股票"
+        logged: false
+        cached: true
+        params:
+          tradeDate: "{{system_time}}"
+          groupId: 0
+        filters:
+          - name: "keys_20cm_filter"
+            desc: "过滤key为10cm"
+            logged: false
+            index: 0
+            params: {}
+      - name: "xiao_cao_index_v2"
+        step: 4
+        desc: "获取明细数据"
+        logged: false
+        cached: true
+        params:
+          hpqbState: 0
+          lpdxState: 0
+          stockCodes: '{{get_teacher_stock|join(",")}}'
+          date: "{{system_time}}"
+        filters:
+          - name: "change_item_filter"
+            index: 0
+            desc: "转换格式"
+            logged: false
+            params: {}
+          - name: "jw_filter"
+            index: 1
+            desc: "过滤竞王分"
+            logged: false
+            params:
+              xcjwScore: 0.1
+          - name: "jw_rank"
+            index: 2
+            desc: "竞王分排序"
+            logged: false
+            params: {}

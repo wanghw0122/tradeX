@@ -3,5 +3,7 @@ __all__ = [
     "industry_block_rank",
     "dynamic_index",
     "xiao_cao_environment_second_line_v2",
-    "xiao_cao_index_v2"
+    "xiao_cao_index_v2",
+    "get_teacher_list",
+    "get_teacher_stock",
 ]

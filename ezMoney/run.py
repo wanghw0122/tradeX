@@ -175,6 +175,68 @@ budgets = {
 }
 
 strategies = {
+    "AI": {
+        "sub_strategies": {
+            "AI1": {
+                "code": "NICK",
+                "returnNum": 10,
+                "budget": "ydx",
+                'returnFullInfo': True,
+                'filter_params': [
+                    {
+                        'mark': '方向前2',
+                        'limit': 3,
+                        'filtered': True,
+                        'fx_filtered': True,
+                        'topn': 1,
+                        'top_fx': 101,
+                        'top_cx': 2,
+                        'only_fx': True,
+                        'enbale_industry': False,
+                        'empty_priority': False,
+                        'min_trade_amount': 6000000,
+                        'block_rank_filter': True,
+                        'gap': 0,
+                        'except_is_ppp': True,
+                        'except_is_track': False,
+                        'filter_klines': True,
+                        'filter_kline_params': {
+                            'days': 7,
+                            'filter_one_word': True,
+                            'filter_high_growth': True,
+                            'fangliang_percent': 6,
+                            'max_zhangfu': 0.5
+                        }
+                    },
+                    {
+                        'mark': '第一高频',
+                        'limit': 3,
+                        'filtered': True,
+                        'fx_filtered': True,
+                        'topn': 1,
+                        'top_fx': 101,
+                        'top_cx': 101,
+                        'only_fx': True,
+                        'enbale_industry': False,
+                        'empty_priority': False,
+                        'min_trade_amount': 6000000,
+                        'block_rank_filter': True,
+                        'gap': 0,
+                        'except_is_ppp': True,
+                        'except_is_track': False,
+                        'filter_klines': True,
+                        'filter_kline_params': {
+                            'days': 7,
+                            'filter_one_word': True,
+                            'filter_high_growth': True,
+                            'fangliang_percent': 6,
+                            'max_zhangfu': 0.5
+                        }
+                    }
+                ],
+            }
+        }
+    },
     "低吸": {
         "sub_strategies": {
             # 长期玩 回撤不高 创建日期 2025-03-19
@@ -1468,7 +1530,15 @@ strategies = {
                     'block_rank_filter': True,
                     'gap': 0,
                     'except_is_ppp': True,
-                    'except_is_track': True
+                    'except_is_track': True,
+                    'filter_klines': True,
+                    'filter_kline_params': {
+                        'days': 7,
+                        'filter_one_word': True,
+                        'filter_high_growth': False,
+                        'fangliang_percent': 6,
+                        'max_zhangfu': -1
+                    }
                     }
                 ]
             },
@@ -1780,6 +1850,7 @@ strategies_to_buffer = {
     "接力-一进二弱转强": [0.018],
     "低吸-中位小低开低吸": [0.016],
     "低吸-中位中强小低开低吸": [0.016],
+    "AI-AI1": [0.015]
 }
 
 default_positions = {
@@ -1813,6 +1884,7 @@ default_positions = {
     "接力-一进二弱转强": 0.25,
     "低吸-中位小低开低吸": 0.25,
     "低吸-中位中强小低开低吸": 0.25,
+    "AI-AI1": 0.25
 }
 
 # ... existing code ...
@@ -1855,6 +1927,9 @@ default_strategy_positions = {
     "低吸-中位小低开低吸": 1,
     "低吸-中位中强小低开低吸": 1,
     "接力-一进二弱转强": 1,
+    "AI-AI1:第一高频": 1,
+    "AI-AI1:方向前2": 1,
+    "AI-AI1": 1,
     "强更强": 1,
 }
 
@@ -2211,6 +2286,28 @@ strategy_name_to_min_cost_params = {
         "price_drop_threshold": 0.008308440100195527,
         "max_confirm_ticks": 20,
         "debug": False
+    },
+    'AI1': {
+         "ema_alpha": 0.29013975766455613,
+        "kalman_q": 0.0320293136345791,
+        "kalman_r": 0.026940298328073715,
+        "sg_window": 20,
+        "macd_fast": 2,
+        "macd_slow_ratio": 2.1310430355291476,
+        "macd_signal": 2,
+        "ema_fast": 3,
+        "ema_slow_ratio": 1.5674748893488601,
+        "volume_window": 9,
+        "price_confirm_ticks": 5,
+        "strength_confirm_ticks": 3,
+        "strength_threshold": 0.3,
+        "volume_weight": 0.9562258738504769,
+        "use_price_confirm": False,
+        "use_strength_confirm": False,
+        "dead_cross_threshold": 0.005525094319119402,
+        "price_drop_threshold": 0.001,
+        "max_confirm_ticks": 7,
+        "debug": False
     }
 
 }
@@ -2249,6 +2346,8 @@ def get_min_cost_strategy_by_strategy_name(strategy_name):
         return '中位中强小低开低吸'
     elif '强更强' in strategy_name:
         return '强更强'
+    elif 'AI1' in strategy_name:
+        return 'AI1'
     else:
         return None
 
@@ -3232,6 +3331,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
                             candidate_items = cur_real_item_list[:limit]
                             r_candidate_items = []
                             candidate_item_codes = [item.code for item in candidate_items]
+                            candidate_item_codes = [code for code in candidate_item_codes if code.split('.')[0] in qmt_trader.all_stocks]
                             candidate_item_codes = [qmt_trader.all_stocks[code.split('.')[0]] for code in candidate_item_codes]
 
                             assert len(candidate_item_codes) == len(candidate_items)

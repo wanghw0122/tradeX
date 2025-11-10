@@ -72,7 +72,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-10-31"
+test_date = "2025-11-10"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -3331,6 +3331,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
                             candidate_items = cur_real_item_list[:limit]
                             r_candidate_items = []
                             candidate_item_codes = [item.code for item in candidate_items]
+                            candidate_items = [item for item in candidate_items if item.code.split('.')[0] in qmt_trader.all_stocks]
                             candidate_item_codes = [code for code in candidate_item_codes if code.split('.')[0] in qmt_trader.all_stocks]
                             candidate_item_codes = [qmt_trader.all_stocks[code.split('.')[0]] for code in candidate_item_codes]
 
@@ -3668,7 +3669,10 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         if code_info in monitor_set_ais:
                             del_row_ids = monitor_set_ais[code_info]
                             for del_row_id in del_row_ids:
-                                manager.delete_data('monitor_data', condition_dict={'id': del_row_id})
+                                try:
+                                    manager.delete_data('monitor_data', condition_dict={'id': del_row_id})
+                                except Exception as e:
+                                    strategy_logger.error(f"delete monitor data error! {e}")
                             continue
                         if sub_strategy_name:
                             all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name,'strategy_status': 1,'sub_strategy_name': sub_strategy_name}, columns="*")

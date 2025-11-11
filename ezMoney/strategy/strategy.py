@@ -838,6 +838,7 @@ sm.register_selector("xiao_cao_index_v2_list", http_context['xiao_cao_index_v2_l
 sm.register_selector("get_teacher_stock", http_context['get_teacher_stock'])
 sm.register_selector("get_teacher_list", http_context['get_teacher_list'])
 sm.register_selector("build_xiaocao_environment_second_line_v2_dict_simple", build_xiaocao_environment_second_line_v2_dict_simple)
+sm.register_selector("build_xiaocao_environment_second_line_v2_dict_all", build_xiaocao_environment_second_line_v2_dict_all)
 sm.register_selector("build_xiaocao_mod_dict_all", build_xiaocao_mod_dict_all)
 sm.register_selector("get_code_by_block_rank", get_code_by_block_rank)
 sm.register_selector("build_category_rank_sort_list", build_category_rank_sort_list)

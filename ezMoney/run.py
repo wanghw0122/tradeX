@@ -72,7 +72,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-11-10"
+test_date = "2025-11-11"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -1828,8 +1828,8 @@ strategies_to_buffer = {
     "低吸-中位断板低吸:高频": [0.016],
     "低吸-中位高强中低开低吸": [0.016],
     "低吸-连断低吸": [0.016],
-    "低吸-高强中低开低吸": [0.018],
-    "低吸-低位高强低吸": [0.018],
+    "低吸-高强中低开低吸": [0.01],
+    "低吸-低位高强低吸": [0.01],
     "低吸-高强低吸": [0.016],
     "低吸-放宽低吸前3": [0.016],
     "低吸-绿盘低吸": [0.016],
@@ -1837,20 +1837,20 @@ strategies_to_buffer = {
     "追涨-低位中强追涨": [0.016],
     "低吸-低位低吸": [0.016],
     "追涨-断追涨": [0.016],
-    "追涨-中位小高开起爆": [0.016],
-    "低吸-低位高强中低开低吸": [0.016],
-    "低吸-低位中强中低开低吸": [0.016],
-    "低吸-中强中低开低吸": [0.016],
-    "低吸-首红断低吸": [0.018],
-    "低吸-断低吸": [0.016],
-    "低吸-孕线": [0.016],
-    "追涨-高位高强追涨": [0.018],
-    "追涨-高强中高开追涨": [0.018],
-    "低吸-低位中强低吸": [0.016],
-    "接力-一进二弱转强": [0.018],
-    "低吸-中位小低开低吸": [0.016],
-    "低吸-中位中强小低开低吸": [0.016],
-    "AI-AI1": [0.015]
+    "追涨-中位小高开起爆": [0.01],
+    "低吸-低位高强中低开低吸": [0.01],
+    "低吸-低位中强中低开低吸": [0.01],
+    "低吸-中强中低开低吸": [0.01],
+    "低吸-首红断低吸": [0.01],
+    "低吸-断低吸": [0.01],
+    "低吸-孕线": [0.01],
+    "追涨-高位高强追涨": [0.01],
+    "追涨-高强中高开追涨": [0.01],
+    "低吸-低位中强低吸": [0.01],
+    "接力-一进二弱转强": [0.01],
+    "低吸-中位小低开低吸": [0.01],
+    "低吸-中位中强小低开低吸": [0.01],
+    "AI-AI1": [0.01]
 }
 
 default_positions = {
@@ -3293,10 +3293,15 @@ def get_target_codes_by_all_strategies(retry_times=3):
             auction_codes_dict = {}
             multi_configs = False
             multi_config_code_dict = {}
+            xiaocao_mod_dit = None
+            mod_name_dict = None
             if 'xiao_cao_env' in item and item['xiao_cao_env']:
                 xiaocao_envs = item['xiao_cao_env'][0]
                 position = get_position(xiaocao_envs)
                 logger.info(f"xiaocao_envs_position: {position}")
+            if 'xiao_cao_env_all' in item and item['xiao_cao_env_all']:
+                xiaocao_mod_dit, mod_name_dict = item['xiao_cao_env_all']
+                # logger.info(f"xiaocao_mod_dit: {xiaocao_mod_dit}, mod_name_dict: {mod_name_dict}")
             if name in item:
                 real_item_list = item[name]
                 if real_item_list == None:
@@ -3388,7 +3393,7 @@ def get_target_codes_by_all_strategies(retry_times=3):
                     rslt_dct[key] = auction_codes_dict
                 else:
                     rslt_dct[key] = {}
-        return rslt_dct, position
+        return rslt_dct, position, xiaocao_mod_dit, mod_name_dict
     except Exception as e:
         logger.error(f"An error occurred in get_target_codes: {e}", exc_info=True)
         return get_target_codes_by_all_strategies(retry_times-1)
@@ -3491,7 +3496,13 @@ def strategy_schedule_job():
             logger.info("[producer] 已过交易时间，结束执行策略.")
             end_task("code_schedule_job")
             return
-        rslt, position = get_target_codes_by_all_strategies()
+        rslt, position, xiaocao_mod_dict, mod_name_dict = get_target_codes_by_all_strategies()
+        special_position_info = get_special_position_info_by_mod_scores(xiaocao_mod_dict)
+        # 一进二弱转强的策略动态仓位
+        if '9G0003' in special_position_info:
+            oj2_pos = special_position_info['9G0003']
+        else:
+            oj2_pos = 1
         if not rslt or len(rslt) == 0:
             logger.info("[producer] 未获取到目标股票，等待重新执行策略...")
             cached_auction_infos.append({})
@@ -3511,6 +3522,8 @@ def strategy_schedule_job():
                 order_logger.info(f"[producer] 连续3次获取到相同的目标股票，且有增量购买... {m_rslt} - {final_results}")
                 bid_info = {}
                 for code_info, (position, mark_info) in m_rslt.items():
+                    # 拒绝大环境仓位策略，重置仓位
+                    position = 1
                     if code_info in final_results:
                         continue
                     code = code_info.split('|')[1]
@@ -3523,7 +3536,10 @@ def strategy_schedule_job():
                         logger.info(f"[producer] 股票 {code} 有策略{code_strategy} 有buffer {strategies_to_buffer[code_strategy]}")
                         buffers.extend(strategies_to_buffer[code_strategy])
                     buffers.sort()
-                    
+                    # 使用小仓位
+                    if '一进二弱转强' in code_info:
+                        position = position * oj2_pos
+                        logger.info(f"[producer] 股票 {code} 一进二弱转强策略，使用小仓位 {position}")
                     bid_info[code_info] = (code_info, position, buffers, mark_info)
                     qq.put((code, position))
                     final_results[code_info] = position
@@ -3538,6 +3554,42 @@ def strategy_schedule_job():
         if error_time > 20:
             end_task("code_schedule_job")
         logger.error(f"[producer] 执行任务出现错误 {error_time}次: {e}")
+
+
+def get_special_position_info_by_mod_scores(xiaocao_mod_dict):
+    res = {}
+    try:
+        # 一进二弱转强
+        if '9G0003' in xiaocao_mod_dict:
+            pos = 1
+            mod_scores = xiaocao_mod_dict['9G0003']
+            logger.info(f"9G0003 mod_scores: {mod_scores}")
+            short_line_score = mod_scores.shortLineScore
+            trend_score = mod_scores.trendScore
+            mean_score = (short_line_score + trend_score) / 2
+            if mean_score >= 100:
+                if short_line_score >= 100 and trend_score >= 100:
+                    pos = 2.5
+                else:
+                    pos = 2
+            elif mean_score >= 50:
+                if short_line_score > 50 and trend_score > 50:
+                    pos = 1.5
+                else:
+                    pos = 1
+            elif mean_score >= 0:
+                if short_line_score >= 0 and trend_score >= 0:
+                    pos = 0.5
+                else:
+                    pos = 0
+            else:
+                pos = 0
+            res['9G0003'] = pos
+    except Exception as e:
+        logger.error(f"get_special_position_info_by_mod_scores error! {e}")
+    return res
+        
+
 
 
 def consumer_to_buy(q, orders_dict, orders, min_cost_q):
@@ -3712,6 +3764,7 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                         total_assert = min(total_assert, max_budget)
                         total_assert = max(total_assert, min_budget)
                         if multipy_position > 0:
+                            logger.info(f"[producer] 股票 {code} 策略 {strategy_name} 子策略 {sub_strategy_name} 进行仓位重置 {position}")
                             total_assert = total_assert * position
                         c_cash = min(total_assert, cash)
                         if buffers and len(buffers) > 0:

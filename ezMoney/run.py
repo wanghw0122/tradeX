@@ -69,10 +69,10 @@ pre_search_results = {}
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-11-11"
+test_date = "2025-11-13"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -3675,31 +3675,31 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                 code_to_order_info_dict = {}
                 code_strategy_name_to_base_budget = {}
                 code_strategy_name_to_sub_strategy_names = {}
-                monitor_set_ais = {}
-                try:
-                    with SQLiteManager(db_name) as manager:
-                        monitor_data_lists = manager.query_data_dict('monitor_data', condition_dict= {'date_key': date.get_current_date(), 'monitor_status': 1})
-                        monitor_data_lists_2 = manager.query_data_dict('monitor_data', condition_dict= {'date_key': date.get_current_date(), 'monitor_status': 2})
-                        for monitor_data in monitor_data_lists:
-                            monitor_strategy_name = monitor_data['strategy_name']
-                            monitor_code = monitor_data['stock_code']
-                            row_id = monitor_data['id']
-                            if 'AI' in monitor_strategy_name:
-                                set_ais_key = monitor_strategy_name + '|' + monitor_code.split('.')[0]
-                                if set_ais_key not in monitor_set_ais:
-                                    monitor_set_ais[set_ais_key] = []
-                                monitor_set_ais[set_ais_key].append(row_id)
-                        for monitor_data in monitor_data_lists_2:
-                            monitor_strategy_name = monitor_data['strategy_name']
-                            monitor_code = monitor_data['stock_code']
-                            row_id = monitor_data['id']
-                            if 'AI' in monitor_strategy_name:
-                                set_ais_key = monitor_strategy_name + '|' + monitor_code.split('.')[0]
-                                if set_ais_key not in monitor_set_ais:
-                                    monitor_set_ais[set_ais_key] = []
-                                monitor_set_ais[set_ais_key].append(row_id)
-                except Exception as e:
-                    logger.error(f"get monitor data error! {e}")
+                # monitor_set_ais = {}
+                # try:
+                #     with SQLiteManager(db_name) as manager:
+                #         monitor_data_lists = manager.query_data_dict('monitor_data', condition_dict= {'date_key': date.get_current_date(), 'monitor_status': 1})
+                #         monitor_data_lists_2 = manager.query_data_dict('monitor_data', condition_dict= {'date_key': date.get_current_date(), 'monitor_status': 2})
+                #         for monitor_data in monitor_data_lists:
+                #             monitor_strategy_name = monitor_data['strategy_name']
+                #             monitor_code = monitor_data['stock_code']
+                #             row_id = monitor_data['id']
+                #             if 'AI' in monitor_strategy_name:
+                #                 set_ais_key = monitor_strategy_name + '|' + monitor_code.split('.')[0]
+                #                 if set_ais_key not in monitor_set_ais:
+                #                     monitor_set_ais[set_ais_key] = []
+                #                 monitor_set_ais[set_ais_key].append(row_id)
+                #         for monitor_data in monitor_data_lists_2:
+                #             monitor_strategy_name = monitor_data['strategy_name']
+                #             monitor_code = monitor_data['stock_code']
+                #             row_id = monitor_data['id']
+                #             if 'AI' in monitor_strategy_name:
+                #                 set_ais_key = monitor_strategy_name + '|' + monitor_code.split('.')[0]
+                #                 if set_ais_key not in monitor_set_ais:
+                #                     monitor_set_ais[set_ais_key] = []
+                #                 monitor_set_ais[set_ais_key].append(row_id)
+                # except Exception as e:
+                #     logger.error(f"get monitor data error! {e}")
                 
                 for code_info, (code_info, position, buffers, mark_info) in data.items():
                     strategy_name = code_info.split('|')[0]
@@ -3718,14 +3718,14 @@ def consumer_to_buy(q, orders_dict, orders, min_cost_q):
                     if code in qmt_trader.all_stocks:
                         code = qmt_trader.all_stocks[code]
                     with SQLiteManager(db_name) as manager:
-                        if code_info in monitor_set_ais:
-                            del_row_ids = monitor_set_ais[code_info]
-                            for del_row_id in del_row_ids:
-                                try:
-                                    manager.delete_data('monitor_data', condition_dict={'id': del_row_id})
-                                except Exception as e:
-                                    strategy_logger.error(f"delete monitor data error! {e}")
-                            continue
+                        # if code_info in monitor_set_ais:
+                        #     del_row_ids = monitor_set_ais[code_info]
+                        #     for del_row_id in del_row_ids:
+                        #         try:
+                        #             manager.delete_data('monitor_data', condition_dict={'id': del_row_id})
+                        #         except Exception as e:
+                        #             strategy_logger.error(f"delete monitor data error! {e}")
+                        #     continue
                         if sub_strategy_name:
                             all_data = manager.query_data_dict("strategy_meta_info", condition_dict={'strategy_name': strategy_name,'strategy_status': 1,'sub_strategy_name': sub_strategy_name}, columns="*")
                         else:

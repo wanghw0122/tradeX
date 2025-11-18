@@ -551,7 +551,7 @@ class MinCostOrderMonitor(object):
         )
 
         self.remaining_buy_down_min_pct = params.get('remaining_buy_down_min_pct', 0.02)
-        self.max_strategy_down_pct = params.get('max_strategy_down_pct', 10)
+        self.max_strategy_down_pct = params.get('max_strategy_down_pct', 12)
         self.base_buy_gap_ticks = params.get('base_buy_gap_ticks', 100)
         self.base_buy_down_min_pct = params.get('base_buy_down_min_pct', 0.005)
         self.base_buy_times = params.get('base_buy_times', 5)

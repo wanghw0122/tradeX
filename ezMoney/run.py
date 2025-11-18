@@ -69,10 +69,10 @@ pre_search_results = {}
 
 #################### 测试配置 ########################
 
-do_test = False
+do_test = True
 buy = True
 subscribe = True
-test_date = "2025-11-13"
+test_date = "2025-11-18"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -648,6 +648,7 @@ strategies = {
                         'filter_one_word': True,
                         'filter_high_growth': True,
                         'fangliang_percent': 6,
+                        'filter_high_growth_db': True,
                         'max_zhangfu': 0.5
                     }
                     },
@@ -674,6 +675,7 @@ strategies = {
                         'filter_one_word': True,
                         'filter_high_growth': True,
                         'fangliang_percent': 6,
+                        'filter_high_growth_db': True,
                         'max_zhangfu': 0.5
                     }
                     },
@@ -729,6 +731,32 @@ strategies = {
                         'max_zhangfu': -1
                     }
                     },
+                    {
+                    'mark': '强方向前1g',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True,
+                    'filter_klines': True,
+                    'filter_kline_params': {
+                        'days': 7,
+                        'filter_one_word': False,
+                        'filter_high_growth': False,
+                        'fangliang_percent': 6,
+                        'filter_high_growth_db': True,
+                        'max_zhangfu': -1
+                    }
+                    },
                      {
                     # 曲线完美
                     'mark': '强方向前11',
@@ -752,6 +780,33 @@ strategies = {
                         'filter_one_word': False,
                         'filter_high_growth': False,
                         'fangliang_percent': 6,
+                        'max_zhangfu': -1
+                    }
+                    },
+                    {
+                    # 曲线完美
+                    'mark': '强方向前11g',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 1,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True,
+                    'filter_klines': True,
+                    'filter_kline_params': {
+                        'days': 7,
+                        'filter_one_word': False,
+                        'filter_high_growth': False,
+                        'fangliang_percent': 6,
+                        'filter_high_growth_db': True,
                         'max_zhangfu': -1
                     }
                     },
@@ -829,6 +884,32 @@ strategies = {
                         'filter_one_word': True,
                         'filter_high_growth': True,
                         'fangliang_percent': 6,
+                        'max_zhangfu': 0.5
+                    }
+                    },
+                    {
+                    'mark': '强方向前2g',
+                    'limit': 3,
+                    'filtered': True,
+                    'fx_filtered': True,
+                    'topn': 1,
+                    'top_fx': 101,
+                    'top_cx': 2,
+                    'only_fx': True,
+                    'enbale_industry': False,
+                    'empty_priority': False,
+                    'min_trade_amount': 10000000,
+                    'block_rank_filter': True,
+                    'gap': 0,
+                    'except_is_ppp': True,
+                    'except_is_track': True,
+                    'filter_klines': True,
+                    'filter_kline_params': {
+                        'days': 7,
+                        'filter_one_word': True,
+                        'filter_high_growth': True,
+                        'fangliang_percent': 6,
+                        'filter_high_growth_db': True,
                         'max_zhangfu': 0.5
                     }
                     },
@@ -1891,10 +1972,13 @@ default_positions = {
 
 default_strategy_positions = {
     "低吸-高强中低开低吸:强方向前2": 1,
+    "低吸-高强中低开低吸:强方向前2g": 1,
     "低吸-高强中低开低吸:强方向前22": 1,
     "低吸-高强中低开低吸:方向前1": 1,
     "低吸-高强中低开低吸:强方向前1": 1,
     "低吸-高强中低开低吸:强方向前11": 1,
+    "低吸-高强中低开低吸:强方向前1g": 1,
+    "低吸-高强中低开低吸:强方向前11g": 1,
     "低吸-高强中低开低吸:强方向前1止损10": 1,
     "低吸-高强中低开低吸:强方向前1无止损": 1,
     "低吸-高强中低开低吸:方向前2": 1,
@@ -3152,7 +3236,7 @@ def get_position_from_budgets(budgets_dict = budgets):
     return r_rslt
 
 
-def filter_stocks_klines_by_stats(stock_code, datekey, days=7, max_zhangfu= -1, fangliang_percent = 6, filter_one_word = False, filter_high_growth = False):
+def filter_stocks_klines_by_stats(stock_code, datekey, days=7, max_zhangfu= -1, fangliang_percent = 6, filter_one_word = False, filter_high_growth = False, filter_high_growth_db = False):
     print(f'fangliang_percent - {fangliang_percent}')
     valid_days = factors.get_n_days_data(stock_code=stock_code, datekey= datekey, days=days)
     last_day = valid_days.iloc[0]
@@ -3204,11 +3288,18 @@ def filter_stocks_klines_by_stats(stock_code, datekey, days=7, max_zhangfu= -1, 
 
 
         res = res or (last_day['close'] < last_day['open'] and last_day['volume'] > avg_volume * 2 and prev_limit_up and high_growth)
+    
+    if filter_high_growth_db:
+        seven_day_lowest = valid_days['low'].min()
+
+        seven_day_growth = (last_day['high'] / seven_day_lowest - 1)
+        high_growth = seven_day_growth >= 0.6
+        res = res or (high_growth and prev_limit_up and last_day['volume'] >= avg_volume)
 
     return bool(res)
 
 @functools.lru_cache(maxsize=None)
-def filter_stocks_klines_by_stats_batch_cached(stock_codes_tuple, datekey, days=7, max_zhangfu= -1, fangliang_percent = 6, filter_one_word = False, filter_high_growth = False):
+def filter_stocks_klines_by_stats_batch_cached(stock_codes_tuple, datekey, days=7, max_zhangfu= -1, fangliang_percent = 6, filter_one_word = False, filter_high_growth = False, filter_high_growth_db = False):
     """
     带缓存的批量过滤股票 K 线数据。
 
@@ -3226,7 +3317,7 @@ def filter_stocks_klines_by_stats_batch_cached(stock_codes_tuple, datekey, days=
     print(f'fangliang_percent - {fangliang_percent}')
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # 提交任务到线程池
-        future_to_stock = {executor.submit(filter_stocks_klines_by_stats, stock_code, datekey, days, max_zhangfu, fangliang_percent, filter_one_word, filter_high_growth): stock_code for stock_code in stock_codes}
+        future_to_stock = {executor.submit(filter_stocks_klines_by_stats, stock_code, datekey, days, max_zhangfu, fangliang_percent, filter_one_word, filter_high_growth, filter_high_growth_db): stock_code for stock_code in stock_codes}
         for future in concurrent.futures.as_completed(future_to_stock):
             stock_code = future_to_stock[future]
             try:
@@ -3235,7 +3326,7 @@ def filter_stocks_klines_by_stats_batch_cached(stock_codes_tuple, datekey, days=
                 print(f'{stock_code} generated an exception: {exc}')
     return results
 
-def filter_stocks_klines_by_stats_batch(stock_codes, datekey, days=7, max_zhangfu= -1, fangliang_percent = 6, filter_one_word = False, filter_high_growth = False):
+def filter_stocks_klines_by_stats_batch(stock_codes, datekey, days=7, max_zhangfu= -1, fangliang_percent = 6, filter_one_word = False, filter_high_growth = False, filter_high_growth_db = False):
     """
     批量过滤股票 K 线数据，调用带缓存的函数。
 
@@ -3252,7 +3343,7 @@ def filter_stocks_klines_by_stats_batch(stock_codes, datekey, days=7, max_zhangf
         return {}
     stock_codes_tuple = tuple(stock_codes)
     print(f'fangliang_percent - {fangliang_percent}')
-    return filter_stocks_klines_by_stats_batch_cached(stock_codes_tuple, datekey, days, max_zhangfu, fangliang_percent, filter_one_word, filter_high_growth)
+    return filter_stocks_klines_by_stats_batch_cached(stock_codes_tuple, datekey, days, max_zhangfu, fangliang_percent, filter_one_word, filter_high_growth, filter_high_growth_db)
 
 
 def get_target_return_keys_dict(starategies_dict = strategies):

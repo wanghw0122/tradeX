@@ -72,7 +72,7 @@ pre_search_results = {}
 do_test = False
 buy = True
 subscribe = True
-test_date = "2025-11-18"
+test_date = "2026-01-05"
 buy_total_coef = 1.0
 cash_discount = 1
 sell_at_monning = True
@@ -3580,9 +3580,9 @@ def strategy_schedule_job():
             logger.info("[producer] 非交易日，不执行策略.")
             end_task("code_schedule_job")
             return
-        if not date.is_between_925_and_930() and not do_test:
-            logger.info("[producer] 非交易时间，不执行策略.")
-            return
+        # if not date.is_between_925_and_930() and not do_test:
+        #     logger.info("[producer] 非交易时间，不执行策略.")
+        #     return
         if date.is_after_929() and not do_test:
             logger.info("[producer] 已过交易时间，结束执行策略.")
             end_task("code_schedule_job")

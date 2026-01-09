@@ -3580,9 +3580,9 @@ def strategy_schedule_job():
             logger.info("[producer] 非交易日，不执行策略.")
             end_task("code_schedule_job")
             return
-        # if not date.is_between_925_and_930() and not do_test:
-        #     logger.info("[producer] 非交易时间，不执行策略.")
-        #     return
+        if not date.is_between_925_and_930() and not do_test:
+            logger.info("[producer] 非交易时间，不执行策略.")
+            return
         if date.is_after_929() and not do_test:
             logger.info("[producer] 已过交易时间，结束执行策略.")
             end_task("code_schedule_job")
